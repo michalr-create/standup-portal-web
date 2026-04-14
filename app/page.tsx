@@ -16,10 +16,8 @@ export default async function HomePage() {
       <Nav />
       <main className="max-w-6xl mx-auto px-4 pb-10">
         <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Nowosci</h1>
-          <p className="text-gray-400">
-            Najnowsze tresci z polskiej sceny stand-upowej
-          </p>
+          <h1 className="text-4xl font-bold mb-2">parska</h1>
+          <p className="text-lg text-gray-400 mt-1">polski stand-up w jednym miejscu</p>
         </header>
 
         <ItemsBrowser items={items} comedians={comedians} />
