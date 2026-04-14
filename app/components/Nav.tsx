@@ -5,7 +5,7 @@ export default function Nav() {
     <nav className="border-b border-neutral-800 mb-10">
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="font-bold text-xl hover:text-gray-300">
-          Stand-up Portal
+          parska
         </Link>
         <div className="text-sm text-gray-400">
           <Link href="/" className="hover:text-white">
