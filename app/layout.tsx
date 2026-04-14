@@ -2,8 +2,18 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Stand-up Portal",
-  description: "Agregator polskiego stand-upu",
+  title: "parska — polski stand-up w jednym miejscu",
+  description:
+    "Agregator polskiego stand-upu. Nowe specjale, klipy, podcasty, trasy i open-miki.",
+  openGraph: {
+    title: "parska — polski stand-up w jednym miejscu",
+    description:
+      "Agregator polskiego stand-upu. Nowe specjale, klipy, podcasty, trasy i open-miki.",
+    url: "https://parska.pl",
+    siteName: "parska",
+    locale: "pl_PL",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
