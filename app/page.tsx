@@ -98,26 +98,3 @@ export default async function HomePage() {
     </main>
   );
 }
-```
-
-Commit.
-
----
-
-### 5.3 Szybka weryfikacja że masz wszystkie pliki
-
-Wróć na główną stronę repo (kliknij nazwę `standup-portal-web` na górze). Powinieneś widzieć strukturę:
-```
-app/
-  globals.css
-  layout.tsx
-  page.tsx
-lib/
-  supabase.ts
-.gitignore
-README.md
-next.config.js
-package.json
-postcss.config.js
-tailwind.config.js
-tsconfig.json
