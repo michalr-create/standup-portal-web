@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabase, type ContentItem } from "@/lib/supabase";
 
 export const revalidate = 300;
@@ -5,17 +6,7 @@ export const revalidate = 300;
 async function getApprovedItems(): Promise<ContentItem[]> {
   const { data, error } = await supabase
     .from("content_items")
-    .select(`
-      *,
-      sources (
-        name,
-        comedian_id,
-        comedians (
-          name,
-          slug
-        )
-      )
-    `)
+    .select("*, sources (name, comedian_id, comedians (name, slug))")
     .eq("status", "approved")
     .order("published_at", { ascending: false })
     .limit(50);
@@ -41,6 +32,39 @@ function formatDate(dateString: string | null): string {
   }
 }
 
+function ItemCard({ item }: { item: ContentItem }) {
+  const comedianName =
+    item.sources?.comedians?.name || item.sources?.name || "";
+
+  return (
+    <Link
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block bg-neutral-900 rounded-lg overflow-hidden hover:bg-neutral-800 transition-colors"
+    >
+      {item.thumbnail_url ? (
+        <div className="aspect-video bg-neutral-800 overflow-hidden">
+          <img
+            src={item.thumbnail_url}
+            alt={item.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          />
+        </div>
+      ) : null}
+      <div className="p-4">
+        <div className="text-xs text-gray-500 mb-1">{comedianName}</div>
+        <h2 className="font-semibold text-lg leading-tight mb-2 line-clamp-2">
+          {item.title}
+        </h2>
+        <div className="text-xs text-gray-500">
+          {formatDate(item.published_at)}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default async function HomePage() {
   const items = await getApprovedItems();
 
@@ -58,34 +82,7 @@ export default async function HomePage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            
-              key={item.id}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group block bg-neutral-900 rounded-lg overflow-hidden hover:bg-neutral-800 transition-colors"
-            >
-              {item.thumbnail_url ? (
-                <div className="aspect-video bg-neutral-800 overflow-hidden">
-                  <img
-                    src={item.thumbnail_url}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                </div>
-              ) : null}
-              <div className="p-4">
-                <div className="text-xs text-gray-500 mb-1">
-                  {item.sources?.comedians?.name || item.sources?.name || ""}
-                </div>
-                <h2 className="font-semibold text-lg leading-tight mb-2 line-clamp-2">
-                  {item.title}
-                </h2>
-                <div className="text-xs text-gray-500">
-                  {formatDate(item.published_at)}
-                </div>
-              </div>
-            </a>
+            <ItemCard key={item.id} item={item} />
           ))}
         </div>
       )}
