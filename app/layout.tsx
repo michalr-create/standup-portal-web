@@ -1,5 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import Sidebar from "./components/Sidebar";
+import Nav from "./components/Nav";
 
 export const metadata: Metadata = {
   title: "parska — polski stand-up w jednym miejscu",
@@ -36,7 +38,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pl">
-      <body>{children}</body>
+      <body>
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <div className="flex-1 min-w-0">
+            <Nav />
+            {children}
+          </div>
+        </div>
+      </body>
     </html>
   );
 }
