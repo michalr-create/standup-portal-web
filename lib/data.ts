@@ -172,7 +172,7 @@ export async function getItemsByCategorySlug(slug: string, limit = 100): Promise
     .from("categories")
     .select("id")
     .eq("slug", slug)
-    .maybe_single();
+    .maybeSingle();
 
   if (!cat) return [];
 
@@ -197,7 +197,7 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
     .from("shows")
     .select("id")
     .eq("slug", slug)
-    .maybe_single();
+    .maybeSingle();
 
   if (!show) return [];
 
@@ -224,7 +224,7 @@ export async function getItemsByPersonSlug(slug: string, limit = 100): Promise<I
     .select("id")
     .eq("slug", slug)
     .eq("tag_type", "person")
-    .maybe_single();
+    .maybeSingle();
 
   if (!tag) return [];
 
@@ -258,7 +258,7 @@ export async function getPersonBySlug(slug: string): Promise<Person | null> {
     .from("people")
     .select("id, name, slug, bio, photo_url, role")
     .eq("slug", slug)
-    .maybe_single();
+    .maybeSingle();
 
   return data || null;
 }
@@ -271,7 +271,7 @@ export async function getShowBySlug(slug: string): Promise<Show | null> {
     .from("shows")
     .select("*")
     .eq("slug", slug)
-    .maybe_single();
+    .maybeSingle();
 
   if (!show) return null;
 
@@ -282,7 +282,7 @@ export async function getShowBySlug(slug: string): Promise<Show | null> {
       .from("categories")
       .select("name, slug")
       .eq("id", show.category_id)
-      .maybe_single();
+      .maybeSingle();
     categoryName = cat?.name || null;
     categorySlug = cat?.slug || null;
   }
@@ -363,7 +363,7 @@ export async function getShowsByCategorySlug(slug: string): Promise<Show[]> {
     .from("categories")
     .select("id")
     .eq("slug", slug)
-    .maybe_single();
+    .maybeSingle();
 
   if (!cat) return [];
 
@@ -401,7 +401,7 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
     .from("categories")
     .select("id, name, slug, description, display_order")
     .eq("slug", slug)
-    .maybe_single();
+    .maybeSingle();
 
   return data || null;
 }
