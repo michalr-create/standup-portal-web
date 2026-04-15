@@ -1,31 +1,22 @@
-import Nav from "@/app/components/Nav";
-import ItemsBrowser from "@/app/components/ItemsBrowser";
-import { getAllApprovedItems, getAllComedians } from "@/lib/data";
+import { getAllApprovedItems } from "@/lib/data";
+import ItemsBrowser from "./components/ItemsBrowser";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const [items, comedians] = await Promise.all([
-    getAllApprovedItems(),
-    getAllComedians(),
-  ]);
+  const items = await getAllApprovedItems();
 
   return (
-    <>
-      <Nav />
-      <main className="max-w-6xl mx-auto px-4 pb-10">
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">parska</h1>
-          <p className="text-lg text-gray-400 mt-1">polski stand-up w jednym miejscu</p>
-        </header>
+    <main className="max-w-6xl mx-auto px-4 py-8 lg:py-10">
+      <header className="mb-8">
+        <h1 className="text-3xl lg:text-4xl font-bold mb-2">Nowości</h1>
+        <p className="text-gray-400">
+          Najnowsze treści z polskiej sceny stand-upowej
+        </p>
+      </header>
 
-        <ItemsBrowser items={items} comedians={comedians} />
-
-        <footer className="mt-20 pt-10 border-t border-neutral-800 text-center text-xs text-gray-500">
-          Agregator tresci. Wszystkie prawa do materialow naleza do ich tworcow.
-        </footer>
-      </main>
-    </>
+      <ItemsBrowser items={items} />
+    </main>
   );
 }
