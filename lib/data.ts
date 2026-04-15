@@ -88,10 +88,20 @@ async function hydrateItems(rawItems: {
     .eq("tags.tag_type", "person");
 
   // Pobierz person z tagów
+type CtRow = {
+    content_item_id: number;
+    tag_id: number;
+    tags: { id: number; person_id: number | null; tag_type: string }[] | { id: number; person_id: number | null; tag_type: string } | null;
+  };
+
   const personIds = Array.from(new Set(
-    (contentTags || [])
-      .map((ct: { tags: { person_id: number | null } | null }) => ct.tags?.person_id)
-      .filter((id): id is number => id !== null && id !== undefined)
+    (contentTags as CtRow[] | null || [])
+      .flatMap((ct) => {
+        const t = ct.tags;
+        if (!t) return [];
+        const arr = Array.isArray(t) ? t : [t];
+        return arr.map((tag) => tag.person_id).filter((id): id is number => id !== null);
+      })
   ));
 
   const { data: people } = personIds.length > 0
@@ -103,18 +113,21 @@ async function hydrateItems(rawItems: {
   const categoriesMap = new Map((categories || []).map((c) => [c.id, c]));
   const peopleMap = new Map((people || []).map((p) => [p.id, p]));
 
-  // Map: item_id -> lista person
+// Map: item_id -> lista person
   const itemPeopleMap = new Map<number, { name: string; slug: string }[]>();
-  for (const ct of contentTags || []) {
-    const tagsObj = ct.tags as { person_id: number | null } | null;
-    const personId = tagsObj?.person_id;
-    if (personId === null || personId === undefined) continue;
-    const person = peopleMap.get(personId);
-    if (!person) continue;
-    if (!itemPeopleMap.has(ct.content_item_id)) {
-      itemPeopleMap.set(ct.content_item_id, []);
+  for (const ct of (contentTags as CtRow[] | null) || []) {
+    const t = ct.tags;
+    if (!t) continue;
+    const arr = Array.isArray(t) ? t : [t];
+    for (const tag of arr) {
+      if (tag.person_id === null) continue;
+      const person = peopleMap.get(tag.person_id);
+      if (!person) continue;
+      if (!itemPeopleMap.has(ct.content_item_id)) {
+        itemPeopleMap.set(ct.content_item_id, []);
+      }
+      itemPeopleMap.get(ct.content_item_id)!.push({ name: person.name, slug: person.slug });
     }
-    itemPeopleMap.get(ct.content_item_id)!.push({ name: person.name, slug: person.slug });
   }
 
   return rawItems.map((item) => {
