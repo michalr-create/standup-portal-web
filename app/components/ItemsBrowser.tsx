@@ -18,6 +18,12 @@ function formatDate(dateString: string | null): string {
 }
 
 function ItemCard({ item }: { item: Item }) {
+  // Etykieta: nazwy person albo nazwa showa
+  const label =
+    item.people.length > 0
+      ? item.people.map((p) => p.name).join(" · ")
+      : item.showName || "";
+
   return (
     <Link
       href={item.url}
@@ -35,12 +41,22 @@ function ItemCard({ item }: { item: Item }) {
         </div>
       ) : null}
       <div className="p-4">
-        <div className="text-xs text-gray-500 mb-1">{item.comedianName}</div>
-        <h2 className="font-semibold text-lg leading-tight mb-2 line-clamp-2">
+        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+          {item.categoryName && (
+            <span className="px-2 py-0.5 bg-neutral-800 rounded-full">
+              {item.categoryName}
+            </span>
+          )}
+          {item.showName && (
+            <span className="text-gray-500">{item.showName}</span>
+          )}
+        </div>
+        <h2 className="font-semibold text-base lg:text-lg leading-tight mb-2 line-clamp-2">
           {item.title}
         </h2>
-        <div className="text-xs text-gray-500">
-          {formatDate(item.published_at)}
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span className="truncate">{label}</span>
+          <span className="shrink-0 ml-2">{formatDate(item.published_at)}</span>
         </div>
       </div>
     </Link>
@@ -49,22 +65,43 @@ function ItemCard({ item }: { item: Item }) {
 
 type Props = {
   items: Item[];
-  comedians: { name: string; slug: string }[];
   showFilters?: boolean;
 };
 
-export default function ItemsBrowser({ items, comedians, showFilters = true }: Props) {
+export default function ItemsBrowser({ items, showFilters = true }: Props) {
   const [search, setSearch] = useState("");
-  const [activeComedian, setActiveComedian] = useState<string | null>(null);
+
+  // Lista unikalnych standuperów obecnych we wpisach (do filtrów)
+  const uniquePeople = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of items) {
+      for (const p of item.people) {
+        map.set(p.slug, p.name);
+      }
+    }
+    return Array.from(map.entries()).map(([slug, name]) => ({ slug, name }));
+  }, [items]);
+
+  const [activePersonSlug, setActivePersonSlug] = useState<string | null>(null);
 
   const filteredItems = useMemo(() => {
     const searchLower = search.trim().toLowerCase();
     return items.filter((item) => {
-      if (activeComedian && item.comedianSlug !== activeComedian) return false;
-      if (searchLower && !item.title.toLowerCase().includes(searchLower)) return false;
+      if (activePersonSlug) {
+        const has = item.people.some((p) => p.slug === activePersonSlug);
+        if (!has) return false;
+      }
+      if (searchLower) {
+        const haystack = [
+          item.title,
+          item.showName || "",
+          ...item.people.map((p) => p.name),
+        ].join(" ").toLowerCase();
+        if (!haystack.includes(searchLower)) return false;
+      }
       return true;
     });
-  }, [items, search, activeComedian]);
+  }, [items, search, activePersonSlug]);
 
   return (
     <div>
@@ -72,36 +109,38 @@ export default function ItemsBrowser({ items, comedians, showFilters = true }: P
         <div className="mb-8 space-y-4">
           <input
             type="text"
-            placeholder="Szukaj po tytule..."
+            placeholder="Szukaj po tytule, standuperze, formacie..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full px-4 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neutral-500"
           />
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveComedian(null)}
-              className={
-                activeComedian === null
-                  ? "px-3 py-1 rounded-full text-sm bg-white text-black"
-                  : "px-3 py-1 rounded-full text-sm bg-neutral-800 text-gray-300 hover:bg-neutral-700"
-              }
-            >
-              Wszyscy
-            </button>
-            {comedians.map((c) => (
+          {uniquePeople.length > 0 && (
+            <div className="flex flex-wrap gap-2">
               <button
-                key={c.slug}
-                onClick={() => setActiveComedian(c.slug)}
+                onClick={() => setActivePersonSlug(null)}
                 className={
-                  activeComedian === c.slug
+                  activePersonSlug === null
                     ? "px-3 py-1 rounded-full text-sm bg-white text-black"
                     : "px-3 py-1 rounded-full text-sm bg-neutral-800 text-gray-300 hover:bg-neutral-700"
                 }
               >
-                {c.name}
+                Wszyscy
               </button>
-            ))}
-          </div>
+              {uniquePeople.map((p) => (
+                <button
+                  key={p.slug}
+                  onClick={() => setActivePersonSlug(p.slug)}
+                  className={
+                    activePersonSlug === p.slug
+                      ? "px-3 py-1 rounded-full text-sm bg-white text-black"
+                      : "px-3 py-1 rounded-full text-sm bg-neutral-800 text-gray-300 hover:bg-neutral-700"
+                  }
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -110,7 +149,7 @@ export default function ItemsBrowser({ items, comedians, showFilters = true }: P
           Nic nie znaleziono.
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {filteredItems.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
