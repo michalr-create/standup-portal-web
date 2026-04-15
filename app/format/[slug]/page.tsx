@@ -13,6 +13,25 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
+type PlatformLinkProps = {
+  href: string | null;
+  label: string;
+};
+
+function PlatformLink({ href, label }: PlatformLinkProps) {
+  if (!href) return null;
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded-full text-gray-300"
+    >
+      {label}
+    </Link>
+  );
+}
+
 export default async function ShowPage({ params }: Props) {
   const { slug } = await params;
 
@@ -27,7 +46,7 @@ export default async function ShowPage({ params }: Props) {
   return (
     <main className="max-w-6xl mx-auto px-4 py-8 lg:py-10">
       <header className="mb-8">
-        {show.category_name && (
+        {show.category_name && show.category_slug && (
           <Link
             href={`/${show.category_slug}`}
             className="text-xs text-gray-500 hover:text-white"
@@ -56,46 +75,10 @@ export default async function ShowPage({ params }: Props) {
         )}
 
         <div className="flex flex-wrap gap-2">
-          {show.youtube_channel_url && (
-            
-              href={show.youtube_channel_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded-full text-gray-300"
-            >
-              ▶ YouTube
-            </a>
-          )}
-          {show.spotify_show_url && (
-            
-              href={show.spotify_show_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded-full text-gray-300"
-            >
-              ♪ Spotify
-            </a>
-          )}
-          {show.apple_podcasts_url && (
-            
-              href={show.apple_podcasts_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded-full text-gray-300"
-            >
-              ♪ Apple Podcasts
-            </a>
-          )}
-          {show.website_url && (
-            
-              href={show.website_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded-full text-gray-300"
-            >
-              🌐 Strona
-            </a>
-          )}
+          <PlatformLink href={show.youtube_channel_url} label="▶ YouTube" />
+          <PlatformLink href={show.spotify_show_url} label="♪ Spotify" />
+          <PlatformLink href={show.apple_podcasts_url} label="♪ Apple Podcasts" />
+          <PlatformLink href={show.website_url} label="🌐 Strona" />
         </div>
       </header>
 
