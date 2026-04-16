@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getCurrentUser } from "@/lib/supabase-server";
 import LogoutButton from "./components/LogoutButton";
 
@@ -10,10 +11,21 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Sprawdz czy jestesmy na stronie logowania - jesli tak, nie waliduj sesji
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || headersList.get("referer") || "";
+  const isLoginPage = pathname.includes("/admin/login");
+
   const user = await getCurrentUser();
 
-  if (!user) {
+  // Redirect tylko gdy nie jestesmy na stronie logowania i nie ma usera
+  if (!user && !isLoginPage) {
     redirect("/admin/login");
+  }
+
+  // Na stronie logowania - renderuj tylko children, bez layoutu panelu
+  if (isLoginPage || !user) {
+    return <>{children}</>;
   }
 
   return (
