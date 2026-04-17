@@ -32,13 +32,20 @@ function ItemCard({ item }: { item: Item }) {
       className="group block bg-neutral-900 rounded-lg overflow-hidden hover:bg-neutral-800 transition-colors"
     >
       {item.thumbnail_url ? (
-        <div className="aspect-video bg-neutral-800 overflow-hidden">
+        <div className="aspect-video bg-neutral-800 overflow-hidden relative">
           <img
             src={item.thumbnail_url}
             alt={item.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           />
         </div>
+      {item.duration_seconds != null && (
+            <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
+              {item.duration_seconds >= 3600
+                ? `${Math.floor(item.duration_seconds / 3600)}:${String(Math.floor((item.duration_seconds % 3600) / 60)).padStart(2, "0")}:${String(item.duration_seconds % 60).padStart(2, "0")}`
+                : `${Math.floor(item.duration_seconds / 60)}:${String(item.duration_seconds % 60).padStart(2, "0")}`}
+            </div>
+          )}
       ) : null}
       <div className="p-4">
         <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
