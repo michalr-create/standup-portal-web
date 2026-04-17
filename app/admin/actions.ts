@@ -302,4 +302,3 @@ export async function getItemsByStatus(status: string) {
     allShows: allShows || [],
   };
 }
-}
