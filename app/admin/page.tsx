@@ -20,7 +20,7 @@ export default async function AdminHomePage({ searchParams }: Props) {
     ? await getPendingItems()
     : await getItemsByStatus(currentStatus);
 
-  const { items, personTags, allCategories, allShows } = data;
+  const { items, personTags, contentTags, allCategories, allShows } = data;
 
   const pendingData = currentStatus === "pending" ? data : await getItemsByStatus("pending");
   const approvedData = currentStatus === "approved" ? data : await getItemsByStatus("approved");
@@ -66,10 +66,11 @@ export default async function AdminHomePage({ searchParams }: Props) {
       ) : (
         <div className="space-y-4">
           {items.map((item) => (
-            <ModerationCard
+           <ModerationCard
               key={item.id}
               item={item}
               personTags={personTags}
+              contentTags={contentTags || []}
               categories={allCategories}
               shows={allShows}
               mode={currentStatus as "pending" | "approved" | "rejected"}
