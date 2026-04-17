@@ -28,8 +28,6 @@ export async function quickFetchSource(sourceId: number) {
     return { error: "Zrodlo nie ma feed_url", inserted: 0 };
   }
 
-  // Dynamiczny import feedparser nie dziala w Next.js server actions,
-  // wiec parsujemy RSS recznie przez fetch + regex
   try {
     const resp = await fetch(source.feed_url);
     if (!resp.ok) return { error: `HTTP ${resp.status}`, inserted: 0 };
@@ -37,6 +35,11 @@ export async function quickFetchSource(sourceId: number) {
 
     const entries = parseYouTubeRSS(xml);
     const result = await insertNewItems(sb, source, entries);
+
+    // Pobierz duration dla nowo wstawionych
+    if (result.insertedIds.length > 0) {
+      await fetchAndUpdateDurations(sb, result.insertedIds);
+    }
 
     await sb
       .from("sources")
@@ -67,7 +70,6 @@ function parseYouTubeRSS(xml: string) {
 
   while ((match = entryRegex.exec(xml)) !== null) {
     const entry = match[1];
-
     const videoId = entry.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1];
     if (!videoId) continue;
 
@@ -135,14 +137,12 @@ export async function fullFetchSource(
     return { inserted: 0, skipped: 0, hasMore: false, nextPageToken: null, error: "Zrodlo nie znalezione" };
   }
 
-  // Wyciagnij channel_id z feed_url
   const channelIdMatch = source.feed_url?.match(/channel_id=([A-Za-z0-9_-]+)/);
   if (!channelIdMatch) {
-    return { inserted: 0, skipped: 0, hasMore: false, nextPageToken: null, error: "Nie znaleziono channel_id w feed_url" };
+    return { inserted: 0, skipped: 0, hasMore: false, nextPageToken: null, error: "Nie znaleziono channel_id" };
   }
 
   const channelId = channelIdMatch[1];
-  // Uploads playlist = channel_id z "UC" zamienione na "UU"
   const uploadsPlaylistId = "UU" + channelId.slice(2);
 
   try {
@@ -173,19 +173,23 @@ export async function fullFetchSource(
 
     const entries = (data.items || []).map((item) => {
       const videoId = item.snippet.resourceId.videoId;
-      const url = `https://www.youtube.com/watch?v=${videoId}`;
       return {
         external_id: videoId,
         title: item.snippet.title,
         description: (item.snippet.description || "").slice(0, 2000),
-        url,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
         thumbnail_url: item.snippet.thumbnails?.high?.url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
         published_at: item.snippet.publishedAt,
-        content_type: "video" as const,
+        content_type: "video",
       };
     });
 
     const result = await insertNewItems(sb, source, entries);
+
+    // Pobierz duration dla nowo wstawionych
+    if (result.insertedIds.length > 0) {
+      await fetchAndUpdateDurations(sb, result.insertedIds);
+    }
 
     await sb
       .from("sources")
@@ -211,6 +215,93 @@ export async function fullFetchSource(
 }
 
 // =============================================
+// FETCH DURATIONS from YouTube Videos API
+// =============================================
+
+async function fetchAndUpdateDurations(
+  sb: ReturnType<typeof getAdminSupabase>,
+  insertedIds: number[]
+) {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return;
+
+  // Pobierz external_ids (video IDs) dla wstawionych wpisow
+  const { data: items } = await sb
+    .from("content_items")
+    .select("id, external_id")
+    .in("id", insertedIds);
+
+  if (!items || items.length === 0) return;
+
+  // Batch po 50 (limit YouTube API)
+  for (let i = 0; i < items.length; i += 50) {
+    const batch = items.slice(i, i + 50);
+    const videoIds = batch.map((item) => item.external_id).join(",");
+
+    try {
+      const resp = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${apiKey}`
+      );
+
+      if (!resp.ok) continue;
+
+      const data = await resp.json() as {
+        items: {
+          id: string;
+          contentDetails: { duration: string };
+        }[];
+      };
+
+      // Mapuj videoId -> duration w sekundach
+      const durationMap = new Map<string, number>();
+      for (const video of data.items || []) {
+        const seconds = parseDuration(video.contentDetails.duration);
+        durationMap.set(video.id, seconds);
+      }
+
+      // Aktualizuj kazdy wpis
+      const shortsCatResp = await sb
+        .from("categories")
+        .select("id")
+        .eq("slug", "shorts")
+        .single();
+
+      const shortsCategoryId = shortsCatResp.data?.id || null;
+
+      for (const item of batch) {
+        const seconds = durationMap.get(item.external_id);
+        if (seconds === undefined) continue;
+
+        const updateData: Record<string, unknown> = { duration_seconds: seconds };
+
+        // Auto-kategoryzuj shorty (< 61 sekund)
+        if (seconds <= 60 && shortsCategoryId) {
+          updateData.category_id = shortsCategoryId;
+          updateData.content_type = "short";
+        }
+
+        await sb
+          .from("content_items")
+          .update(updateData)
+          .eq("id", item.id);
+      }
+    } catch {
+      // Ignoruj bledy duration — nie sa krytyczne
+    }
+  }
+}
+
+function parseDuration(iso8601: string): number {
+  // Format: PT1H2M3S, PT5M30S, PT45S, etc.
+  const match = iso8601.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const hours = parseInt(match[1] || "0");
+  const minutes = parseInt(match[2] || "0");
+  const seconds = parseInt(match[3] || "0");
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+// =============================================
 // SHARED: wstawianie nowych wpisow z auto-tagami
 // =============================================
 
@@ -226,21 +317,18 @@ async function insertNewItems(
     published_at: string;
     content_type: string;
   }[]
-) {
-  if (entries.length === 0) return { inserted: 0, skipped: 0 };
+): Promise<{ inserted: number; skipped: number; insertedIds: number[] }> {
+  if (entries.length === 0) return { inserted: 0, skipped: 0, insertedIds: [] };
 
-  // Pobierz istniejace external_ids
   const { data: existing } = await sb
     .from("content_items")
     .select("external_id")
     .eq("source_id", source.id);
 
   const existingIds = new Set((existing || []).map((e) => e.external_id));
-
   const newEntries = entries.filter((e) => !existingIds.has(e.external_id));
-  if (newEntries.length === 0) return { inserted: 0, skipped: entries.length };
+  if (newEntries.length === 0) return { inserted: 0, skipped: entries.length, insertedIds: [] };
 
-  // Kategoria
   let categoryId: number | null = null;
 
   if (source.show_id) {
@@ -264,7 +352,6 @@ async function insertNewItems(
     }
   }
 
-  // Shorts kategoria
   const { data: shortsCat } = await sb
     .from("categories")
     .select("id")
@@ -273,7 +360,6 @@ async function insertNewItems(
 
   const shortsCategoryId = shortsCat?.id || null;
 
-  // Wstaw wpisy
   const rows = newEntries.map((e) => {
     const isShort = e.url.includes("/shorts/") || e.content_type === "short";
     return {
@@ -320,12 +406,15 @@ async function insertNewItems(
           contentTagRows.push({ content_item_id: item.id, tag_id: tagId });
         }
       }
-      // Wstawiaj partiami po 500 (limit Supabase)
       for (let i = 0; i < contentTagRows.length; i += 500) {
         await sb.from("content_tags").insert(contentTagRows.slice(i, i + 500));
       }
     }
   }
 
-  return { inserted: inserted?.length || 0, skipped: entries.length - newEntries.length };
+  return {
+    inserted: inserted?.length || 0,
+    skipped: entries.length - newEntries.length,
+    insertedIds: (inserted || []).map((i) => i.id),
+  };
 }
