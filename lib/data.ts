@@ -10,6 +10,7 @@ export type Item = {
   show_id: number | null;
   category_id: number | null;
   episode_group_id: string | null;
+  duration_seconds: number | null;
   // pola pochodne (wypełniane w hydratacji)
   showName: string | null;
   showSlug: string | null;
@@ -150,7 +151,7 @@ type CtRow = {
 export async function getAllApprovedItems(limit = 100): Promise<Item[]> {
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
     .eq("status", "approved")
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
@@ -178,7 +179,7 @@ export async function getItemsByCategorySlug(slug: string, limit = 100): Promise
 
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
     .eq("status", "approved")
     .eq("category_id", cat.id)
     .is("merged_into_id", null)
@@ -203,7 +204,7 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
 
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
     .eq("status", "approved")
     .eq("show_id", show.id)
     .is("merged_into_id", null)
@@ -239,7 +240,7 @@ export async function getItemsByPersonSlug(slug: string, limit = 100): Promise<I
 
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
     .eq("status", "approved")
     .is("merged_into_id", null)
     .in("id", itemIds)
