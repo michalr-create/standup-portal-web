@@ -381,3 +381,118 @@ export async function getAllPeopleAdmin() {
 
   return data || [];
 }
+// =============================================
+// SHOWS CRUD
+// =============================================
+
+export async function getAllShowsAdmin() {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data: shows } = await sb
+    .from("shows")
+    .select("*")
+    .order("name");
+
+  // Pobierz kategorie
+  const categoryIds = Array.from(new Set((shows || []).map((s) => s.category_id).filter(Boolean)));
+  const { data: categories } = categoryIds.length > 0
+    ? await sb.from("categories").select("id, name, slug").in("id", categoryIds)
+    : { data: [] };
+  const categoriesMap = new Map((categories || []).map((c) => [c.id, c]));
+
+  // Policz wpisy per show
+  const { data: counts } = await sb
+    .from("content_items")
+    .select("show_id")
+    .not("show_id", "is", null);
+
+  const countMap = new Map<number, number>();
+  for (const row of counts || []) {
+    countMap.set(row.show_id, (countMap.get(row.show_id) || 0) + 1);
+  }
+
+  return (shows || []).map((s) => ({
+    ...s,
+    categoryName: s.category_id ? categoriesMap.get(s.category_id)?.name || null : null,
+    itemCount: countMap.get(s.id) || 0,
+  }));
+}
+
+export async function createShow(data: {
+  name: string;
+  slug: string;
+  description: string;
+  category_id: number | null;
+  youtube_channel_url: string;
+  spotify_show_url: string;
+  apple_podcasts_url: string;
+  website_url: string;
+}) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data: existing } = await sb
+    .from("shows")
+    .select("id")
+    .eq("slug", data.slug)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return { error: `Slug "${data.slug}" jest juz zajety` };
+  }
+
+  const { data: show, error } = await sb
+    .from("shows")
+    .insert({
+      name: data.name,
+      slug: data.slug,
+      description: data.description || null,
+      category_id: data.category_id,
+      youtube_channel_url: data.youtube_channel_url || null,
+      spotify_show_url: data.spotify_show_url || null,
+      apple_podcasts_url: data.apple_podcasts_url || null,
+      website_url: data.website_url || null,
+      is_active: true,
+    })
+    .select("id, name, slug")
+    .single();
+
+  if (error || !show) {
+    return { error: error?.message || "Blad tworzenia formatu" };
+  }
+
+  revalidatePath("/admin/formaty");
+  revalidatePath("/formaty");
+  return { success: true, show };
+}
+
+export async function updateShow(showId: number, data: {
+  name?: string;
+  description?: string;
+  category_id?: number | null;
+  youtube_channel_url?: string;
+  spotify_show_url?: string;
+  apple_podcasts_url?: string;
+  website_url?: string;
+  is_active?: boolean;
+}) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  // Filtruj undefined wartosci
+  const updateData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      updateData[key] = value === "" ? null : value;
+    }
+  }
+
+  await sb
+    .from("shows")
+    .update(updateData)
+    .eq("id", showId);
+
+  revalidatePath("/admin/formaty");
+  revalidatePath("/formaty");
+}
