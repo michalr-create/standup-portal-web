@@ -307,3 +307,15 @@ export async function getItemsByStatus(status: string) {
     allShows: allShows || [],
   };
 }
+export async function toggleFeatured(itemId: number, isFeatured: boolean) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  await sb
+    .from("content_items")
+    .update({ is_featured: isFeatured })
+    .eq("id", itemId);
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
