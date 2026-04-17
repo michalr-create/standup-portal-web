@@ -215,4 +215,90 @@ if (error || !items) return { items: [], personTags: [], allCategories: [], allS
     allCategories: categories || [],
     allShows: shows || [],
   };
+  export async function revertToPending(itemId: number) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  await sb
+    .from("content_items")
+    .update({ status: "pending" })
+    .eq("id", itemId);
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
+export async function getItemsByStatus(status: string) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data: items, error } = await sb
+    .from("content_items")
+    .select("*")
+    .eq("status", status)
+    .is("merged_into_id", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error || !items) return { items: [], personTags: [], allCategories: [], allShows: [] };
+
+  const itemIds = items.map((i) => i.id);
+  const sourceIds = Array.from(new Set(items.map((i) => i.source_id).filter(Boolean)));
+
+  const { data: sources } = sourceIds.length > 0
+    ? await sb.from("sources").select("id, name").in("id", sourceIds)
+    : { data: [] };
+
+  const { data: contentTags } = itemIds.length > 0
+    ? await sb.from("content_tags").select("content_item_id, tag_id").in("content_item_id", itemIds)
+    : { data: [] };
+
+  const { data: personTags } = await sb
+    .from("tags")
+    .select("id, name, slug, person_id")
+    .eq("tag_type", "person");
+
+  const { data: allCategories } = await sb
+    .from("categories")
+    .select("id, name, slug")
+    .order("display_order");
+
+  const { data: allShows } = await sb
+    .from("shows")
+    .select("id, name, slug")
+    .eq("is_active", true)
+    .order("name");
+
+  const duplicateOfIds = items.map((i) => i.possible_duplicate_of).filter(Boolean);
+  const { data: duplicates } = duplicateOfIds.length > 0
+    ? await sb.from("content_items").select("id, title, url").in("id", duplicateOfIds)
+    : { data: [] };
+
+  const sourcesMap = new Map((sources || []).map((s) => [s.id, s]));
+  const duplicatesMap = new Map((duplicates || []).map((d) => [d.id, d]));
+
+  const itemTagMap = new Map<number, number[]>();
+  for (const ct of contentTags || []) {
+    if (!itemTagMap.has(ct.content_item_id)) {
+      itemTagMap.set(ct.content_item_id, []);
+    }
+    itemTagMap.get(ct.content_item_id)!.push(ct.tag_id);
+  }
+
+  return {
+    items: items.map((item) => ({
+      ...item,
+      sourceName: sourcesMap.get(item.source_id)?.name || "Nieznane",
+      categoryName: null,
+      showName: null,
+      assignedTagIds: itemTagMap.get(item.id) || [],
+      duplicateOf: item.possible_duplicate_of
+        ? duplicatesMap.get(item.possible_duplicate_of) || null
+        : null,
+    })),
+    personTags: personTags || [],
+    allCategories: allCategories || [],
+    allShows: allShows || [],
+  };
+}
 }
