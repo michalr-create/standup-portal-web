@@ -407,3 +407,112 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
 
   return data || null;
 }
+// =================================================================
+// QUERY: nowości (ostatnie N dni, z auto-rozszerzaniem)
+// =================================================================
+export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Promise<Item[]> {
+  let currentDays = days;
+
+  while (currentDays <= maxDays) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - currentDays);
+
+    const { data, error } = await supabase
+      .from("content_items")
+      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+      .eq("status", "approved")
+      .is("merged_into_id", null)
+      .gte("published_at", cutoff.toISOString())
+      .order("published_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Blad pobierania nowosci:", error);
+      return [];
+    }
+
+    if (data && data.length >= minItems) {
+      return hydrateItems(data);
+    }
+
+    currentDays += 7;
+  }
+
+  // Fallback: ostatnie 20
+  const { data } = await supabase
+    .from("content_items")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .eq("status", "approved")
+    .is("merged_into_id", null)
+    .order("published_at", { ascending: false })
+    .limit(20);
+
+  return hydrateItems(data || []);
+}
+
+// =================================================================
+// QUERY: polecane (is_featured = true)
+// =================================================================
+export async function getFeaturedItems(limit = 6): Promise<Item[]> {
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .eq("status", "approved")
+    .eq("is_featured", true)
+    .is("merged_into_id", null)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+  return hydrateItems(data);
+}
+
+// =================================================================
+// QUERY: specjale (przez tag)
+// =================================================================
+export async function getItemsByTagSlug(tagSlug: string, limit = 10): Promise<Item[]> {
+  const { data: tag } = await supabase
+    .from("tags")
+    .select("id")
+    .eq("slug", tagSlug)
+    .maybeSingle();
+
+  if (!tag) return [];
+
+  const { data: ctRows } = await supabase
+    .from("content_tags")
+    .select("content_item_id")
+    .eq("tag_id", tag.id);
+
+  const itemIds = (ctRows || []).map((row) => row.content_item_id);
+  if (itemIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .eq("status", "approved")
+    .is("merged_into_id", null)
+    .in("id", itemIds)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+  return hydrateItems(data);
+}
+
+// =================================================================
+// QUERY: najnowsze odcinki z kazdego show (do sekcji Formaty)
+// =================================================================
+export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: Item[] }[]> {
+  const shows = await getAllShows();
+  const results: { show: Show; items: Item[] }[] = [];
+
+  for (const show of shows) {
+    const items = await getItemsByShowSlug(show.slug, limit);
+    if (items.length > 0) {
+      results.push({ show, items });
+    }
+  }
+
+  return results;
+}
