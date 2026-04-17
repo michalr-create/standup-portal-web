@@ -231,7 +231,6 @@ function SourceCard({
               >
                 {fullImporting ? `Import... (${fullImportProgress})` : "Pelny import (API)"}
               </button>
-            </>
           <button
                 onClick={async () => {
                   setFetching(true); setFetchResult("");
@@ -245,6 +244,7 @@ function SourceCard({
               >
                 {fetching ? "..." : "Uzupelnij czas"}
               </button>
+            </>
           )}
           <button
             onClick={() => setEditing(!editing)}
