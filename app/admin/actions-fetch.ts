@@ -418,3 +418,88 @@ async function insertNewItems(
     insertedIds: (inserted || []).map((i) => i.id),
   };
 }
+// =============================================
+// BACKFILL: uzupelnienie duration dla istniejacych wpisow
+// =============================================
+
+export async function backfillDurations(sourceId: number): Promise<{
+  updated: number;
+  error?: string;
+}> {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    return { updated: 0, error: "Brak YOUTUBE_API_KEY" };
+  }
+
+  // Pobierz wpisy bez duration dla danego source
+  const { data: items } = await sb
+    .from("content_items")
+    .select("id, external_id")
+    .eq("source_id", sourceId)
+    .is("duration_seconds", null);
+
+  if (!items || items.length === 0) {
+    return { updated: 0 };
+  }
+
+  let totalUpdated = 0;
+
+  // Batch po 50
+  for (let i = 0; i < items.length; i += 50) {
+    const batch = items.slice(i, i + 50);
+    const videoIds = batch.map((item) => item.external_id).join(",");
+
+    try {
+      const resp = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${apiKey}`
+      );
+
+      if (!resp.ok) continue;
+
+      const data = await resp.json() as {
+        items: {
+          id: string;
+          contentDetails: { duration: string };
+        }[];
+      };
+
+      const shortsCatResp = await sb
+        .from("categories")
+        .select("id")
+        .eq("slug", "shorts")
+        .single();
+
+      const shortsCategoryId = shortsCatResp.data?.id || null;
+
+      for (const video of data.items || []) {
+        const seconds = parseDuration(video.contentDetails.duration);
+        const item = batch.find((b) => b.external_id === video.id);
+        if (!item) continue;
+
+        const updateData: Record<string, unknown> = { duration_seconds: seconds };
+
+        if (seconds <= 60 && shortsCategoryId) {
+          updateData.category_id = shortsCategoryId;
+          updateData.content_type = "short";
+        }
+
+        await sb
+          .from("content_items")
+          .update(updateData)
+          .eq("id", item.id);
+
+        totalUpdated++;
+      }
+    } catch {
+      // Kontynuuj mimo bledow
+    }
+  }
+
+  revalidatePath("/admin/zrodla");
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { updated: totalUpdated };
+}
