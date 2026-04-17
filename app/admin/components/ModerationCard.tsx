@@ -10,6 +10,7 @@ import {
   updateItemShow,
   setItemTags,
   mergeItems,
+  toggleFeatured,
   dismissDuplicate,
 } from "../actions";
 import { createTag } from "../actions-sources";
@@ -36,6 +37,7 @@ type Props = {
     show_id: number | null;
     assignedTagIds: number[];
     possible_duplicate_of: number | null;
+    is_featured: boolean;
     duplicateOf: { id: number; title: string; url: string } | null;
   };
   personTags: PersonTag[];
@@ -72,6 +74,7 @@ export default function ModerationCard({ item, personTags, contentTags, categori
   const [selectedShowId, setSelectedShowId] = useState<number | null>(item.show_id);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>(item.assignedTagIds);
   const [dirty, setDirty] = useState(false);
+  const [featured, setFeatured] = useState(item.is_featured || false);
 
   // Nowy tag inline
   const [showNewTag, setShowNewTag] = useState(false);
@@ -335,6 +338,20 @@ export default function ModerationCard({ item, personTags, contentTags, categori
             {mode === "approved" && (
               <>
                 {dirty && <button onClick={handleSave} className="text-xs px-4 py-1.5 bg-blue-800 hover:bg-blue-700 rounded font-medium text-white">Zapisz zmiany</button>}
+                <button
+                  onClick={() => {
+                    const newVal = !featured;
+                    setFeatured(newVal);
+                    startTransition(async () => {
+                      await toggleFeatured(item.id, newVal);
+                    });
+                  }}
+                  className={featured
+                    ? "text-xs px-4 py-1.5 bg-amber-700 hover:bg-amber-600 rounded font-medium text-white"
+                    : "text-xs px-4 py-1.5 bg-neutral-700 hover:bg-neutral-600 rounded font-medium text-gray-300"}
+                >
+                  {featured ? "Wyroznienie ✓" : "Wyroznij"}
+                </button>
                 <button onClick={handleRevert} className="text-xs px-4 py-1.5 bg-yellow-800 hover:bg-yellow-700 rounded font-medium text-white">Cofnij do pending</button>
                 <button onClick={handleReject} className="text-xs px-4 py-1.5 bg-red-900 hover:bg-red-800 rounded font-medium text-white">Odrzuc</button>
               </>
