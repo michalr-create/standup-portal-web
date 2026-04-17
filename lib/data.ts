@@ -64,6 +64,7 @@ async function hydrateItems(rawItems: {
   show_id: number | null;
   category_id: number | null;
   episode_group_id: string | null;
+  duration_seconds: number | null;
 }[]): Promise<Item[]> {
   if (rawItems.length === 0) return [];
 
