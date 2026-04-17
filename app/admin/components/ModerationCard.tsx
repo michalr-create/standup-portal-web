@@ -26,6 +26,7 @@ type Props = {
     published_at: string | null;
     status: string;
     content_type: string | null;
+    duration_seconds: number | null;
     sourceName: string;
     categoryName: string | null;
     category_id: number | null;
@@ -149,6 +150,9 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
             <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
               <span>{item.sourceName}</span>
               <span>{item.content_type}</span>
+              {item.duration_seconds != null && (
+                <span>{Math.floor(item.duration_seconds / 60)}:{String(item.duration_seconds % 60).padStart(2, "0")}</span>
+              )}
               <span>{formatDate(item.published_at)}</span>
             </div>
             <h3 className="font-semibold text-sm leading-tight">{item.title}</h3>
