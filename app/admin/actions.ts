@@ -319,3 +319,77 @@ export async function toggleFeatured(itemId: number, isFeatured: boolean) {
   revalidatePath("/admin");
   revalidatePath("/");
 }
+export async function getFeaturedItems() {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data: items } = await sb
+    .from("content_items")
+    .select("*")
+    .eq("status", "approved")
+    .eq("is_featured", true)
+    .is("merged_into_id", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (!items) return { items: [], personTags: [], contentTags: [], allCategories: [], allShows: [] };
+
+  const itemIds = items.map((i) => i.id);
+  const sourceIds = Array.from(new Set(items.map((i) => i.source_id).filter(Boolean)));
+
+  const { data: sources } = sourceIds.length > 0
+    ? await sb.from("sources").select("id, name").in("id", sourceIds)
+    : { data: [] };
+
+  const { data: contentTagsData } = itemIds.length > 0
+    ? await sb.from("content_tags").select("content_item_id, tag_id").in("content_item_id", itemIds)
+    : { data: [] };
+
+  const { data: personTags } = await sb
+    .from("tags")
+    .select("id, name, slug, person_id")
+    .eq("tag_type", "person");
+
+  const { data: contentTagsList } = await sb
+    .from("tags")
+    .select("id, name, slug, tag_type")
+    .neq("tag_type", "person")
+    .order("tag_type")
+    .order("name");
+
+  const { data: allCategories } = await sb
+    .from("categories")
+    .select("id, name, slug")
+    .order("display_order");
+
+  const { data: allShows } = await sb
+    .from("shows")
+    .select("id, name, slug")
+    .eq("is_active", true)
+    .order("name");
+
+  const sourcesMap = new Map((sources || []).map((s) => [s.id, s]));
+
+  const itemTagMap = new Map<number, number[]>();
+  for (const ct of contentTagsData || []) {
+    if (!itemTagMap.has(ct.content_item_id)) {
+      itemTagMap.set(ct.content_item_id, []);
+    }
+    itemTagMap.get(ct.content_item_id)!.push(ct.tag_id);
+  }
+
+  return {
+    items: items.map((item) => ({
+      ...item,
+      sourceName: sourcesMap.get(item.source_id)?.name || "Nieznane",
+      categoryName: null,
+      showName: null,
+      assignedTagIds: itemTagMap.get(item.id) || [],
+      duplicateOf: null,
+    })),
+    personTags: personTags || [],
+    contentTags: contentTagsList || [],
+    allCategories: allCategories || [],
+    allShows: allShows || [],
+  };
+}
