@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getPendingItems, getItemsByStatus } from "./actions";
+import { getAllSourcesAdmin } from "./actions-sources";
 import ModerationCard from "./components/ModerationCard";
 import StatusTabs from "./components/StatusTabs";
+import AddEntryButton from "./components/AddEntryButton";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +16,12 @@ export default async function AdminHomePage({ searchParams }: Props) {
   const params = await searchParams;
   const currentStatus = params.status || "pending";
 
-  // Pobierz dane dla aktualnej zakładki
   const data = currentStatus === "pending"
     ? await getPendingItems()
     : await getItemsByStatus(currentStatus);
 
   const { items, personTags, allCategories, allShows } = data;
 
-  // Policz wpisy w kazdym statusie (do zakładek)
   const pendingData = currentStatus === "pending" ? data : await getItemsByStatus("pending");
   const approvedData = currentStatus === "approved" ? data : await getItemsByStatus("approved");
   const rejectedData = currentStatus === "rejected" ? data : await getItemsByStatus("rejected");
@@ -37,6 +37,11 @@ export default async function AdminHomePage({ searchParams }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Moderacja</h1>
         <div className="flex gap-2">
+          <AddEntryButton
+            categories={allCategories}
+            shows={allShows}
+            personTags={personTags}
+          />
           <Link href="/admin/standuperzy" className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Standuperzy</Link>
           <Link href="/admin/formaty" className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Formaty</Link>
           <Link href="/admin/zrodla" className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Zrodla</Link>
