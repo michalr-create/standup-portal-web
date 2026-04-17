@@ -218,13 +218,14 @@ export default function ModerationCard({ item, personTags, categories, shows }: 
               Odrzuc
             </button>
             
+             <Link
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300 ml-auto"
             >
               Otworz
-            </a>
+            </Link>
           </div>
         </div>
       </div>
