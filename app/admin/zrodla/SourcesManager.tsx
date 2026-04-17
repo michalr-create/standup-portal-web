@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createSource, toggleSourceActive, updateSourceDefaultPeople, updateSource, createPerson } from "../actions-sources";
+import { quickFetchSource, fullFetchSource } from "../actions-fetch";
 
 type Source = {
   id: number;
@@ -125,6 +126,10 @@ function SourceCard({
   const [selectedShowId, setSelectedShowId] = useState<number | null>(source.show_id);
   const [localPeople, setLocalPeople] = useState(people);
   const [dirty, setDirty] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState("");
+  const [fullImporting, setFullImporting] = useState(false);
+  const [fullImportProgress, setFullImportProgress] = useState(0);
 
   const togglePerson = (personId: number) => {
     setSelectedPeople((prev) =>
@@ -186,7 +191,48 @@ function SourceCard({
           )}
         </div>
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
+          {source.type === "youtube" && source.feed_url && (
+            <>
+              <button
+                onClick={async () => {
+                  setFetching(true); setFetchResult("");
+                  const r = await quickFetchSource(source.id);
+                  setFetching(false);
+                  setFetchResult(r.error ? `Blad: ${r.error}` : `Dodano ${r.inserted} nowych (z ${r.total} w RSS)`);
+                  if (!r.error) setTimeout(() => window.location.reload(), 2000);
+                }}
+                disabled={fetching || fullImporting}
+                className="text-xs px-3 py-1 bg-blue-900 hover:bg-blue-800 rounded text-blue-200 disabled:opacity-50"
+              >
+                {fetching ? "Pobieram..." : "Pobierz (RSS)"}
+              </button>
+              <button
+                onClick={async () => {
+                  setFullImporting(true); setFullImportProgress(0); setFetchResult("");
+                  let total = 0;
+                  let token: string | null = null;
+                  let hasMore = true;
+                  let errorMsg = "";
+                  while (hasMore) {
+                    const r = await fullFetchSource(source.id, token);
+                    if (r.error) { errorMsg = r.error; break; }
+                    total += r.inserted;
+                    setFullImportProgress(total);
+                    hasMore = r.hasMore;
+                    token = r.nextPageToken;
+                  }
+                  setFullImporting(false);
+                  setFetchResult(errorMsg ? `Blad: ${errorMsg} (dodano ${total})` : `Import ukonczony. Dodano ${total} filmow.`);
+                  if (!errorMsg) setTimeout(() => window.location.reload(), 2000);
+                }}
+                disabled={fetching || fullImporting}
+                className="text-xs px-3 py-1 bg-purple-900 hover:bg-purple-800 rounded text-purple-200 disabled:opacity-50"
+              >
+                {fullImporting ? `Import... (${fullImportProgress})` : "Pelny import (API)"}
+              </button>
+            </>
+          )}
           <button
             onClick={() => setEditing(!editing)}
             className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300"
@@ -201,7 +247,11 @@ function SourceCard({
           </button>
         </div>
       </div>
-
+      {fetchResult && (
+        <div className={`mt-3 text-xs px-3 py-2 rounded-lg ${fetchResult.startsWith("Blad") ? "bg-red-950/50 text-red-400 border border-red-900" : "bg-green-950/50 text-green-400 border border-green-900"}`}>
+          {fetchResult}
+        </div>
+      )}
       {editing && (
         <div className="mt-4 pt-4 border-t border-neutral-800 space-y-3">
           {/* Format */}
