@@ -35,7 +35,7 @@ function formatDate(dateString: string | null): string {
 
 function ItemCard({ item, size = "normal" }: { item: Item; size?: "normal" | "large" }) {
   const label = item.people.length > 0
-    ? item.people.map((p) => p.name).join(" · ")
+    ? item.people.map((p) => p.name).join(" \u00b7 ")
     : item.showName || "";
 
   return (
@@ -46,7 +46,7 @@ function ItemCard({ item, size = "normal" }: { item: Item; size?: "normal" | "la
       className="group block bg-neutral-900 rounded-lg overflow-hidden hover:bg-neutral-800 transition-colors"
     >
       {item.thumbnail_url ? (
-        <div className={`${size === "large" ? "aspect-video" : "aspect-video"} bg-neutral-800 overflow-hidden relative`}>
+        <div className="aspect-video bg-neutral-800 overflow-hidden relative">
           <img
             src={item.thumbnail_url}
             alt={item.title}
@@ -77,6 +77,50 @@ function ItemCard({ item, size = "normal" }: { item: Item; size?: "normal" | "la
   );
 }
 
+function ScrollCard({ item }: { item: Item }) {
+  const label = item.people.length > 0
+    ? item.people.map((p) => p.name).join(" \u00b7 ")
+    : item.showName || "";
+
+  return (
+    <Link
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block bg-neutral-900 rounded-lg overflow-hidden hover:bg-neutral-800 transition-colors w-72 sm:w-80 shrink-0 snap-start"
+    >
+      {item.thumbnail_url ? (
+        <div className="aspect-video bg-neutral-800 overflow-hidden relative">
+          <img
+            src={item.thumbnail_url}
+            alt={item.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          />
+          {item.duration_seconds != null && (
+            <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
+              {formatDuration(item.duration_seconds)}
+            </div>
+          )}
+        </div>
+      ) : null}
+      <div className="p-3">
+        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+          {item.categoryName && (
+            <span className="px-1.5 py-0.5 bg-neutral-800 rounded text-gray-400">
+              {item.categoryName}
+            </span>
+          )}
+          <span>{formatDate(item.published_at)}</span>
+        </div>
+        <h3 className="font-semibold text-sm leading-tight line-clamp-2">
+          {item.title}
+        </h3>
+        <p className="text-xs text-gray-500 mt-1 truncate">{label}</p>
+      </div>
+    </Link>
+  );
+}
+
 function Section({
   title,
   linkHref,
@@ -99,6 +143,36 @@ function Section({
         )}
       </div>
       {children}
+    </section>
+  );
+}
+
+function ScrollSection({
+  title,
+  linkHref,
+  linkText,
+  items,
+}: {
+  title: string;
+  linkHref?: string;
+  linkText?: string;
+  items: Item[];
+}) {
+  return (
+    <section className="mb-12">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">{title}</h2>
+        {linkHref && (
+          <Link href={linkHref} className="text-sm text-gray-400 hover:text-white">
+            {linkText || "Zobacz wszystko"}
+          </Link>
+        )}
+      </div>
+      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        {items.map((item) => (
+          <ScrollCard key={item.id} item={item} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -148,7 +222,7 @@ export default async function HomePage() {
   const [recentItems, featuredItems, specjalItems, showSections] = await Promise.all([
     getRecentItems(7, 3, 30),
     getFeaturedItems(6),
-    getItemsByTagSlug("specjal", 6),
+    getItemsByTagSlug("specjal", 10),
     getLatestPerShow(3),
   ]);
 
@@ -159,7 +233,6 @@ export default async function HomePage() {
         <p className="text-gray-400">polski stand-up w jednym miejscu</p>
       </header>
 
-      {/* NOWOŚCI */}
       {recentItems.length > 0 && (
         <Section title="Nowosci">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -170,29 +243,22 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {/* POLECANE */}
       {featuredItems.length > 0 && (
-        <Section title="Polecane przez parsk\u0119">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredItems.map((item) => (
-              <ItemCard key={item.id} item={item} size="large" />
-            ))}
-          </div>
-        </Section>
+        <ScrollSection
+          title="Polecane przez parsk\u0119"
+          items={featuredItems}
+        />
       )}
 
-      {/* SPECJALE */}
       {specjalItems.length > 0 && (
-        <Section title="Specjale" linkHref="/standup" linkText="Wszystkie">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {specjalItems.map((item) => (
-              <ItemCard key={item.id} item={item} size="large" />
-            ))}
-          </div>
-        </Section>
+        <ScrollSection
+          title="Specjale"
+          linkHref="/standup"
+          linkText="Wszystkie"
+          items={specjalItems}
+        />
       )}
 
-      {/* FORMATY */}
       {showSections.length > 0 && (
         <Section title="Formaty" linkHref="/formaty" linkText="Wszystkie formaty">
           <div className="grid gap-6 sm:grid-cols-2">
