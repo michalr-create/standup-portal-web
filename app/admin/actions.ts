@@ -215,6 +215,7 @@ if (error || !items) return { items: [], personTags: [], allCategories: [], allS
     allCategories: categories || [],
     allShows: shows || [],
   };
+}  
   export async function revertToPending(itemId: number) {
   await requireAuth();
   const sb = getAdminSupabase();
