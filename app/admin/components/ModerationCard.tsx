@@ -8,12 +8,14 @@ import {
   revertToPending,
   updateItemCategory,
   updateItemShow,
-  setItemPersonTags,
+  setItemTags,
   mergeItems,
   dismissDuplicate,
 } from "../actions";
+import { createTag } from "../actions-sources";
 
 type PersonTag = { id: number; name: string; slug: string; person_id: number | null };
+type ContentTag = { id: number; name: string; slug: string; tag_type: string };
 type CategoryOption = { id: number; name: string; slug: string };
 type ShowOption = { id: number; name: string; slug: string };
 
@@ -37,12 +39,33 @@ type Props = {
     duplicateOf: { id: number; title: string; url: string } | null;
   };
   personTags: PersonTag[];
+  contentTags: ContentTag[];
   categories: CategoryOption[];
   shows: ShowOption[];
   mode: "pending" | "approved" | "rejected";
 };
 
-export default function ModerationCard({ item, personTags, categories, shows, mode }: Props) {
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function formatDuration(seconds: number | null): string {
+  if (seconds == null) return "";
+  if (seconds >= 3600) {
+    const h = Math.floor(seconds / 3600);
+    const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+    const s = String(seconds % 60).padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  }
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+export default function ModerationCard({ item, personTags, contentTags, categories, shows, mode }: Props) {
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(item.category_id);
@@ -50,7 +73,16 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>(item.assignedTagIds);
   const [dirty, setDirty] = useState(false);
 
+  // Nowy tag inline
+  const [showNewTag, setShowNewTag] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagType, setNewTagType] = useState("topic");
+  const [newTagError, setNewTagError] = useState("");
+  const [localContentTags, setLocalContentTags] = useState(contentTags);
+
   if (done) return null;
+
+  const allTagIds = [...selectedTagIds];
 
   const saveChanges = async () => {
     if (selectedCategoryId !== item.category_id) {
@@ -62,7 +94,7 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
     const origTags = [...item.assignedTagIds].sort().join(",");
     const newTags = [...selectedTagIds].sort().join(",");
     if (origTags !== newTags) {
-      await setItemPersonTags(item.id, selectedTagIds);
+      await setItemTags(item.id, selectedTagIds);
     }
   };
 
@@ -116,6 +148,22 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
     setDirty(true);
   };
 
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    const slug = slugify(newTagName);
+    const result = await createTag({ name: newTagName.trim(), slug, tag_type: newTagType });
+    if (result.error) {
+      setNewTagError(result.error);
+    } else if (result.tag) {
+      setLocalContentTags((prev) => [...prev, result.tag!].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedTagIds((prev) => [...prev, result.tag!.id]);
+      setDirty(true);
+      setNewTagName("");
+      setShowNewTag(false);
+      setNewTagError("");
+    }
+  };
+
   const formatDate = (d: string | null) => {
     if (!d) return "";
     try {
@@ -123,6 +171,22 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
     } catch {
       return "";
     }
+  };
+
+  // Grupowanie content tagow po typie
+  const tagsByType = new Map<string, ContentTag[]>();
+  for (const tag of localContentTags) {
+    if (!tagsByType.has(tag.tag_type)) {
+      tagsByType.set(tag.tag_type, []);
+    }
+    tagsByType.get(tag.tag_type)!.push(tag);
+  }
+
+  const tagTypeLabels: Record<string, string> = {
+    topic: "Temat",
+    format: "Format",
+    event: "Wydarzenie",
+    wystapienie_goscinne: "Typ",
   };
 
   return (
@@ -140,8 +204,13 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
 
       <div className="flex flex-col sm:flex-row">
         {item.thumbnail_url ? (
-          <div className="sm:w-48 shrink-0">
+          <div className="sm:w-48 shrink-0 relative">
             <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover aspect-video sm:aspect-auto" />
+            {item.duration_seconds != null && (
+              <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
+                {formatDuration(item.duration_seconds)}
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -150,9 +219,7 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
             <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
               <span>{item.sourceName}</span>
               <span>{item.content_type}</span>
-              {item.duration_seconds != null && (
-                <span>{Math.floor(item.duration_seconds / 60)}:{String(item.duration_seconds % 60).padStart(2, "0")}</span>
-              )}
+              {item.duration_seconds != null && <span>{formatDuration(item.duration_seconds)}</span>}
               <span>{formatDate(item.published_at)}</span>
             </div>
             <h3 className="font-semibold text-sm leading-tight">{item.title}</h3>
@@ -166,9 +233,7 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
               className="text-xs bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-white"
             >
               <option value="">-- brak --</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+              {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           </div>
 
@@ -180,12 +245,11 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
               className="text-xs bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-white"
             >
               <option value="">-- brak --</option>
-              {shows.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {shows.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
             </select>
           </div>
 
+          {/* Person tags */}
           <div>
             <span className="text-xs text-gray-500 block mb-1">Standuperzy:</span>
             <div className="flex flex-wrap gap-1">
@@ -193,11 +257,9 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
                 <button
                   key={pt.id}
                   onClick={() => toggleTag(pt.id)}
-                  className={
-                    selectedTagIds.includes(pt.id)
-                      ? "text-xs px-2 py-0.5 rounded-full bg-white text-black"
-                      : "text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-gray-400 hover:bg-neutral-700"
-                  }
+                  className={selectedTagIds.includes(pt.id)
+                    ? "text-xs px-2 py-0.5 rounded-full bg-white text-black"
+                    : "text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-gray-400 hover:bg-neutral-700"}
                 >
                   {pt.name}
                 </button>
@@ -205,6 +267,64 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
             </div>
           </div>
 
+          {/* Content tags */}
+          <div>
+            <span className="text-xs text-gray-500 block mb-1">Tagi:</span>
+            {Array.from(tagsByType.entries()).map(([type, tags]) => (
+              <div key={type} className="mb-1">
+                <span className="text-xs text-gray-600 mr-1">{tagTypeLabels[type] || type}:</span>
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    onClick={() => toggleTag(tag.id)}
+                    className={selectedTagIds.includes(tag.id)
+                      ? "text-xs px-2 py-0.5 rounded-full bg-emerald-700 text-white mr-1 mb-1"
+                      : "text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-gray-400 hover:bg-neutral-700 mr-1 mb-1"}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            ))}
+
+            {/* Dodaj nowy tag */}
+            {!showNewTag ? (
+              <button
+                onClick={() => setShowNewTag(true)}
+                className="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-300 hover:bg-green-800 mt-1"
+              >
+                + Nowy tag
+              </button>
+            ) : (
+              <div className="mt-2 p-2 bg-neutral-950 border border-neutral-700 rounded-lg">
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    placeholder="Nazwa tagu, np. specjal"
+                    className="flex-1 px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-xs text-white placeholder-gray-500 focus:outline-none"
+                  />
+                  <select
+                    value={newTagType}
+                    onChange={(e) => setNewTagType(e.target.value)}
+                    className="px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-xs text-white"
+                  >
+                    <option value="format">Format</option>
+                    <option value="topic">Temat</option>
+                    <option value="event">Wydarzenie</option>
+                  </select>
+                </div>
+                {newTagError && <p className="text-xs text-red-400 mb-1">{newTagError}</p>}
+                <div className="flex gap-2">
+                  <button onClick={handleCreateTag} className="text-xs px-3 py-1 bg-green-800 hover:bg-green-700 rounded text-white">Dodaj</button>
+                  <button onClick={() => { setShowNewTag(false); setNewTagError(""); }} className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Anuluj</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Akcje */}
           <div className="flex items-center gap-2 pt-2 border-t border-neutral-800">
             {mode === "pending" && (
               <>
@@ -214,9 +334,7 @@ export default function ModerationCard({ item, personTags, categories, shows, mo
             )}
             {mode === "approved" && (
               <>
-                {dirty && (
-                  <button onClick={handleSave} className="text-xs px-4 py-1.5 bg-blue-800 hover:bg-blue-700 rounded font-medium text-white">Zapisz zmiany</button>
-                )}
+                {dirty && <button onClick={handleSave} className="text-xs px-4 py-1.5 bg-blue-800 hover:bg-blue-700 rounded font-medium text-white">Zapisz zmiany</button>}
                 <button onClick={handleRevert} className="text-xs px-4 py-1.5 bg-yellow-800 hover:bg-yellow-700 rounded font-medium text-white">Cofnij do pending</button>
                 <button onClick={handleReject} className="text-xs px-4 py-1.5 bg-red-900 hover:bg-red-800 rounded font-medium text-white">Odrzuc</button>
               </>
