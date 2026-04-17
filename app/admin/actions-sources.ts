@@ -276,3 +276,108 @@ export async function createManualEntry(data: {
   revalidatePath("/");
   return { success: true, id: item.id };
 }
+// =============================================
+// SOURCE UPDATE
+// =============================================
+
+export async function updateSourceDefaultPeople(sourceId: number, personIds: number[]) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  // Usun istniejace
+  await sb
+    .from("source_default_people")
+    .delete()
+    .eq("source_id", sourceId);
+
+  // Wstaw nowe
+  if (personIds.length > 0) {
+    const rows = personIds.map((pid) => ({
+      source_id: sourceId,
+      person_id: pid,
+    }));
+    await sb.from("source_default_people").insert(rows);
+  }
+
+  revalidatePath("/admin/zrodla");
+}
+
+export async function updateSource(sourceId: number, data: {
+  name?: string;
+  show_id?: number | null;
+  is_watch_source?: boolean;
+}) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  await sb
+    .from("sources")
+    .update(data)
+    .eq("id", sourceId);
+
+  revalidatePath("/admin/zrodla");
+}
+
+// =============================================
+// PEOPLE CRUD (quick)
+// =============================================
+
+export async function createPerson(data: {
+  name: string;
+  slug: string;
+  role: string;
+}) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  // Sprawdz czy slug nie jest zajety
+  const { data: existing } = await sb
+    .from("people")
+    .select("id")
+    .eq("slug", data.slug)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return { error: `Slug "${data.slug}" jest juz zajety` };
+  }
+
+  const { data: person, error } = await sb
+    .from("people")
+    .insert({
+      name: data.name,
+      slug: data.slug,
+      role: data.role || "standuper",
+      is_active: true,
+    })
+    .select("id, name, slug")
+    .single();
+
+  if (error || !person) {
+    return { error: error?.message || "Blad tworzenia osoby" };
+  }
+
+  // Auto-tworzenie tagu person
+  await sb.from("tags").insert({
+    name: person.name,
+    slug: person.slug,
+    tag_type: "person",
+    person_id: person.id,
+  });
+
+  revalidatePath("/admin/zrodla");
+  revalidatePath("/admin/standuperzy");
+  revalidatePath("/admin");
+  return { success: true, person };
+}
+
+export async function getAllPeopleAdmin() {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data } = await sb
+    .from("people")
+    .select("id, name, slug, role, is_active")
+    .order("name");
+
+  return data || [];
+}
