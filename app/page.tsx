@@ -245,7 +245,7 @@ export default async function HomePage() {
 
       {featuredItems.length > 0 && (
         <ScrollSection
-          title="Polecane przez parsk\u0119"
+          title="Polecane przez parskę"
           items={featuredItems}
         />
       )}
