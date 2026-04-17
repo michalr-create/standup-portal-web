@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createSource, toggleSourceActive, updateSourceDefaultPeople, updateSource, createPerson } from "../actions-sources";
-import { quickFetchSource, fullFetchSource } from "../actions-fetch";
+import { quickFetchSource, fullFetchSource, backfillDurations } from "../actions-fetch";
 
 type Source = {
   id: number;
@@ -232,6 +232,19 @@ function SourceCard({
                 {fullImporting ? `Import... (${fullImportProgress})` : "Pelny import (API)"}
               </button>
             </>
+          <button
+                onClick={async () => {
+                  setFetching(true); setFetchResult("");
+                  const r = await backfillDurations(source.id);
+                  setFetching(false);
+                  setFetchResult(r.error ? `Blad: ${r.error}` : `Uzupelniono duration dla ${r.updated} filmow`);
+                  if (!r.error && r.updated > 0) setTimeout(() => window.location.reload(), 2000);
+                }}
+                disabled={fetching || fullImporting}
+                className="text-xs px-3 py-1 bg-neutral-700 hover:bg-neutral-600 rounded text-gray-300 disabled:opacity-50"
+              >
+                {fetching ? "..." : "Uzupelnij czas"}
+              </button>
           )}
           <button
             onClick={() => setEditing(!editing)}
