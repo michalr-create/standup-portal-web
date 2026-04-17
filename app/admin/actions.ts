@@ -150,7 +150,7 @@ export async function getPendingItems() {
     .order("created_at", { ascending: false })
     .limit(100);
 
-  if (error || !items) return [];
+if (error || !items) return { items: [], personTags: [], allCategories: [], allShows: [] };
 
   // Pobierz sources, categories, shows, tagi
   const sourceIds = Array.from(new Set(items.map((i) => i.source_id).filter(Boolean)));
