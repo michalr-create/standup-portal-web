@@ -496,3 +496,71 @@ export async function updateShow(showId: number, data: {
   revalidatePath("/admin/formaty");
   revalidatePath("/formaty");
 }
+// =============================================
+// TAGS CRUD
+// =============================================
+
+export async function getAllTagsAdmin() {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data } = await sb
+    .from("tags")
+    .select("id, name, slug, tag_type, person_id")
+    .order("tag_type")
+    .order("name");
+
+  return data || [];
+}
+
+export async function getContentTags() {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  // Pobierz tagi ktore NIE sa person (person tagi sa juz obslugiwane osobno)
+  const { data } = await sb
+    .from("tags")
+    .select("id, name, slug, tag_type")
+    .neq("tag_type", "person")
+    .order("tag_type")
+    .order("name");
+
+  return data || [];
+}
+
+export async function createTag(data: {
+  name: string;
+  slug: string;
+  tag_type: string;
+}) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data: existing } = await sb
+    .from("tags")
+    .select("id")
+    .eq("slug", data.slug)
+    .eq("tag_type", data.tag_type)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return { error: `Tag "${data.name}" (${data.tag_type}) juz istnieje` };
+  }
+
+  const { data: tag, error } = await sb
+    .from("tags")
+    .insert({
+      name: data.name,
+      slug: data.slug,
+      tag_type: data.tag_type,
+    })
+    .select("id, name, slug, tag_type")
+    .single();
+
+  if (error || !tag) {
+    return { error: error?.message || "Blad tworzenia tagu" };
+  }
+
+  revalidatePath("/admin");
+  return { success: true, tag };
+}
