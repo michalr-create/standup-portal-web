@@ -1,58 +1,70 @@
 import Link from "next/link";
+import { getPendingItems } from "./actions";
+import ModerationCard from "./components/ModerationCard";
+import { getAllCategories, getAllShows } from "@/lib/data";
 
-export default function AdminHomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminHomePage() {
+  const [pendingData, allCategories, allShows] = await Promise.all([
+    getPendingItems(),
+    getAllCategories(),
+    getAllShows(),
+  ]);
+
+  const { items, personTags } = pendingData;
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold mb-2">Moderacja</h1>
-      <p className="text-gray-400 mb-8">
-        Tu pojawi sie kolejka pending wpisow do zatwierdzenia.
-      </p>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Link
-          href="/admin/standuperzy"
-          className="block bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:bg-neutral-800 transition-colors"
-        >
-          <div className="text-2xl mb-2">🎤</div>
-          <h2 className="font-semibold mb-1">Standuperzy</h2>
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Moderacja</h1>
           <p className="text-sm text-gray-400">
-            Lista, dodawanie, edycja
+            {items.length === 0
+              ? "Brak wpisow do moderacji"
+              : `${items.length} ${items.length === 1 ? "wpis czeka" : "wpisow czeka"} na moderacje`}
           </p>
-        </Link>
-
-        <Link
-          href="/admin/formaty"
-          className="block bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:bg-neutral-800 transition-colors"
-        >
-          <div className="text-2xl mb-2">📺</div>
-          <h2 className="font-semibold mb-1">Formaty</h2>
-          <p className="text-sm text-gray-400">
-            Zarzadzanie programami
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/zrodla"
-          className="block bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:bg-neutral-800 transition-colors"
-        >
-          <div className="text-2xl mb-2">📡</div>
-          <h2 className="font-semibold mb-1">Zrodla</h2>
-          <p className="text-sm text-gray-400">
-            Kanaly YT, podcasty, watch sources
-          </p>
-        </Link>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/standuperzy"
+            className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300"
+          >
+            Standuperzy
+          </Link>
+          <Link
+            href="/admin/formaty"
+            className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300"
+          >
+            Formaty
+          </Link>
+          <Link
+            href="/admin/zrodla"
+            className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300"
+          >
+            Zrodla
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-10 p-6 bg-neutral-900 border border-neutral-800 rounded-xl text-sm text-gray-400">
-        <p className="mb-2 text-white font-medium">Status panelu</p>
-        <ul className="space-y-1 list-disc list-inside">
-          <li>Krok 4a: Autoryzacja i szkielet — gotowe</li>
-          <li>Krok 4b: Moderacja kolejki pending — nastepny</li>
-          <li>Krok 4c: CRUD standuperow — w planach</li>
-          <li>Krok 4d: CRUD shows — w planach</li>
-          <li>Krok 4e: CRUD zrodel — w planach</li>
-        </ul>
-      </div>
+      {items.length === 0 ? (
+        <div className="text-center py-20 text-gray-500">
+          <div className="text-4xl mb-4">🎉</div>
+          <p>Wszystko moderowane. Wracaj pozniej!</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {items.map((item) => (
+            <ModerationCard
+              key={item.id}
+              item={item}
+              personTags={personTags}
+              categories={allCategories}
+              shows={allShows.map((s) => ({ id: s.id, name: s.name, slug: s.slug }))}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
