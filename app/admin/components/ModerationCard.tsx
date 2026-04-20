@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   approveItem,
@@ -225,7 +224,9 @@ export default function ModerationCard({ item, personTags, contentTags, categori
               {item.duration_seconds != null && <span>{formatDuration(item.duration_seconds)}</span>}
               <span>{formatDate(item.published_at)}</span>
             </div>
-            <h3 className="font-semibold text-sm leading-tight">{item.title}</h3>
+            <h3 className="font-semibold text-sm leading-tight">
+              <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.title}</a>
+            </h3>
           </div>
 
           <div className="flex items-center gap-2">
@@ -362,14 +363,13 @@ export default function ModerationCard({ item, personTags, contentTags, categori
                 <button onClick={handleApprove} className="text-xs px-4 py-1.5 bg-green-800 hover:bg-green-700 rounded font-medium text-white">Zatwierdz</button>
               </>
             )}
-            <Link
-              href={item.url}
+            href={item.url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300 ml-auto"
             >
               Otworz
-            </Link>
+            </a>
           </div>
         </div>
       </div>
