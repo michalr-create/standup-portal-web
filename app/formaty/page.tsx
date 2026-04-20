@@ -19,7 +19,7 @@ function ShowCard({ show, itemCount }: { show: Show; itemCount: number }) {
         </p>
       )}
       <div className="mt-auto mono text-xs uppercase flex justify-between items-center" style={{ color: "#7a7466", letterSpacing: ".14em" }}>
-        <span>{itemCount} {itemCount === 1 ? "odcinek" : "odcinek\u00f3w"}</span>
+        <span>{itemCount} {itemCount === 1 ? "odcinek" : itemCount % 10 >= 2 && itemCount % 10 <= 4 && (itemCount % 100 < 10 || itemCount % 100 > 20) ? "odcinki" : "odcink\u00f3w"}</span>
         <span className="w-7 h-7 rounded-full grid place-items-center text-sm" style={{ background: "var(--ink)", color: "var(--paper)" }}>
           {"\u2192"}
         </span>

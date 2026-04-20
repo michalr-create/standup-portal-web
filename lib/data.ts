@@ -231,15 +231,29 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
 
   if (!show) return [];
 
-  const { data, error } = await supabase
+  // Znajdź source_ids powiązane z tym show (items mogą mieć show_id null, ale source ma show_id)
+  const { data: sources } = await supabase
+    .from("sources")
+    .select("id")
+    .eq("show_id", show.id);
+
+  const sourceIds = (sources || []).map((s) => s.id);
+
+  let query = supabase
     .from("content_items")
     .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
     .eq("status", "approved")
-    .eq("show_id", show.id)
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
     .limit(limit);
 
+  if (sourceIds.length > 0) {
+    query = query.or(`show_id.eq.${show.id},source_id.in.(${sourceIds.join(",")})`);
+  } else {
+    query = query.eq("show_id", show.id);
+  }
+
+  const { data, error } = await query;
   if (error || !data) return [];
   return hydrateItems(data);
 }
