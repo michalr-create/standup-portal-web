@@ -34,7 +34,7 @@ export default async function StandupperPage({ params }: Props) {
         )}
       </header>
 
-      <ItemsBrowser items={items} showFilters={false} />
+      <ItemsBrowser items={items} />
     </main>
   );
 }
