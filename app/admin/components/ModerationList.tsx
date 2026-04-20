@@ -49,7 +49,6 @@ export default function ModerationList({
   emptyMessage,
   emptyIcon,
 }: Props) {
-  const [search, setSearch] = useState("");
   const [personTagId, setPersonTagId] = useState<number | "">("");
   const [contentTagId, setContentTagId] = useState<number | "">("");
 
@@ -57,14 +56,12 @@ export default function ModerationList({
 
   const filtered = useMemo(() => {
     let result = items;
-    const q = search.trim().toLowerCase();
-    if (q) result = result.filter((i) => i.title.toLowerCase().includes(q) || i.sourceName.toLowerCase().includes(q));
     if (personTagId !== "") result = result.filter((i) => i.assignedTagIds.includes(personTagId as number));
     if (contentTagId !== "") result = result.filter((i) => i.assignedTagIds.includes(contentTagId as number));
     return result;
-  }, [items, search, personTagId, contentTagId]);
+  }, [items, personTagId, contentTagId]);
 
-  const isFiltered = !!search.trim() || personTagId !== "" || contentTagId !== "";
+  const isFiltered = personTagId !== "" || contentTagId !== "";
 
   if (items.length === 0) {
     return (
@@ -78,13 +75,6 @@ export default function ModerationList({
   return (
     <div>
       <div className="flex gap-2 mb-4 flex-wrap">
-        <input
-          type="search"
-          placeholder="Szukaj po tytule lub źródle…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neutral-500"
-        />
         {personTags.length > 0 && (
           <select
             value={personTagId}
@@ -115,7 +105,7 @@ export default function ModerationList({
         )}
         {isFiltered && (
           <button
-            onClick={() => { setSearch(""); setPersonTagId(""); setContentTagId(""); }}
+            onClick={() => { setPersonTagId(""); setContentTagId(""); }}
             className="px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 rounded text-sm text-gray-300"
           >
             {"Wyczy\u015b\u0107 \u00d7"}

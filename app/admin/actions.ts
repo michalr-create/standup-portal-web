@@ -128,18 +128,42 @@ export async function dismissDuplicate(itemId: number) {
   revalidatePath("/admin");
 }
 
-export async function getPendingItems() {
+const PAGE_SIZE = 50;
+
+export async function getStatusCounts() {
   await requireAuth();
   const sb = getAdminSupabase();
+  const [pending, approved, rejected, featured] = await Promise.all([
+    sb.from("content_items").select("*", { count: "exact", head: true }).eq("status", "pending").is("merged_into_id", null),
+    sb.from("content_items").select("*", { count: "exact", head: true }).eq("status", "approved").is("merged_into_id", null),
+    sb.from("content_items").select("*", { count: "exact", head: true }).eq("status", "rejected").is("merged_into_id", null),
+    sb.from("content_items").select("*", { count: "exact", head: true }).eq("status", "approved").eq("is_featured", true).is("merged_into_id", null),
+  ]);
+  return {
+    pending: pending.count || 0,
+    approved: approved.count || 0,
+    rejected: rejected.count || 0,
+    featured: featured.count || 0,
+  };
+}
 
-  const { data: items, error } = await sb
+export async function getPendingItems(search = "", page = 0) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+  const offset = page * PAGE_SIZE;
+
+  let query = sb
     .from("content_items")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("status", "pending")
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range(offset, offset + PAGE_SIZE - 1);
 
-if (error || !items) return { items: [], personTags: [], allCategories: [], allShows: [] };
+  if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+
+  const { data: items, count, error } = await query;
+
+if (error || !items) return { items: [], totalCount: 0, personTags: [], allCategories: [], allShows: [] };
 
   // Pobierz sources, categories, shows, tagi
   const sourceIds = Array.from(new Set(items.map((i) => i.source_id).filter(Boolean)));
@@ -208,12 +232,13 @@ if (error || !items) return { items: [], personTags: [], allCategories: [], allS
         ? duplicatesMap.get(item.possible_duplicate_of) || null
         : null,
     })),
+    totalCount: count || 0,
     personTags: personTags || [],
     contentTags: contentTagsList || [],
     allCategories: categories || [],
     allShows: shows || [],
   };
-}  
+}
   export async function revertToPending(itemId: number) {
   await requireAuth();
   const sb = getAdminSupabase();
@@ -227,19 +252,24 @@ if (error || !items) return { items: [], personTags: [], allCategories: [], allS
   revalidatePath("/");
 }
 
-export async function getItemsByStatus(status: string) {
+export async function getItemsByStatus(status: string, search = "", page = 0) {
   await requireAuth();
   const sb = getAdminSupabase();
+  const offset = page * PAGE_SIZE;
 
-  const { data: items, error } = await sb
+  let query = sb
     .from("content_items")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("status", status)
     .is("merged_into_id", null)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range(offset, offset + PAGE_SIZE - 1);
 
-  if (error || !items) return { items: [], personTags: [], allCategories: [], allShows: [] };
+  if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+
+  const { data: items, count, error } = await query;
+
+  if (error || !items) return { items: [], totalCount: 0, personTags: [], allCategories: [], allShows: [] };
 
   const itemIds = items.map((i) => i.id);
   const sourceIds = Array.from(new Set(items.map((i) => i.source_id).filter(Boolean)));
@@ -302,6 +332,7 @@ export async function getItemsByStatus(status: string) {
         ? duplicatesMap.get(item.possible_duplicate_of) || null
         : null,
     })),
+    totalCount: count || 0,
     personTags: personTags || [],
     contentTags: contentTagsList || [],
     allCategories: allCategories || [],
@@ -320,20 +351,25 @@ export async function toggleFeatured(itemId: number, isFeatured: boolean) {
   revalidatePath("/admin");
   revalidatePath("/");
 }
-export async function getFeaturedItems() {
+export async function getFeaturedItems(search = "", page = 0) {
   await requireAuth();
   const sb = getAdminSupabase();
+  const offset = page * PAGE_SIZE;
 
-  const { data: items } = await sb
+  let query = sb
     .from("content_items")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("status", "approved")
     .eq("is_featured", true)
     .is("merged_into_id", null)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range(offset, offset + PAGE_SIZE - 1);
 
-  if (!items) return { items: [], personTags: [], contentTags: [], allCategories: [], allShows: [] };
+  if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+
+  const { data: items, count } = await query;
+
+  if (!items) return { items: [], totalCount: 0, personTags: [], contentTags: [], allCategories: [], allShows: [] };
 
   const itemIds = items.map((i) => i.id);
   const sourceIds = Array.from(new Set(items.map((i) => i.source_id).filter(Boolean)));
@@ -388,6 +424,7 @@ export async function getFeaturedItems() {
       assignedTagIds: itemTagMap.get(item.id) || [],
       duplicateOf: null,
     })),
+    totalCount: count || 0,
     personTags: personTags || [],
     contentTags: contentTagsList || [],
     allCategories: allCategories || [],
