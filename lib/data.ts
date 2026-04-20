@@ -411,21 +411,34 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
 // QUERY: nowości (ostatnie N dni, z auto-rozszerzaniem)
 // =================================================================
 export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Promise<Item[]> {
+  // Znajdz ID kategorii Shorts zeby ja wykluczyc
+  const { data: shortsCat } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", "shorts")
+    .maybeSingle();
+
+  const shortsCatId = shortsCat?.id;
   let currentDays = days;
 
   while (currentDays <= maxDays) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - currentDays);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("content_items")
       .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
       .eq("status", "approved")
       .is("merged_into_id", null)
-      .neq("content_type", "short")
       .gte("published_at", cutoff.toISOString())
       .order("published_at", { ascending: false })
       .limit(20);
+
+    if (shortsCatId) {
+      query = query.neq("category_id", shortsCatId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Blad pobierania nowosci:", error);
@@ -440,15 +453,19 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
   }
 
   // Fallback: ostatnie 20
-  const { data } = await supabase
+  let fallbackQuery = supabase
     .from("content_items")
     .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
     .eq("status", "approved")
     .is("merged_into_id", null)
-    .neq("content_type", "short")
     .order("published_at", { ascending: false })
     .limit(20);
 
+  if (shortsCatId) {
+    fallbackQuery = fallbackQuery.neq("category_id", shortsCatId);
+  }
+
+  const { data } = await fallbackQuery;
   return hydrateItems(data || []);
 }
 
