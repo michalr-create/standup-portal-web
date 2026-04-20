@@ -5,114 +5,13 @@ import {
   getItemsByTagSlug,
   getLatestPerShow,
 } from "@/lib/data";
-import type { Item, Show } from "@/lib/data";
+import type { Show } from "@/lib/data";
 import ScrollRow from "./components/ScrollRow";
+import HomeVideoGrid from "./components/HomeVideoGrid";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "";
-  if (seconds >= 3600) {
-    const h = Math.floor(seconds / 3600);
-    const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
-    const s = String(seconds % 60).padStart(2, "0");
-    return h + ":" + m + ":" + s;
-  }
-  return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
-}
-
-function formatDate(dateString: string | null): string {
-  if (!dateString) return "";
-  try {
-    return new Date(dateString).toLocaleDateString("pl-PL", {
-      day: "numeric",
-      month: "short",
-    });
-  } catch {
-    return "";
-  }
-}
-
-function timeAgo(dateString: string | null): string {
-  if (!dateString) return "";
-  const diff = Date.now() - new Date(dateString).getTime();
-  const hours = Math.floor(diff / 3600000);
-  if (hours < 1) return "przed chwil\u0105";
-  if (hours < 24) return hours + " godz temu";
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "wczoraj";
-  if (days < 7) return days + " dni temu";
-  return formatDate(dateString);
-}
-
-function VideoCard({ item }: { item: Item }) {
-  const label = item.people.length > 0
-    ? item.people.map((p) => p.name).join(" \u00b7 ")
-    : item.showName || "";
-
-  return (
-    <Link
-      href={item.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group block vcard"
-    >
-      <div
-        className="overflow-hidden relative"
-        style={{
-          aspectRatio: "16/10",
-          borderRadius: "14px",
-          border: "1px solid var(--line)",
-          background: "var(--ink-3)",
-        }}
-      >
-        {item.thumbnail_url && (
-          <img
-            src={item.thumbnail_url}
-            alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        )}
-        {item.duration_seconds != null && (
-          <div
-            className="absolute bottom-2.5 right-2.5 mono text-xs px-2 py-1 rounded-md"
-            style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
-          >
-            {formatDuration(item.duration_seconds)}
-          </div>
-        )}
-        <div
-          className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-bold"
-          style={{
-            background: "rgba(11,11,11,.75)",
-            backdropFilter: "blur(6px)",
-            color: "var(--paper)",
-            fontSize: "11px",
-          }}
-        >
-          <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--coral)" }} />
-          {item.categoryName || "YouTube"}
-        </div>
-        <div className="play-overlay">
-          <div className="play-btn" />
-        </div>
-      </div>
-      <div className="pt-3 px-0.5">
-        <h4 className="font-extrabold leading-tight mb-1.5 line-clamp-2" style={{ fontSize: "16px", letterSpacing: "-.01em" }}>
-          {item.title}
-        </h4>
-        <div className="flex items-center gap-2" style={{ color: "var(--paper-dim)", fontSize: "13px" }}>
-          <span>{label}</span>
-          {label && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
-          <span className="mono" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
-            {timeAgo(item.published_at)}
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 function SectionHead({ title, sub, linkHref, linkText }: { title: string; sub?: string; linkHref?: string; linkText?: string }) {
   return (
@@ -146,7 +45,7 @@ function odcinekLabel(n: number): string {
   return "odcink\u00f3w";
 }
 
-function ShowBlock({ show, items, totalCount }: { show: Show; items: Item[]; totalCount: number }) {
+function ShowBlock({ show, totalCount }: { show: Show; totalCount: number }) {
   return (
     <Link href={"/format/" + show.slug} className="fcard group">
       <div className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg" style={{ background: "var(--ink)", color: "var(--paper)" }}>
@@ -207,11 +106,7 @@ export default async function HomePage() {
         <section className="band">
           <div className="max-w-6xl mx-auto">
             <SectionHead title="Nowe" sub={"Ostatnie 7 dni \u00b7 " + recentItems.length + " pozycji"} linkHref="/standup" linkText={"Zobacz wszystkie \u2192"} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {recentItems.map((item) => (
-                <VideoCard key={item.id} item={item} />
-              ))}
-            </div>
+            <HomeVideoGrid items={recentItems} />
           </div>
         </section>
       )}
@@ -255,7 +150,7 @@ export default async function HomePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {showSections.map(({ show, items, totalCount }) => (
-                <ShowBlock key={show.id} show={show} items={items} totalCount={totalCount} />
+                <ShowBlock key={show.id} show={show} totalCount={totalCount} />
               ))}
             </div>
           </div>

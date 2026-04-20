@@ -33,7 +33,7 @@ function timeAgo(dateString: string | null): string {
   }
 }
 
-export default function ItemsBrowser({ items }: { items: Item[] }) {
+export default function HomeVideoGrid({ items }: { items: Item[] }) {
   const { watched, markWatched } = useWatchHistory();
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
 
@@ -46,15 +46,6 @@ export default function ItemsBrowser({ items }: { items: Item[] }) {
       window.open(item.url, "_blank", "noopener,noreferrer");
     }
   };
-
-  if (items.length === 0) {
-    return (
-      <div className="text-center py-20">
-        <div className="text-4xl mb-4">{"\uD83C\uDFA4"}</div>
-        <p style={{ color: "var(--paper-mute)" }}>Brak tre{"\u015b"}ci w tej kategorii.</p>
-      </div>
-    );
-  }
 
   return (
     <>
