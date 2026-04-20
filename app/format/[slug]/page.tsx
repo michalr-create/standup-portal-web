@@ -82,7 +82,7 @@ export default async function ShowPage({ params }: Props) {
         </div>
       </header>
 
-      <ItemsBrowser items={items} showFilters={false} />
+      <ItemsBrowser items={items} />
     </main>
   );
 }
