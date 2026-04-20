@@ -583,14 +583,14 @@ export async function getItemsByTagSlug(tagSlug: string, limit = 10): Promise<It
 // =================================================================
 // QUERY: najnowsze odcinki z kazdego show (do sekcji Formaty)
 // =================================================================
-export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: Item[] }[]> {
+export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: Item[]; totalCount: number }[]> {
   const shows = await getAllShows();
-  const results: { show: Show; items: Item[] }[] = [];
+  const results: { show: Show; items: Item[]; totalCount: number }[] = [];
 
   for (const show of shows) {
-    const items = await getItemsByShowSlug(show.slug, limit);
-    if (items.length > 0) {
-      results.push({ show, items });
+    const allItems = await getItemsByShowSlug(show.slug, 999);
+    if (allItems.length > 0) {
+      results.push({ show, items: allItems.slice(0, limit), totalCount: allItems.length });
     }
   }
 

@@ -140,7 +140,13 @@ function SectionHead({ title, sub, linkHref, linkText }: { title: string; sub?: 
   );
 }
 
-function ShowBlock({ show, items }: { show: Show; items: Item[] }) {
+function odcinekLabel(n: number): string {
+  if (n === 1) return "odcinek";
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "odcinki";
+  return "odcink\u00f3w";
+}
+
+function ShowBlock({ show, items, totalCount }: { show: Show; items: Item[]; totalCount: number }) {
   return (
     <Link href={"/format/" + show.slug} className="fcard group">
       <div className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg" style={{ background: "var(--ink)", color: "var(--paper)" }}>
@@ -155,7 +161,7 @@ function ShowBlock({ show, items }: { show: Show; items: Item[] }) {
         </p>
       )}
       <div className="mt-auto mono text-xs uppercase flex justify-between items-center" style={{ color: "#7a7466", letterSpacing: ".14em" }}>
-        <span>{items.length} odcinek{"o\u0301"}w</span>
+        <span>{totalCount} {odcinekLabel(totalCount)}</span>
         <span className="w-7 h-7 rounded-full grid place-items-center text-sm" style={{ background: "var(--ink)", color: "var(--paper)" }}>
           {"\u2192"}
         </span>
@@ -248,8 +254,8 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {showSections.map(({ show, items }) => (
-                <ShowBlock key={show.id} show={show} items={items} />
+              {showSections.map(({ show, items, totalCount }) => (
+                <ShowBlock key={show.id} show={show} items={items} totalCount={totalCount} />
               ))}
             </div>
           </div>
