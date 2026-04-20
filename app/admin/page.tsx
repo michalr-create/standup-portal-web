@@ -56,6 +56,7 @@ export default async function AdminHomePage({ searchParams }: Props) {
           <Link href="/admin/standuperzy" className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Standuperzy</Link>
           <Link href="/admin/formaty" className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Formaty</Link>
           <Link href="/admin/zrodla" className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Zrodla</Link>
+          <Link href="/admin/tagi" className="text-xs px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300">Tagi</Link>
         </div>
       </div>
 

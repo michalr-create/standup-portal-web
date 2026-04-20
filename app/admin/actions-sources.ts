@@ -528,6 +528,45 @@ export async function getContentTags() {
   return data || [];
 }
 
+export async function getContentTagsWithCounts() {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  const { data: tags } = await sb
+    .from("tags")
+    .select("id, name, slug, tag_type")
+    .neq("tag_type", "person")
+    .order("tag_type")
+    .order("name");
+
+  const tagIds = (tags || []).map((t) => t.id);
+
+  const { data: usageRows } = tagIds.length > 0
+    ? await sb.from("content_tags").select("tag_id").in("tag_id", tagIds)
+    : { data: [] };
+
+  const countMap = new Map<number, number>();
+  for (const row of usageRows || []) {
+    countMap.set(row.tag_id, (countMap.get(row.tag_id) || 0) + 1);
+  }
+
+  return (tags || []).map((t) => ({ ...t, usageCount: countMap.get(t.id) || 0 }));
+}
+
+export async function deleteTag(tagId: number) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  await sb.from("content_tags").delete().eq("tag_id", tagId);
+
+  const { error } = await sb.from("tags").delete().eq("id", tagId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/tagi");
+  return { success: true };
+}
+
 export async function createTag(data: {
   name: string;
   slug: string;
