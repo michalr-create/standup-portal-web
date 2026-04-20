@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getPendingItems, getItemsByStatus, getFeaturedItems } from "./actions";
-import ModerationCard from "./components/ModerationCard";
+import ModerationList from "./components/ModerationList";
 import StatusTabs from "./components/StatusTabs";
 import AddEntryButton from "./components/AddEntryButton";
 
@@ -63,36 +63,24 @@ export default async function AdminHomePage({ searchParams }: Props) {
         <StatusTabs counts={counts} />
       </Suspense>
 
-      {items.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
-          <div className="text-4xl mb-4">
-            {currentStatus === "pending" ? "\ud83c\udf89" : currentStatus === "featured" ? "\u2b50" : "\ud83d\udced"}
-          </div>
-          <p>
-            {currentStatus === "pending"
-              ? "Wszystko moderowane. Wracaj pozniej!"
-              : currentStatus === "featured"
-              ? "Brak wyroznonych wpisow. Wyroznij cos w zakladce Zatwierdzone."
-              : currentStatus === "approved"
-              ? "Brak zatwierdzonych wpisow."
-              : "Brak odrzuconych wpisow."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {items.map((item) => (
-            <ModerationCard
-              key={item.id}
-              item={item}
-              personTags={personTags}
-              contentTags={contentTags || []}
-              categories={allCategories}
-              shows={allShows}
-              mode={displayMode as "pending" | "approved" | "rejected"}
-            />
-          ))}
-        </div>
-      )}
+      <ModerationList
+        items={items}
+        personTags={personTags}
+        contentTags={contentTags || []}
+        categories={allCategories}
+        shows={allShows}
+        mode={displayMode as "pending" | "approved" | "rejected"}
+        emptyIcon={currentStatus === "pending" ? "\ud83c\udf89" : currentStatus === "featured" ? "\u2b50" : "\ud83d\udced"}
+        emptyMessage={
+          currentStatus === "pending"
+            ? "Wszystko moderowane. Wracaj pozniej!"
+            : currentStatus === "featured"
+            ? "Brak wyroznonych wpisow. Wyroznij cos w zakladce Zatwierdzone."
+            : currentStatus === "approved"
+            ? "Brak zatwierdzonych wpisow."
+            : "Brak odrzuconych wpisow."
+        }
+      />
     </div>
   );
 }
