@@ -51,16 +51,24 @@ export default function ModerationList({
 }: Props) {
   const [search, setSearch] = useState("");
   const [personTagId, setPersonTagId] = useState<number | "">("");
+  const [contentTagId, setContentTagId] = useState<number | "">("");
+
+  // Tylko tagi które faktycznie wystepują w biezacym zestawie itemów
+  const activeContentTags = useMemo(() => {
+    const usedIds = new Set(items.flatMap((i) => i.assignedTagIds));
+    return contentTags.filter((t) => usedIds.has(t.id));
+  }, [items, contentTags]);
 
   const filtered = useMemo(() => {
     let result = items;
     const q = search.trim().toLowerCase();
     if (q) result = result.filter((i) => i.title.toLowerCase().includes(q) || i.sourceName.toLowerCase().includes(q));
     if (personTagId !== "") result = result.filter((i) => i.assignedTagIds.includes(personTagId as number));
+    if (contentTagId !== "") result = result.filter((i) => i.assignedTagIds.includes(contentTagId as number));
     return result;
-  }, [items, search, personTagId]);
+  }, [items, search, personTagId, contentTagId]);
 
-  const isFiltered = !!search.trim() || personTagId !== "";
+  const isFiltered = !!search.trim() || personTagId !== "" || contentTagId !== "";
 
   if (items.length === 0) {
     return (
@@ -95,9 +103,23 @@ export default function ModerationList({
             ))}
           </select>
         )}
+        {activeContentTags.length > 0 && (
+          <select
+            value={contentTagId}
+            onChange={(e) => setContentTagId(e.target.value === "" ? "" : Number(e.target.value))}
+            className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white focus:outline-none focus:border-neutral-500"
+          >
+            <option value="">Wszystkie tagi</option>
+            {activeContentTags.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        )}
         {isFiltered && (
           <button
-            onClick={() => { setSearch(""); setPersonTagId(""); }}
+            onClick={() => { setSearch(""); setPersonTagId(""); setContentTagId(""); }}
             className="px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 rounded text-sm text-gray-300"
           >
             {"Wyczy\u015b\u0107 \u00d7"}
