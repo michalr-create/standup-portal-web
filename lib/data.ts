@@ -422,6 +422,7 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
       .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
       .eq("status", "approved")
       .is("merged_into_id", null)
+      .neq("content_type", "short")
       .gte("published_at", cutoff.toISOString())
       .order("published_at", { ascending: false })
       .limit(20);
@@ -444,6 +445,7 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
     .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
     .eq("status", "approved")
     .is("merged_into_id", null)
+    .neq("content_type", "short")
     .order("published_at", { ascending: false })
     .limit(20);
 
