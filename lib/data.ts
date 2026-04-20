@@ -231,18 +231,19 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
 
   if (!show) return [];
 
-  // Znajdź source_ids powiązane z tym show
-  const { data: sources } = await supabase
-    .from("sources")
-    .select("id")
-    .eq("show_id", show.id);
+  // Znajdź source_ids powiązane z tym show i kategorię shorts do wykluczenia
+  const [sourcesRes, shortsCatRes] = await Promise.all([
+    supabase.from("sources").select("id").eq("show_id", show.id),
+    supabase.from("categories").select("id").eq("slug", "shorts").maybeSingle(),
+  ]);
 
-  const sourceIds = (sources || []).map((s) => s.id);
+  const sourceIds = (sourcesRes.data || []).map((s) => s.id);
+  const shortsCatId = shortsCatRes.data?.id;
 
   const cols = "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds";
 
   // Zapytanie 1: items z show_id ustawionym bezpośrednio
-  const { data: byShowId } = await supabase
+  let q1 = supabase
     .from("content_items")
     .select(cols)
     .eq("status", "approved")
@@ -251,18 +252,22 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
     .limit(limit);
+  if (shortsCatId) q1 = q1.neq("category_id", shortsCatId);
+  const { data: byShowId } = await q1;
 
   // Zapytanie 2: items z sourców przypisanych do tego show
+  let q2Base = supabase
+    .from("content_items")
+    .select(cols)
+    .eq("status", "approved")
+    .neq("content_type", "short")
+    .is("merged_into_id", null)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  if (shortsCatId) q2Base = q2Base.neq("category_id", shortsCatId);
+
   const { data: bySourceId } = sourceIds.length > 0
-    ? await supabase
-        .from("content_items")
-        .select(cols)
-        .eq("status", "approved")
-        .in("source_id", sourceIds)
-        .neq("content_type", "short")
-        .is("merged_into_id", null)
-        .order("published_at", { ascending: false })
-        .limit(limit)
+    ? await q2Base.in("source_id", sourceIds)
     : { data: [] };
 
   // Merge z deduplicacją po id, sortowanie po dacie
