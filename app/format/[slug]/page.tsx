@@ -1,11 +1,7 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
-import {
-  getShowBySlug,
-  getItemsByShowSlug,
-  getShowHosts,
-} from "@/lib/data";
+import { getShowBySlug, getItemsByShowSlug } from "@/lib/data";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -13,76 +9,57 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-type PlatformLinkProps = {
-  href: string | null;
-  label: string;
-};
-
-function PlatformLink({ href, label }: PlatformLinkProps) {
-  if (!href) return null;
-  return (
-    <Link
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded-full text-gray-300"
-    >
-      {label}
-    </Link>
-  );
-}
-
-export default async function ShowPage({ params }: Props) {
+export default async function FormatPage({ params }: Props) {
   const { slug } = await params;
-
-  const show = await getShowBySlug(slug);
-  if (!show) notFound();
-
-  const [items, hosts] = await Promise.all([
+  const [show, items] = await Promise.all([
+    getShowBySlug(slug),
     getItemsByShowSlug(slug),
-    getShowHosts(show.id),
   ]);
 
+  if (!show) notFound();
+
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8 lg:py-10">
-      <header className="mb-8">
-        {show.category_name && show.category_slug && (
-          <Link
-            href={`/${show.category_slug}`}
-            className="text-xs text-gray-500 hover:text-white"
-          >
-            {show.category_name}
-          </Link>
-        )}
-        <h1 className="text-3xl lg:text-4xl font-bold mt-1 mb-2">{show.name}</h1>
-        {show.description && (
-          <p className="text-gray-400 max-w-2xl mb-4">{show.description}</p>
-        )}
-
-        {hosts.length > 0 && (
-          <div className="flex flex-wrap gap-2 items-center mb-4">
-            <span className="text-sm text-gray-500">Prowadzą:</span>
-            {hosts.map((h) => (
-              <Link
-                key={h.id}
-                href={`/standuper/${h.slug}`}
-                className="text-sm text-white hover:text-gray-300 underline-offset-2 hover:underline"
-              >
-                {h.name}
-              </Link>
-            ))}
+    <div className="band">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-8">
+          <div className="flex items-baseline gap-4 flex-wrap mb-2">
+            <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-.025em" }}>
+              {show.name}<span className="dot-accent">.</span>
+            </h1>
+            <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
+              {items.length} {items.length === 1 ? "odcinek" : "odcinek\u00f3w"}
+            </span>
           </div>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <PlatformLink href={show.youtube_channel_url} label="▶ YouTube" />
-          <PlatformLink href={show.spotify_show_url} label="♪ Spotify" />
-          <PlatformLink href={show.apple_podcasts_url} label="♪ Apple Podcasts" />
-          <PlatformLink href={show.website_url} label="🌐 Strona" />
-        </div>
-      </header>
-
-      <ItemsBrowser items={items} />
-    </main>
+          {show.description && (
+            <p className="max-w-2xl" style={{ color: "var(--paper-dim)", fontSize: "17px", lineHeight: "1.55" }}>
+              {show.description}
+            </p>
+          )}
+          <div className="flex gap-3 mt-4 flex-wrap">
+            {show.youtube_channel_url && (
+              <Link href={show.youtube_channel_url} target="_blank" rel="noopener noreferrer" className="chip">
+                YouTube
+              </Link>
+            )}
+            {show.spotify_show_url && (
+              <Link href={show.spotify_show_url} target="_blank" rel="noopener noreferrer" className="chip">
+                Spotify
+              </Link>
+            )}
+            {show.apple_podcasts_url && (
+              <Link href={show.apple_podcasts_url} target="_blank" rel="noopener noreferrer" className="chip">
+                Apple Podcasts
+              </Link>
+            )}
+            {show.website_url && (
+              <Link href={show.website_url} target="_blank" rel="noopener noreferrer" className="chip">
+                Strona
+              </Link>
+            )}
+          </div>
+        </header>
+        <ItemsBrowser items={items} />
+      </div>
+    </div>
   );
 }
