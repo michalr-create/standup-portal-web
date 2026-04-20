@@ -13,15 +13,23 @@ export default async function WywiadyPage() {
   if (!category) notFound();
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8 lg:py-10">
-      <header className="mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold mb-2">{category.name}</h1>
-        {category.description && (
-          <p className="text-gray-400">{category.description}</p>
-        )}
-      </header>
-
-      <ItemsBrowser items={items} />
-    </main>
+    <div className="band">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-8">
+          <div className="flex items-baseline gap-4 flex-wrap mb-2">
+            <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}>
+              Wywiady<span className="dot-accent">.</span>
+            </h1>
+            <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
+              {items.length} {items.length === 1 ? "rozmowa" : "rozm\u00f3w"}
+            </span>
+          </div>
+          {category.description && (
+            <p style={{ color: "var(--paper-dim)", fontSize: "17px" }}>{category.description}</p>
+          )}
+        </header>
+        <ItemsBrowser items={items} />
+      </div>
+    </div>
   );
 }
