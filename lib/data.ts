@@ -17,6 +17,7 @@ export type Item = {
   categoryName: string | null;
   categorySlug: string | null;
   people: { name: string; slug: string }[];
+  tags: { name: string; slug: string; tag_type: string }[];
 };
 
 export type Person = {
@@ -89,11 +90,23 @@ async function hydrateItems(rawItems: {
     .in("content_item_id", itemIds)
     .eq("tags.tag_type", "person");
 
+  // Pobierz tagi non-person (topic, format, event) dla tych itemów
+  const { data: nonPersonTagsData } = await supabase
+    .from("content_tags")
+    .select("content_item_id, tags!inner(id, name, slug, tag_type)")
+    .in("content_item_id", itemIds)
+    .neq("tags.tag_type", "person");
+
   // Pobierz person z tagów
 type CtRow = {
     content_item_id: number;
     tag_id: number;
     tags: { id: number; person_id: number | null; tag_type: string }[] | { id: number; person_id: number | null; tag_type: string } | null;
+  };
+
+type NpCtRow = {
+    content_item_id: number;
+    tags: { id: number; name: string; slug: string; tag_type: string }[] | { id: number; name: string; slug: string; tag_type: string } | null;
   };
 
   const personIds = Array.from(new Set(
@@ -132,6 +145,20 @@ type CtRow = {
     }
   }
 
+  // Map: item_id -> lista non-person tagów
+  const itemTagsMap = new Map<number, { name: string; slug: string; tag_type: string }[]>();
+  for (const ct of (nonPersonTagsData as NpCtRow[] | null) || []) {
+    const t = ct.tags;
+    if (!t) continue;
+    const arr = Array.isArray(t) ? t : [t];
+    for (const tag of arr) {
+      if (!itemTagsMap.has(ct.content_item_id)) {
+        itemTagsMap.set(ct.content_item_id, []);
+      }
+      itemTagsMap.get(ct.content_item_id)!.push({ name: tag.name, slug: tag.slug, tag_type: tag.tag_type });
+    }
+  }
+
   return rawItems.map((item) => {
     const show = item.show_id ? showsMap.get(item.show_id) : null;
     const category = item.category_id ? categoriesMap.get(item.category_id) : null;
@@ -142,6 +169,7 @@ type CtRow = {
       categoryName: category?.name || null,
       categorySlug: category?.slug || null,
       people: itemPeopleMap.get(item.id) || [],
+      tags: itemTagsMap.get(item.id) || [],
     };
   });
 }
