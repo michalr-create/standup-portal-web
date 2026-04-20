@@ -1,9 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,wght@0,700;0,900;1,700;1,900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background: #0a0a0a;
-  color: #ededed;
-  font-family: system-ui, -apple-system, sans-serif;
+:root {
+  --ink: #0B0B0B;
+  --ink-2: #151514;
+  --ink-3: #1E1D1B;
+  --ink-4: #28261F;
+  --paper: #EFE8DC;
+  --paper-dim: #C7C1B6;
+  --paper-mute: #8A8578;
+  --coral: #E8594A;
+  --coral-hi: #F27365;
+  --coral-deep: #C8412F;
+  --line: rgba(239,232,220,.10);
+  --line-2: rgba(239,232,220,.18);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'Nunito', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* Utility classes */
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: .02em;
+}
+
+.serif {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 900;
+}
+
+/* Scrollbar hide */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* Dot accent */
+.dot-accent { color: var(--coral); }
+
+/* Chip / pill */
+.chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--paper-dim);
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+  transition: all .15s;
+  background: none;
+}
+.chip:hover { background: var(--ink-3); }
+.chip.active {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+
+/* Section separator */
+.band {
+  padding: 64px 40px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Light section (for Formaty) */
+.band-light {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Video card base */
+.vcard {
+  cursor: pointer;
+  transition: transform .18s;
+}
+.vcard:hover {
+  transform: translateY(-3px);
+}
+
+/* Play overlay */
+.play-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.vcard:hover .play-overlay,
+.group:hover .play-overlay {
+  opacity: 1;
+}
+.play-btn {
+  width: 56px;
+  height: 56px;
+  background: var(--paper);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.play-btn::before {
+  content: '';
+  border-left: 16px solid var(--ink);
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  margin-left: 5px;
+}
+
+/* Format card (light bg) */
+.fcard {
+  border: 1px solid rgba(11,11,11,.10);
+  border-radius: 18px;
+  padding: 22px;
+  background: #F6F1E7;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 230px;
+  position: relative;
+  overflow: hidden;
+  transition: transform .18s, background .18s;
+  color: var(--ink);
+}
+.fcard:hover {
+  transform: translateY(-3px);
+  background: #EEE7D8;
 }
