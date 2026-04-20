@@ -15,8 +15,15 @@ function formatDuration(seconds: number | null): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-function formatDate(dateString: string | null): string {
+function timeAgo(dateString: string | null): string {
   if (!dateString) return "";
+  const diff = Date.now() - new Date(dateString).getTime();
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return "teraz";
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "wczoraj";
+  if (days < 7) return `${days}d`;
   try {
     return new Date(dateString).toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
   } catch {
@@ -34,53 +41,69 @@ function ScrollCard({ item }: { item: Item }) {
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={[
-        "group block bg-neutral-900 rounded-lg overflow-hidden",
-        "hover:bg-neutral-800 transition-colors",
-        "w-72 sm:w-80 shrink-0 snap-start",
-      ].join(" ")}
+      className="group block vcard w-72 sm:w-80 shrink-0 snap-start"
     >
-      {item.thumbnail_url ? (
-        <div className="aspect-video bg-neutral-800 overflow-hidden relative">
+      <div
+        className="overflow-hidden relative"
+        style={{
+          aspectRatio: "16/10",
+          borderRadius: "14px",
+          border: "1px solid var(--line)",
+          background: "var(--ink-3)",
+        }}
+      >
+        {item.thumbnail_url && (
           <img
             src={item.thumbnail_url}
             alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          {item.duration_seconds != null && (
-            <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
-              {formatDuration(item.duration_seconds)}
-            </div>
-          )}
+        )}
+        {item.duration_seconds != null && (
+          <div
+            className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
+            style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
+          >
+            {formatDuration(item.duration_seconds)}
+          </div>
+        )}
+        <div className="play-overlay">
+          <div className="play-btn" />
         </div>
-      ) : null}
-      <div className="p-3">
-        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-          {item.categoryName && (
-            <span className="px-1.5 py-0.5 bg-neutral-800 rounded text-gray-400">
-              {item.categoryName}
-            </span>
-          )}
-          <span>{formatDate(item.published_at)}</span>
-        </div>
-        <h3 className="font-semibold text-sm leading-tight line-clamp-2">
+      </div>
+
+      <div className="pt-3 px-0.5">
+        <h4
+          className="font-extrabold leading-tight mb-1 line-clamp-2"
+          style={{ fontSize: "16px", letterSpacing: "-.01em" }}
+        >
           {item.title}
-        </h3>
-        <p className="text-xs text-gray-500 mt-1 truncate">{label}</p>
+        </h4>
+        <div
+          className="flex items-center gap-2"
+          style={{ color: "var(--paper-dim)", fontSize: "13px" }}
+        >
+          <span>{label}</span>
+          {label && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
+          <span className="mono" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
+            {timeAgo(item.published_at)}
+          </span>
+        </div>
       </div>
     </Link>
   );
 }
 
-const arrowBtnBase = [
-  "absolute top-0 bottom-0 z-10 w-10",
+const arrowBtnLeft = [
+  "absolute left-0 top-0 bottom-0 z-10 w-12",
   "flex items-center justify-center",
   "opacity-0 group-hover/scroll:opacity-100 transition-opacity",
 ].join(" ");
 
-const arrowCircle = [
-  "w-8 h-8 rounded-full bg-white/20 backdrop-blur",
-  "flex items-center justify-center text-white hover:bg-white/40",
+const arrowBtnRight = [
+  "absolute right-0 top-0 bottom-0 z-10 w-12",
+  "flex items-center justify-center",
+  "opacity-0 group-hover/scroll:opacity-100 transition-opacity",
 ].join(" ");
 
 export default function ScrollRow({ items }: { items: Item[] }) {
@@ -122,9 +145,13 @@ export default function ScrollRow({ items }: { items: Item[] }) {
       {canScrollLeft && (
         <button
           onClick={() => scroll("left")}
-          className={`${arrowBtnBase} left-0 bg-gradient-to-r from-neutral-950 to-transparent`}
+          className={arrowBtnLeft}
+          style={{ background: "linear-gradient(to right, var(--ink), transparent)" }}
         >
-          <div className={arrowCircle}>
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+            style={{ background: "rgba(239,232,220,.15)", backdropFilter: "blur(4px)" }}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polyline points="15 18 9 12 15 6" />
             </svg>
@@ -135,9 +162,13 @@ export default function ScrollRow({ items }: { items: Item[] }) {
       {canScrollRight && (
         <button
           onClick={() => scroll("right")}
-          className={`${arrowBtnBase} right-0 bg-gradient-to-l from-neutral-950 to-transparent`}
+          className={arrowBtnRight}
+          style={{ background: "linear-gradient(to left, var(--ink), transparent)" }}
         >
-          <div className={arrowCircle}>
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+            style={{ background: "rgba(239,232,220,.15)", backdropFilter: "blur(4px)" }}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polyline points="9 6 15 12 9 18" />
             </svg>
@@ -147,8 +178,7 @@ export default function ScrollRow({ items }: { items: Item[] }) {
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-hide"
       >
         {items.map((item) => (
           <ScrollCard key={item.id} item={item} />
