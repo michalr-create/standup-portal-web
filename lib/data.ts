@@ -231,7 +231,7 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
 
   if (!show) return [];
 
-  // Znajdź source_ids powiązane z tym show (items mogą mieć show_id null, ale source ma show_id)
+  // Znajdź source_ids powiązane z tym show
   const { data: sources } = await supabase
     .from("sources")
     .select("id")
@@ -239,23 +239,42 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
 
   const sourceIds = (sources || []).map((s) => s.id);
 
-  let query = supabase
+  const cols = "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds";
+
+  // Zapytanie 1: items z show_id ustawionym bezpośrednio
+  const { data: byShowId } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .select(cols)
     .eq("status", "approved")
+    .eq("show_id", show.id)
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
     .limit(limit);
 
-  if (sourceIds.length > 0) {
-    query = query.or(`show_id.eq.${show.id},source_id.in.(${sourceIds.join(",")})`);
-  } else {
-    query = query.eq("show_id", show.id);
-  }
+  // Zapytanie 2: items z sourców przypisanych do tego show
+  const { data: bySourceId } = sourceIds.length > 0
+    ? await supabase
+        .from("content_items")
+        .select(cols)
+        .eq("status", "approved")
+        .in("source_id", sourceIds)
+        .is("merged_into_id", null)
+        .order("published_at", { ascending: false })
+        .limit(limit)
+    : { data: [] };
 
-  const { data, error } = await query;
-  if (error || !data) return [];
-  return hydrateItems(data);
+  // Merge z deduplicacją po id, sortowanie po dacie
+  const seen = new Set<number>();
+  const merged: NonNullable<typeof byShowId> = [];
+  for (const item of [...(byShowId || []), ...(bySourceId || [])]) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      merged.push(item);
+    }
+  }
+  merged.sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+
+  return hydrateItems(merged.slice(0, limit));
 }
 
 // =================================================================
