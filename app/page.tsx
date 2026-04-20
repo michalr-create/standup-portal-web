@@ -168,7 +168,7 @@ export default async function HomePage() {
   const [recentItems, featuredItems, specjalItems, showSections] = await Promise.all([
     getRecentItems(7, 3, 30),
     getFeaturedItems(8),
-    getItemsByTagSlug("specjal", 10),
+    getItemsByTagSlug("special", 10),
     getLatestPerShow(3),
   ]);
 
@@ -224,7 +224,7 @@ export default async function HomePage() {
       {specjalItems.length > 0 && (
         <section className="band">
           <div className="max-w-6xl mx-auto">
-            <SectionHead title="Specjale" sub={"Pe\u0142nometra\u017cowe wydania"} linkHref="/specjale" linkText={"Wszystkie specjale \u2192"} />
+            <SectionHead title="Specials" sub={"Pe\u0142nometra\u017cowe wydania"} linkHref="/specjale" linkText={"Wszystkie specials \u2192"} />
             <ScrollRow items={specjalItems} />
           </div>
         </section>
