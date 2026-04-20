@@ -53,11 +53,7 @@ export default function ModerationList({
   const [personTagId, setPersonTagId] = useState<number | "">("");
   const [contentTagId, setContentTagId] = useState<number | "">("");
 
-  // Tylko tagi które faktycznie wystepują w biezacym zestawie itemów
-  const activeContentTags = useMemo(() => {
-    const usedIds = new Set(items.flatMap((i) => i.assignedTagIds));
-    return contentTags.filter((t) => usedIds.has(t.id));
-  }, [items, contentTags]);
+  const activeContentTags = contentTags;
 
   const filtered = useMemo(() => {
     let result = items;
