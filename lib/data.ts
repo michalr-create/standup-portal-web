@@ -247,6 +247,7 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
     .select(cols)
     .eq("status", "approved")
     .eq("show_id", show.id)
+    .neq("content_type", "short")
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
     .limit(limit);
@@ -258,6 +259,7 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
         .select(cols)
         .eq("status", "approved")
         .in("source_id", sourceIds)
+        .neq("content_type", "short")
         .is("merged_into_id", null)
         .order("published_at", { ascending: false })
         .limit(limit)
