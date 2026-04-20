@@ -10,6 +10,25 @@ async function requireAuth() {
   return user;
 }
 
+export async function bulkUpdateAndApprove(
+  itemIds: number[],
+  categoryId: number | null | undefined,
+  showId: number | null | undefined
+) {
+  await requireAuth();
+  if (itemIds.length === 0) return;
+  const sb = getAdminSupabase();
+
+  const update: Record<string, unknown> = { status: "approved" };
+  if (categoryId !== undefined) update.category_id = categoryId;
+  if (showId !== undefined) update.show_id = showId;
+
+  await sb.from("content_items").update(update).in("id", itemIds);
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
 export async function approveItem(itemId: number) {
   await requireAuth();
   const sb = getAdminSupabase();
