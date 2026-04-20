@@ -143,8 +143,6 @@ if (error || !items) return { items: [], personTags: [], allCategories: [], allS
 
   // Pobierz sources, categories, shows, tagi
   const sourceIds = Array.from(new Set(items.map((i) => i.source_id).filter(Boolean)));
-  const categoryIds = Array.from(new Set(items.map((i) => i.category_id).filter(Boolean)));
-  const showIds = Array.from(new Set(items.map((i) => i.show_id).filter(Boolean)));
   const itemIds = items.map((i) => i.id);
   const duplicateOfIds = items.map((i) => i.possible_duplicate_of).filter(Boolean);
 
@@ -152,13 +150,16 @@ if (error || !items) return { items: [], personTags: [], allCategories: [], allS
     ? await sb.from("sources").select("id, name").in("id", sourceIds)
     : { data: [] };
 
-  const { data: categories } = categoryIds.length > 0
-    ? await sb.from("categories").select("id, name, slug").in("id", categoryIds)
-    : { data: [] };
+  const { data: categories } = await sb
+    .from("categories")
+    .select("id, name, slug")
+    .order("display_order");
 
-  const { data: shows } = showIds.length > 0
-    ? await sb.from("shows").select("id, name, slug").in("id", showIds)
-    : { data: [] };
+  const { data: shows } = await sb
+    .from("shows")
+    .select("id, name, slug")
+    .eq("is_active", true)
+    .order("name");
 
   const { data: contentTags } = await sb
     .from("content_tags")
