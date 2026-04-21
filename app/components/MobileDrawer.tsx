@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 
 type Props = {
@@ -23,7 +24,7 @@ export default function MobileDrawer({ categories, shows, people }: Props) {
         <span className="w-3.5 h-0.5 rounded-full" style={{ background: "var(--paper-dim)" }} />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-50">
           <div
             className="absolute inset-0"
@@ -118,7 +119,8 @@ export default function MobileDrawer({ categories, shows, people }: Props) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

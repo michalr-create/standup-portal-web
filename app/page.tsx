@@ -45,6 +45,18 @@ function odcinekLabel(n: number): string {
   return "odcink\u00f3w";
 }
 
+function nowyLabel(n: number): string {
+  if (n === 1) return "nowy";
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "nowe";
+  return "nowych";
+}
+
+function pozycjaLabel(n: number): string {
+  if (n === 1) return "pozycja";
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "pozycje";
+  return "pozycji";
+}
+
 function ShowBlock({ show, totalCount }: { show: Show; totalCount: number }) {
   return (
     <Link href={"/format/" + show.slug} className="fcard group">
@@ -86,13 +98,13 @@ export default async function HomePage() {
             <span>polski stand-up {"\u00b7"} jeden adres</span>
             {recentItems.length > 0 && (
               <span style={{ color: "var(--coral)" }}>
-                {"\u25cf"} {recentItems.length} nowych
+                {"\u25cf"} {recentItems.length} {nowyLabel(recentItems.length)}
               </span>
             )}
           </div>
           <h1 className="font-black m-0 mb-5" style={{ fontSize: "clamp(42px, 6vw, 88px)", lineHeight: ".92", letterSpacing: "-.035em" }}>
             Ca{"ł"}y polski{" "}
-            <span className="serif" style={{ color: "var(--coral)" }}>stand-up</span>
+            <span className="serif" style={{ color: "var(--coral)", whiteSpace: "nowrap" }}>stand-up</span>
             <br />w jednym miejscu<span style={{ color: "var(--coral)" }}>.</span>
           </h1>
           <p className="text-lg leading-relaxed max-w-2xl m-0" style={{ color: "var(--paper-dim)", fontSize: "19px", lineHeight: "1.55" }}>
@@ -105,7 +117,7 @@ export default async function HomePage() {
       {recentItems.length > 0 && (
         <section className="band">
           <div className="max-w-6xl mx-auto">
-            <SectionHead title="Nowe" sub={"Ostatnie 7 dni \u00b7 " + recentItems.length + " pozycji"} linkHref="/standup" linkText={"Zobacz wszystkie \u2192"} />
+            <SectionHead title="Nowe" sub={"Ostatnie 7 dni \u00b7 " + recentItems.length + " " + pozycjaLabel(recentItems.length)} linkHref="/standup" linkText={"Zobacz wszystkie \u2192"} />
             <HomeVideoGrid items={recentItems} />
           </div>
         </section>
