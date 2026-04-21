@@ -321,6 +321,43 @@ export default function SourcesManager({ sources, people, shows }: Props) {
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
   const [localPeople, setLocalPeople] = useState(people);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState("");
+  const [bulkResult, setBulkResult] = useState("");
+
+  const youtubeSources = sources.filter(
+    (s) => s.type === "youtube" && s.feed_url && s.is_active
+  );
+
+  const handleBulkFullImport = async () => {
+    setBulkImporting(true);
+    setBulkResult("");
+    let totalInserted = 0;
+    let errorCount = 0;
+
+    for (const source of youtubeSources) {
+      setBulkProgress(`Importuję: ${source.name}… (łącznie ${totalInserted} nowych)`);
+      let token: string | null = null;
+      let hasMore = true;
+
+      while (hasMore) {
+        const r = await fullFetchSource(source.id, token);
+        if (r.error) { errorCount++; break; }
+        totalInserted += r.inserted;
+        hasMore = r.hasMore;
+        token = r.nextPageToken;
+        setBulkProgress(`Importuję: ${source.name}… (łącznie ${totalInserted} nowych)`);
+      }
+    }
+
+    setBulkImporting(false);
+    setBulkProgress("");
+    setBulkResult(
+      `Import zakończony. Dodano ${totalInserted} filmów z ${youtubeSources.length} źródeł.` +
+      (errorCount > 0 ? ` Błędy: ${errorCount} źródeł.` : "")
+    );
+    if (totalInserted > 0) setTimeout(() => window.location.reload(), 2000);
+  };
 
   // New source form state
   const [name, setName] = useState("");
@@ -381,12 +418,37 @@ export default function SourcesManager({ sources, people, shows }: Props) {
 
   return (
     <div className="space-y-6">
-      <button
-        onClick={() => setShowForm(!showForm)}
-        className="px-4 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-gray-200"
-      >
-        {showForm ? "Anuluj" : "+ Dodaj zrodlo"}
-      </button>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="px-4 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-gray-200"
+        >
+          {showForm ? "Anuluj" : "+ Dodaj zrodlo"}
+        </button>
+
+        {youtubeSources.length > 0 && (
+          <button
+            onClick={handleBulkFullImport}
+            disabled={bulkImporting}
+            className="px-4 py-2 bg-purple-900 hover:bg-purple-800 text-purple-200 text-sm font-medium rounded-lg disabled:opacity-50"
+          >
+            {bulkImporting
+              ? `Importuję… (${youtubeSources.length} źródeł)`
+              : `Pełny import wszystkich (${youtubeSources.length})`}
+          </button>
+        )}
+      </div>
+
+      {bulkImporting && bulkProgress && (
+        <div className="text-xs px-3 py-2 rounded-lg bg-purple-950/50 text-purple-300 border border-purple-900">
+          {bulkProgress}
+        </div>
+      )}
+      {bulkResult && (
+        <div className={`text-xs px-3 py-2 rounded-lg border ${bulkResult.includes("Błędy") ? "bg-yellow-950/50 text-yellow-300 border-yellow-900" : "bg-green-950/50 text-green-400 border-green-900"}`}>
+          {bulkResult}
+        </div>
+      )}
 
       {showForm && (
         <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 space-y-4">
