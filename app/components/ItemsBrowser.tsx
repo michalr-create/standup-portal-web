@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
+import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { getYouTubeId } from "@/lib/youtube";
 
@@ -128,11 +129,23 @@ export default function ItemsBrowser({ items }: { items: Item[] }) {
                   {item.title}
                 </h4>
                 <div
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 flex-wrap"
                   style={{ color: "var(--paper-dim)", fontSize: "13px" }}
                 >
-                  <span>{label}</span>
-                  {label && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
+                  {item.people.length > 0 ? (
+                    item.people.map((p, i) => (
+                      <span key={p.slug} className="flex items-center gap-0.5">
+                        {i > 0 && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
+                        <span>{p.name}</span>
+                        <HeartButton type="person" slug={p.slug} size={13} />
+                      </span>
+                    ))
+                  ) : (
+                    <span>{item.showName || ""}</span>
+                  )}
+                  {(item.people.length > 0 || item.showName) && (
+                    <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>
+                  )}
                   <span className="mono" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
                     {timeAgo(item.published_at)}
                   </span>

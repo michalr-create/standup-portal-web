@@ -9,6 +9,7 @@ import type { Show } from "@/lib/data";
 import ScrollRow from "./components/ScrollRow";
 import HomeVideoGrid from "./components/HomeVideoGrid";
 import FavoritesSection from "./components/FavoritesSection";
+import HeartButton from "./components/HeartButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -65,8 +66,11 @@ function ShowBlock({ show, totalCount, latestDate }: { show: Show; totalCount: n
 
   return (
     <Link href={"/format/" + show.slug} className="fcard group">
-      <div className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg" style={{ background: "var(--ink)", color: "var(--paper)" }}>
-        {show.name.charAt(0)}
+      <div className="flex items-start justify-between gap-2">
+        <div className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg shrink-0" style={{ background: "var(--ink)", color: "var(--paper)" }}>
+          {show.name.charAt(0)}
+        </div>
+        <HeartButton type="show" slug={show.slug} size={16} inactiveColor="rgba(11,11,11,.3)" />
       </div>
       <h4 className="font-black m-0 leading-tight" style={{ fontSize: "20px", letterSpacing: "-.01em", color: "var(--ink)" }}>
         {show.name}

@@ -6,6 +6,12 @@ import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+function odcinekLabel(n: number): string {
+  if (n === 1) return "odcinek";
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "odcinki";
+  return "odcink\u00f3w";
+}
+
 type Props = {
   params: Promise<{ slug: string }>;
 };
@@ -14,7 +20,7 @@ export default async function FormatPage({ params }: Props) {
   const { slug } = await params;
   const [show, items] = await Promise.all([
     getShowBySlug(slug),
-    getItemsByShowSlug(slug),
+    getItemsByShowSlug(slug, 999),
   ]);
 
   if (!show) notFound();
@@ -29,7 +35,7 @@ export default async function FormatPage({ params }: Props) {
             </h1>
             <HeartButton type="show" slug={slug} />
             <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-              {items.length} {items.length === 1 ? "odcinek" : "odcinek\u00f3w"}
+              {items.length} {odcinekLabel(items.length)}
             </span>
           </div>
           {show.description && (

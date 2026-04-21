@@ -19,10 +19,6 @@ export default function StanduperzyList({ people }: { people: Person[] }) {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const letters = Array.from(
-    new Set(filtered.map((p) => p.name.charAt(0).toUpperCase()))
-  ).sort();
-
   return (
     <div>
       {/* Search */}
@@ -40,19 +36,6 @@ export default function StanduperzyList({ people }: { people: Person[] }) {
             fontSize: "14px",
           }}
         />
-      </div>
-
-      {/* Letter navigation */}
-      <div className="flex flex-wrap gap-1 mb-8">
-        {letters.map((letter) => (
-          <span
-            key={letter}
-            className="w-8 h-8 rounded-full grid place-items-center text-xs font-bold"
-            style={{ background: "var(--ink-3)", color: "var(--paper-dim)" }}
-          >
-            {letter}
-          </span>
-        ))}
       </div>
 
       {/* Grid */}
