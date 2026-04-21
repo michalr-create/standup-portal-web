@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import {
   approveItem,
   rejectItem,
@@ -45,6 +45,78 @@ type Props = {
   shows: ShowOption[];
   mode: "pending" | "approved" | "rejected";
 };
+
+function PersonTagSearch({
+  personTags,
+  selectedTagIds,
+  onToggle,
+}: {
+  personTags: PersonTag[];
+  selectedTagIds: number[];
+  onToggle: (id: number) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = personTags.filter((pt) => selectedTagIds.includes(pt.id));
+  const filtered = personTags.filter(
+    (pt) =>
+      !selectedTagIds.includes(pt.id) &&
+      pt.name.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-1.5">
+          {selected.map((pt) => (
+            <button
+              key={pt.id}
+              onClick={() => onToggle(pt.id)}
+              className="text-xs px-2 py-0.5 rounded-full bg-white text-black flex items-center gap-1 hover:bg-gray-200"
+            >
+              {pt.name} <span className="opacity-50 text-sm leading-none">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Szukaj standupera…"
+          className="w-48 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-neutral-500"
+        />
+        {open && (
+          <div className="absolute top-full left-0 z-20 mt-0.5 w-52 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden shadow-lg"
+            style={{ maxHeight: "180px", overflowY: "auto" }}
+          >
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-gray-500">
+                {query ? "Brak wyników" : "Wpisz imię…"}
+              </div>
+            ) : (
+              filtered.slice(0, 10).map((pt) => (
+                <button
+                  key={pt.id}
+                  onMouseDown={() => { onToggle(pt.id); setQuery(""); inputRef.current?.focus(); }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-neutral-800"
+                >
+                  {pt.name}
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function slugify(text: string): string {
   return text
@@ -259,19 +331,11 @@ export default function ModerationCard({ item, personTags, contentTags, categori
           {/* Person tags */}
           <div>
             <span className="text-xs text-gray-500 block mb-1">Standuperzy:</span>
-            <div className="flex flex-wrap gap-1">
-              {personTags.map((pt) => (
-                <button
-                  key={pt.id}
-                  onClick={() => toggleTag(pt.id)}
-                  className={selectedTagIds.includes(pt.id)
-                    ? "text-xs px-2 py-0.5 rounded-full bg-white text-black"
-                    : "text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-gray-400 hover:bg-neutral-700"}
-                >
-                  {pt.name}
-                </button>
-              ))}
-            </div>
+            <PersonTagSearch
+              personTags={personTags}
+              selectedTagIds={selectedTagIds}
+              onToggle={toggleTag}
+            />
           </div>
 
           {/* Content tags */}
