@@ -57,7 +57,11 @@ function pozycjaLabel(n: number): string {
   return "pozycji";
 }
 
-function ShowBlock({ show, totalCount }: { show: Show; totalCount: number }) {
+function ShowBlock({ show, totalCount, latestDate }: { show: Show; totalCount: number; latestDate: string | null }) {
+  const latestLabel = latestDate
+    ? new Date(latestDate).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" })
+    : null;
+
   return (
     <Link href={"/format/" + show.slug} className="fcard group">
       <div className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg" style={{ background: "var(--ink)", color: "var(--paper)" }}>
@@ -77,6 +81,11 @@ function ShowBlock({ show, totalCount }: { show: Show; totalCount: number }) {
           {"\u2192"}
         </span>
       </div>
+      {latestLabel && (
+        <div className="mono text-xs" style={{ color: "#9a9080", letterSpacing: ".08em", marginTop: "-6px" }}>
+          ostatni: {latestLabel}
+        </div>
+      )}
     </Link>
   );
 }
@@ -161,8 +170,8 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {showSections.map(({ show, items, totalCount }) => (
-                <ShowBlock key={show.id} show={show} totalCount={totalCount} />
+              {showSections.map(({ show, totalCount, latestDate }) => (
+                <ShowBlock key={show.id} show={show} totalCount={totalCount} latestDate={latestDate} />
               ))}
             </div>
           </div>

@@ -590,16 +590,27 @@ export async function getItemsByTagSlug(tagSlug: string, limit = 10): Promise<It
 // =================================================================
 // QUERY: najnowsze odcinki z kazdego show (do sekcji Formaty)
 // =================================================================
-export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: Item[]; totalCount: number }[]> {
+export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: Item[]; totalCount: number; latestDate: string | null }[]> {
   const shows = await getAllShows();
-  const results: { show: Show; items: Item[]; totalCount: number }[] = [];
+  const results: { show: Show; items: Item[]; totalCount: number; latestDate: string | null }[] = [];
 
   for (const show of shows) {
     const allItems = await getItemsByShowSlug(show.slug, 999);
     if (allItems.length > 0) {
-      results.push({ show, items: allItems.slice(0, limit), totalCount: allItems.length });
+      results.push({
+        show,
+        items: allItems.slice(0, limit),
+        totalCount: allItems.length,
+        latestDate: allItems[0]?.published_at ?? null,
+      });
     }
   }
+
+  results.sort((a, b) => {
+    if (!a.latestDate) return 1;
+    if (!b.latestDate) return -1;
+    return new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime();
+  });
 
   return results;
 }
