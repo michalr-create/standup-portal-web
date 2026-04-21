@@ -61,28 +61,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ items: [], people: peopleDetails, shows: showDetails });
   }
 
+  // ── Look up Shorts category ID ─────────────────────────────────────────
+  const { data: shortsCategory } = await sb
+    .from("categories")
+    .select("id")
+    .eq("slug", "shorts")
+    .maybeSingle();
+  const shortsCategoryId = shortsCategory?.id ?? null;
+
   // ── Fetch items ────────────────────────────────────────────────────────
   const baseSelect = "id, title, url, thumbnail_url, published_at, duration_seconds, show_id, category_id";
 
+  function buildBase() {
+    let q = sb
+      .from("content_items")
+      .select(baseSelect)
+      .eq("status", "approved")
+      .is("merged_into_id", null)
+      .neq("content_type", "short");
+    if (shortsCategoryId != null) {
+      q = q.or(`category_id.is.null,category_id.neq.${shortsCategoryId}`);
+    }
+    return q;
+  }
+
   const [personItemsRes, showItemsRes] = await Promise.all([
     itemIdSet.size > 0
-      ? sb
-          .from("content_items")
-          .select(baseSelect)
-          .eq("status", "approved")
-          .is("merged_into_id", null)
-          .neq("content_type", "short")
+      ? buildBase()
           .in("id", Array.from(itemIdSet))
           .order("published_at", { ascending: false })
           .limit(10)
       : Promise.resolve({ data: [] }),
     showIds.length > 0
-      ? sb
-          .from("content_items")
-          .select(baseSelect)
-          .eq("status", "approved")
-          .is("merged_into_id", null)
-          .neq("content_type", "short")
+      ? buildBase()
           .in("show_id", showIds)
           .order("published_at", { ascending: false })
           .limit(10)
