@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import HeartButton from "./HeartButton";
 
 type Person = {
   id: number;
@@ -90,9 +91,12 @@ export default function StanduperzyList({ people }: { people: Person[] }) {
                 )}
               </div>
 
-              <span className="ml-auto text-sm" style={{ color: "var(--paper-mute)" }}>
-                {"\u2192"}
-              </span>
+              <div className="ml-auto flex items-center gap-0.5">
+                <HeartButton type="person" slug={person.slug} />
+                <span className="text-sm" style={{ color: "var(--paper-mute)" }}>
+                  {"\u2192"}
+                </span>
+              </div>
             </Link>
           ))}
         </div>

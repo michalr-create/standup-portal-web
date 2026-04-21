@@ -8,6 +8,7 @@ import {
 import type { Show } from "@/lib/data";
 import ScrollRow from "./components/ScrollRow";
 import HomeVideoGrid from "./components/HomeVideoGrid";
+import FavoritesSection from "./components/FavoritesSection";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -131,6 +132,9 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ULUBIONE */}
+      <FavoritesSection />
 
       {/* POLECANE */}
       {featuredItems.length > 0 && (

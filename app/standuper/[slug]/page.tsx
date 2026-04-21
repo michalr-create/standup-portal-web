@@ -1,5 +1,6 @@
 import { getPersonBySlug, getItemsByPersonSlug } from "@/lib/data";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
+import HeartButton from "@/app/components/HeartButton";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +25,11 @@ export default async function StanduperPage({ params }: Props) {
           <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
             {person.role || "Standuper"}
           </div>
-          <div className="flex items-baseline gap-4 flex-wrap mb-2">
+          <div className="flex items-center gap-3 flex-wrap mb-2">
             <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
               {person.name}<span className="dot-accent">.</span>
             </h1>
+            <HeartButton type="person" slug={slug} />
             <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
               {items.length} {items.length === 1 ? "materia\u0142" : "materia\u0142\u00f3w"}
             </span>
