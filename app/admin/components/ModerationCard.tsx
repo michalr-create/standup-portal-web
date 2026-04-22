@@ -44,6 +44,7 @@ type Props = {
   categories: CategoryOption[];
   shows: ShowOption[];
   mode: "pending" | "approved" | "rejected";
+  onTagsChange?: (tagIds: number[]) => void;
 };
 
 function PersonTagSearch({
@@ -138,7 +139,7 @@ function formatDuration(seconds: number | null): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export default function ModerationCard({ item, personTags, contentTags, categories, shows, mode }: Props) {
+export default function ModerationCard({ item, personTags, contentTags, categories, shows, mode, onTagsChange }: Props) {
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(item.category_id);
@@ -216,9 +217,11 @@ export default function ModerationCard({ item, personTags, contentTags, categori
   };
 
   const toggleTag = (tagId: number) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-    );
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter((id) => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setSelectedTagIds(next);
+    onTagsChange?.(next);
     setDirty(true);
   };
 
@@ -230,7 +233,9 @@ export default function ModerationCard({ item, personTags, contentTags, categori
       setNewTagError(result.error);
     } else if (result.tag) {
       setLocalContentTags((prev) => [...prev, result.tag!].sort((a, b) => a.name.localeCompare(b.name)));
-      setSelectedTagIds((prev) => [...prev, result.tag!.id]);
+      const next = [...selectedTagIds, result.tag!.id];
+      setSelectedTagIds(next);
+      onTagsChange?.(next);
       setDirty(true);
       setNewTagName("");
       setShowNewTag(false);

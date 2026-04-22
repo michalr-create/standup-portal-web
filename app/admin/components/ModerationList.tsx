@@ -59,6 +59,9 @@ export default function ModerationList({
   const [bulkCategoryId, setBulkCategoryId] = useState<string>("");
   const [bulkShowId, setBulkShowId] = useState<string>("");
   const [isBulkPending, startBulkTransition] = useTransition();
+  const [tagMap, setTagMap] = useState<Map<number, number[]>>(
+    () => new Map(items.map((i) => [i.id, i.assignedTagIds]))
+  );
 
   const visibleItems = useMemo(
     () => items.filter((i) => !bulkDoneIds.has(i.id)),
@@ -88,9 +91,10 @@ export default function ModerationList({
 
   const handleBulkApprove = () => {
     const ids = Array.from(selectedIds);
+    const itemsWithTags = ids.map((id) => ({ id, tagIds: tagMap.get(id) ?? [] }));
     startBulkTransition(async () => {
       await bulkUpdateAndApprove(
-        ids,
+        itemsWithTags,
         bulkCategoryId ? Number(bulkCategoryId) : undefined,
         bulkShowId ? Number(bulkShowId) : undefined
       );
@@ -197,6 +201,9 @@ export default function ModerationList({
                   categories={categories}
                   shows={shows}
                   mode={mode}
+                  onTagsChange={(tagIds) =>
+                    setTagMap((prev) => new Map(prev).set(item.id, tagIds))
+                  }
                 />
               </div>
             </div>

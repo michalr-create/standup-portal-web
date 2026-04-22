@@ -11,13 +11,23 @@ async function requireAuth() {
 }
 
 export async function bulkUpdateAndApprove(
-  itemIds: number[],
+  itemsWithTags: { id: number; tagIds: number[] }[],
   categoryId: number | null | undefined,
   showId: number | null | undefined
 ) {
   await requireAuth();
-  if (itemIds.length === 0) return;
+  if (itemsWithTags.length === 0) return;
   const sb = getAdminSupabase();
+  const itemIds = itemsWithTags.map((i) => i.id);
+
+  // Replace tags for all selected items in one shot
+  await sb.from("content_tags").delete().in("content_item_id", itemIds);
+  const tagRows = itemsWithTags.flatMap((i) =>
+    i.tagIds.map((tid) => ({ content_item_id: i.id, tag_id: tid }))
+  );
+  if (tagRows.length > 0) {
+    await sb.from("content_tags").insert(tagRows);
+  }
 
   const update: Record<string, unknown> = { status: "approved" };
   if (categoryId !== undefined) update.category_id = categoryId;
