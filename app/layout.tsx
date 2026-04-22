@@ -41,6 +41,7 @@ export default async function RootLayout({
     { href: "/formaty", label: "Formaty" },
     { href: "/wywiady", label: "Wywiady" },
     { href: "/shorts", label: "Shorts" },
+    { href: "/kulisy", label: "Kulisy" },
     { href: "/standuperzy", label: "Standuperzy" },
     { href: "/ulubione", label: "Ulubione" },
   ];
