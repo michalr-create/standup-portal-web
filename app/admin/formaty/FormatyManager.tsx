@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createShow, updateShow, updateShowDefaultPeople } from "../actions-sources";
+import { createShow, updateShow, updateShowDefaultPeople, deleteShow } from "../actions-sources";
 
 type Show = {
   id: number;
@@ -40,6 +40,8 @@ function slugify(text: string): string {
 function ShowCard({ show, categories, people }: { show: Show; categories: Category[]; people: Person[] }) {
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [description, setDescription] = useState(show.description || "");
   const [categoryId, setCategoryId] = useState<number | null>(show.category_id);
   const [youtubeUrl, setYoutubeUrl] = useState(show.youtube_channel_url || "");
@@ -78,6 +80,18 @@ function ShowCard({ show, categories, people }: { show: Show; categories: Catego
     });
   };
 
+  const handleDelete = () => {
+    startTransition(async () => {
+      const result = await deleteShow(show.id);
+      if (result.error) {
+        setDeleteError(`Błąd: ${result.error}`);
+        setConfirmDelete(false);
+      } else {
+        window.location.reload();
+      }
+    });
+  };
+
   return (
     <div className={`bg-neutral-900 border border-neutral-800 rounded-xl p-4 ${show.is_active ? "" : "opacity-50"} ${isPending ? "opacity-50 pointer-events-none" : ""}`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -113,7 +127,7 @@ function ShowCard({ show, categories, people }: { show: Show; categories: Catego
           )}
         </div>
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
           <button
             onClick={() => setEditing(!editing)}
             className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-300"
@@ -126,9 +140,38 @@ function ShowCard({ show, categories, people }: { show: Show; categories: Catego
           >
             {show.is_active ? "Wylacz" : "Wlacz"}
           </button>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-xs px-3 py-1 bg-neutral-800 hover:bg-red-900 rounded text-gray-400 hover:text-red-300"
+            >
+              Usuń
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleDelete}
+                disabled={isPending}
+                className="text-xs px-3 py-1 bg-red-900 hover:bg-red-800 rounded text-red-200 disabled:opacity-50"
+              >
+                {isPending ? "Usuwam…" : "Potwierdź"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-xs px-2 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-400"
+              >
+                Anuluj
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      {deleteError && (
+        <div className="mt-3 text-xs px-3 py-2 rounded-lg bg-red-950/50 text-red-400 border border-red-900">
+          {deleteError}
+        </div>
+      )}
       {editing && (
         <div className="mt-4 pt-4 border-t border-neutral-800 space-y-3">
           <div>

@@ -498,6 +498,19 @@ export async function createShow(data: {
   return { success: true, show };
 }
 
+export async function deleteShow(showId: number) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  await sb.from("show_default_people").delete().eq("show_id", showId);
+  const { error } = await sb.from("shows").delete().eq("id", showId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/formaty");
+  revalidatePath("/formaty");
+  return { success: true };
+}
+
 export async function updateShowDefaultPeople(showId: number, personIds: number[]) {
   await requireAuth();
   const sb = getAdminSupabase();
