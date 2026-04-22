@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50;
 
 type Props = {
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; cat?: string }>;
 };
 
 export default async function AdminHomePage({ searchParams }: Props) {
@@ -19,13 +19,14 @@ export default async function AdminHomePage({ searchParams }: Props) {
   const currentStatus = params.status || "pending";
   const search = params.q || "";
   const page = Math.max(0, parseInt(params.page || "0", 10));
+  const categoryId = params.cat ? parseInt(params.cat, 10) : null;
 
   const [data, counts] = await Promise.all([
     currentStatus === "pending"
       ? getPendingItems(search, page)
       : currentStatus === "featured"
       ? getFeaturedItems(search, page)
-      : getItemsByStatus(currentStatus, search, page),
+      : getItemsByStatus(currentStatus, search, page, categoryId),
     getStatusCounts(),
   ]);
 
@@ -39,10 +40,19 @@ export default async function AdminHomePage({ searchParams }: Props) {
     p.set("status", currentStatus);
     if (search) p.set("q", search);
     if (page > 0) p.set("page", String(page));
+    if (categoryId != null) p.set("cat", String(categoryId));
     for (const [k, v] of Object.entries(overrides)) {
       if (v === undefined || v === "") p.delete(k);
       else p.set(k, String(v));
     }
+    return `/admin?${p.toString()}`;
+  };
+
+  const buildCatUrl = (catId: number | null) => {
+    const p = new URLSearchParams();
+    p.set("status", currentStatus);
+    if (search) p.set("q", search);
+    if (catId != null) p.set("cat", String(catId));
     return `/admin?${p.toString()}`;
   };
 
@@ -74,6 +84,26 @@ export default async function AdminHomePage({ searchParams }: Props) {
       </Suspense>
 
       <AdminSearchBar defaultValue={search} currentStatus={currentStatus} />
+
+      {(currentStatus === "approved" || currentStatus === "rejected") && allCategories.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          <Link
+            href={buildCatUrl(null)}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryId == null ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
+          >
+            Wszystkie
+          </Link>
+          {allCategories.map((c) => (
+            <Link
+              key={c.id}
+              href={buildCatUrl(c.id)}
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryId === c.id ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
+            >
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {totalCount > 0 && (
         <div className="flex items-center justify-between mb-4 text-xs text-gray-500">

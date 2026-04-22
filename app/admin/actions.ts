@@ -271,7 +271,7 @@ if (error || !items) return { items: [], totalCount: 0, personTags: [], allCateg
   revalidatePath("/");
 }
 
-export async function getItemsByStatus(status: string, search = "", page = 0) {
+export async function getItemsByStatus(status: string, search = "", page = 0, categoryId: number | null = null) {
   await requireAuth();
   const sb = getAdminSupabase();
   const offset = page * PAGE_SIZE;
@@ -285,6 +285,7 @@ export async function getItemsByStatus(status: string, search = "", page = 0) {
     .range(offset, offset + PAGE_SIZE - 1);
 
   if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+  if (categoryId != null) query = query.eq("category_id", categoryId);
 
   const { data: items, count, error } = await query;
 
