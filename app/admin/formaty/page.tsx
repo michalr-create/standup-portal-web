@@ -1,13 +1,14 @@
 import { getAllShowsAdmin } from "../actions-sources";
-import { getAllCategories } from "@/lib/data";
+import { getAllCategories, getAllPeople } from "@/lib/data";
 import FormatyManager from "./FormatyManager";
 
 export const dynamic = "force-dynamic";
 
 export default async function FormatyAdminPage() {
-  const [shows, categories] = await Promise.all([
+  const [shows, categories, people] = await Promise.all([
     getAllShowsAdmin(),
     getAllCategories(),
+    getAllPeople(),
   ]);
 
   return (
@@ -17,7 +18,7 @@ export default async function FormatyAdminPage() {
         {shows.length} {shows.length === 1 ? "format" : "formatow"} w bazie.
       </p>
 
-      <FormatyManager shows={shows} categories={categories} />
+      <FormatyManager shows={shows} categories={categories} people={people} />
     </div>
   );
 }

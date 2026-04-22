@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createShow, updateShow } from "../actions-sources";
+import { createShow, updateShow, updateShowDefaultPeople } from "../actions-sources";
 
 type Show = {
   id: number;
@@ -16,13 +16,16 @@ type Show = {
   website_url: string | null;
   is_active: boolean;
   itemCount: number;
+  defaultPersonIds: number[];
 };
 
 type Category = { id: number; name: string; slug: string };
+type Person = { id: number; name: string; slug: string };
 
 type Props = {
   shows: Show[];
   categories: Category[];
+  people: Person[];
 };
 
 function slugify(text: string): string {
@@ -34,7 +37,7 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function ShowCard({ show, categories }: { show: Show; categories: Category[] }) {
+function ShowCard({ show, categories, people }: { show: Show; categories: Category[]; people: Person[] }) {
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState(show.description || "");
@@ -43,7 +46,13 @@ function ShowCard({ show, categories }: { show: Show; categories: Category[] }) 
   const [spotifyUrl, setSpotifyUrl] = useState(show.spotify_show_url || "");
   const [appleUrl, setAppleUrl] = useState(show.apple_podcasts_url || "");
   const [websiteUrl, setWebsiteUrl] = useState(show.website_url || "");
+  const [selectedPeople, setSelectedPeople] = useState<number[]>(show.defaultPersonIds);
   const [dirty, setDirty] = useState(false);
+
+  const togglePerson = (pid: number) => {
+    setSelectedPeople((prev) => prev.includes(pid) ? prev.filter((id) => id !== pid) : [...prev, pid]);
+    setDirty(true);
+  };
 
   const handleSave = () => {
     startTransition(async () => {
@@ -55,6 +64,7 @@ function ShowCard({ show, categories }: { show: Show; categories: Category[] }) 
         apple_podcasts_url: appleUrl,
         website_url: websiteUrl,
       });
+      await updateShowDefaultPeople(show.id, selectedPeople);
       setDirty(false);
       setEditing(false);
       window.location.reload();
@@ -88,6 +98,11 @@ function ShowCard({ show, categories }: { show: Show; categories: Category[] }) 
               <span className="text-gray-600">{show.description.slice(0, 80)}{show.description.length > 80 ? "..." : ""}</span>
             )}
           </div>
+          {show.defaultPersonIds.length > 0 && !editing && (
+            <div className="text-xs text-gray-500">
+              Auto-tag: {people.filter((p) => show.defaultPersonIds.includes(p.id)).map((p) => p.name).join(", ")}
+            </div>
+          )}
           {!editing && (show.youtube_channel_url || show.spotify_show_url || show.apple_podcasts_url) && (
             <div className="flex gap-2 text-xs text-gray-500">
               {show.youtube_channel_url && <span>YT</span>}
@@ -159,6 +174,25 @@ function ShowCard({ show, categories }: { show: Show; categories: Category[] }) 
             </div>
           </div>
 
+          <div>
+            <span className="text-xs text-gray-500 block mb-1">Domyslni standuperzy (auto-tag):</span>
+            <div className="flex flex-wrap gap-1">
+              {people.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => togglePerson(p.id)}
+                  className={
+                    selectedPeople.includes(p.id)
+                      ? "text-xs px-2 py-0.5 rounded-full bg-white text-black"
+                      : "text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-gray-400 hover:bg-neutral-700"
+                  }
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {dirty && (
             <button
               onClick={handleSave}
@@ -173,7 +207,7 @@ function ShowCard({ show, categories }: { show: Show; categories: Category[] }) 
   );
 }
 
-export default function FormatyManager({ shows, categories }: Props) {
+export default function FormatyManager({ shows, categories, people }: Props) {
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
 
@@ -185,12 +219,17 @@ export default function FormatyManager({ shows, categories }: Props) {
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [appleUrl, setAppleUrl] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
+  const [selectedPeople, setSelectedPeople] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const handleNameChange = (value: string) => {
     setName(value);
     setSlug(slugify(value));
+  };
+
+  const togglePerson = (pid: number) => {
+    setSelectedPeople((prev) => prev.includes(pid) ? prev.filter((id) => id !== pid) : [...prev, pid]);
   };
 
   const handleSubmit = () => {
@@ -209,6 +248,7 @@ export default function FormatyManager({ shows, categories }: Props) {
         spotify_show_url: spotifyUrl.trim(),
         apple_podcasts_url: appleUrl.trim(),
         website_url: websiteUrl.trim(),
+        default_person_ids: selectedPeople,
       });
 
       if (result.error) {
@@ -217,7 +257,7 @@ export default function FormatyManager({ shows, categories }: Props) {
         setSuccess(`Dodano: ${name.trim()}`);
         setName(""); setSlug(""); setDescription("");
         setCategoryId(null); setYoutubeUrl(""); setSpotifyUrl("");
-        setAppleUrl(""); setWebsiteUrl(""); setError("");
+        setAppleUrl(""); setWebsiteUrl(""); setSelectedPeople([]); setError("");
         setTimeout(() => { setSuccess(""); setShowForm(false); window.location.reload(); }, 1500);
       }
     });
@@ -281,6 +321,17 @@ export default function FormatyManager({ shows, categories }: Props) {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm text-gray-300 mb-1">Domyslni standuperzy (auto-tag)</label>
+            <div className="flex flex-wrap gap-1">
+              {people.map((p) => (
+                <button key={p.id} onClick={() => togglePerson(p.id)} className={selectedPeople.includes(p.id) ? "text-xs px-2 py-0.5 rounded-full bg-white text-black" : "text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-gray-400 hover:bg-neutral-700"}>
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {error && <div className="text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-lg px-3 py-2">{error}</div>}
           {success && <div className="text-sm text-green-400 bg-green-950/50 border border-green-900 rounded-lg px-3 py-2">{success}</div>}
 
@@ -293,7 +344,7 @@ export default function FormatyManager({ shows, categories }: Props) {
       {/* Lista */}
       <div className="space-y-3">
         {shows.map((s) => (
-          <ShowCard key={s.id} show={s} categories={categories} />
+          <ShowCard key={s.id} show={s} categories={categories} people={people} />
         ))}
       </div>
     </div>

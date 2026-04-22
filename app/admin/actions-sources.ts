@@ -424,10 +424,22 @@ export async function getAllShowsAdmin() {
     countMap.set(row.show_id, (countMap.get(row.show_id) || 0) + 1);
   }
 
+  // Pobierz default people per show
+  const { data: defaults } = await sb
+    .from("show_default_people")
+    .select("show_id, person_id");
+
+  const defaultPeopleMap = new Map<number, number[]>();
+  for (const d of defaults || []) {
+    if (!defaultPeopleMap.has(d.show_id)) defaultPeopleMap.set(d.show_id, []);
+    defaultPeopleMap.get(d.show_id)!.push(d.person_id);
+  }
+
   return (shows || []).map((s) => ({
     ...s,
     categoryName: s.category_id ? categoriesMap.get(s.category_id)?.name || null : null,
     itemCount: countMap.get(s.id) || 0,
+    defaultPersonIds: defaultPeopleMap.get(s.id) || [],
   }));
 }
 
@@ -440,6 +452,7 @@ export async function createShow(data: {
   spotify_show_url: string;
   apple_podcasts_url: string;
   website_url: string;
+  default_person_ids?: number[];
 }) {
   await requireAuth();
   const sb = getAdminSupabase();
@@ -474,9 +487,28 @@ export async function createShow(data: {
     return { error: error?.message || "Blad tworzenia formatu" };
   }
 
+  if (data.default_person_ids && data.default_person_ids.length > 0) {
+    await sb.from("show_default_people").insert(
+      data.default_person_ids.map((pid) => ({ show_id: show.id, person_id: pid }))
+    );
+  }
+
   revalidatePath("/admin/formaty");
   revalidatePath("/formaty");
   return { success: true, show };
+}
+
+export async function updateShowDefaultPeople(showId: number, personIds: number[]) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  await sb.from("show_default_people").delete().eq("show_id", showId);
+  if (personIds.length > 0) {
+    await sb.from("show_default_people").insert(
+      personIds.map((pid) => ({ show_id: showId, person_id: pid }))
+    );
+  }
+  revalidatePath("/admin/formaty");
 }
 
 export async function updateShow(showId: number, data: {
