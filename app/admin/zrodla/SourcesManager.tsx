@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createSource, toggleSourceActive, updateSourceDefaultPeople, updateSource, createPerson } from "../actions-sources";
+import { createSource, toggleSourceActive, updateSourceDefaultPeople, updateSource, createPerson, deleteSource } from "../actions-sources";
 import { quickFetchSource, fullFetchSource, backfillDurations } from "../actions-fetch";
 
 type Source = {
@@ -122,6 +122,7 @@ function SourceCard({
 }) {
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState<number[]>(source.defaultPersonIds);
   const [selectedShowId, setSelectedShowId] = useState<number | null>(source.show_id);
   const [localPeople, setLocalPeople] = useState(people);
@@ -154,6 +155,18 @@ function SourceCard({
     startTransition(async () => {
       await toggleSourceActive(source.id, !source.is_active);
       window.location.reload();
+    });
+  };
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      const result = await deleteSource(source.id);
+      if (result.error) {
+        setFetchResult(`Błąd usuwania: ${result.error}`);
+        setConfirmDelete(false);
+      } else {
+        window.location.reload();
+      }
     });
   };
 
@@ -258,6 +271,30 @@ function SourceCard({
           >
             {source.is_active ? "Wylacz" : "Wlacz"}
           </button>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-xs px-3 py-1 bg-neutral-800 hover:bg-red-900 rounded text-gray-400 hover:text-red-300"
+            >
+              Usuń
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleDelete}
+                disabled={isPending}
+                className="text-xs px-3 py-1 bg-red-900 hover:bg-red-800 rounded text-red-200 disabled:opacity-50"
+              >
+                {isPending ? "Usuwam…" : "Potwierdź"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-xs px-2 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-gray-400"
+              >
+                Anuluj
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {fetchResult && (

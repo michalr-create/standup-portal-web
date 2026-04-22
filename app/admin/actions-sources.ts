@@ -105,6 +105,18 @@ export async function createSource(data: {
   return { success: true, id: source.id };
 }
 
+export async function deleteSource(sourceId: number) {
+  await requireAuth();
+  const sb = getAdminSupabase();
+
+  await sb.from("source_default_people").delete().eq("source_id", sourceId);
+  const { error } = await sb.from("sources").delete().eq("id", sourceId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/zrodla");
+  return { success: true };
+}
+
 export async function toggleSourceActive(sourceId: number, isActive: boolean) {
   await requireAuth();
   const sb = getAdminSupabase();
