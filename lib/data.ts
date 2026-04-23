@@ -588,6 +588,52 @@ export async function getItemsByTagSlug(tagSlug: string, limit = 10): Promise<It
 }
 
 // =================================================================
+// QUERY: formaty gdzie dana osoba jest domyslnym standuperem
+// =================================================================
+export async function getDefaultShowsForPerson(personId: number): Promise<{
+  show: Show;
+  totalCount: number;
+  latestDate: string | null;
+}[]> {
+  const { data: defaults } = await supabase
+    .from("show_default_people")
+    .select("show_id")
+    .eq("person_id", personId);
+
+  const showIds = (defaults || []).map((d: { show_id: number }) => d.show_id);
+  if (showIds.length === 0) return [];
+
+  const { data: shows } = await supabase
+    .from("shows")
+    .select("id, name, slug, description, photo_url, category_id, youtube_channel_url, spotify_show_url, apple_podcasts_url, website_url")
+    .in("id", showIds)
+    .eq("is_active", true);
+
+  if (!shows?.length) return [];
+
+  const { data: items } = await supabase
+    .from("content_items")
+    .select("show_id, published_at")
+    .in("show_id", showIds)
+    .eq("status", "approved")
+    .is("merged_into_id", null);
+
+  const countMap = new Map<number, number>();
+  const latestMap = new Map<number, string>();
+  for (const item of items || []) {
+    countMap.set(item.show_id, (countMap.get(item.show_id) || 0) + 1);
+    const cur = latestMap.get(item.show_id);
+    if (!cur || item.published_at > cur) latestMap.set(item.show_id, item.published_at);
+  }
+
+  return shows.map((s: { id: number; name: string; slug: string; description: string | null; photo_url: string | null; category_id: number | null; youtube_channel_url: string | null; spotify_show_url: string | null; apple_podcasts_url: string | null; website_url: string | null }) => ({
+    show: { ...s, category_name: null, category_slug: null },
+    totalCount: countMap.get(s.id) || 0,
+    latestDate: latestMap.get(s.id) || null,
+  }));
+}
+
+// =================================================================
 // QUERY: najnowsze odcinki z kazdego show (do sekcji Formaty)
 // =================================================================
 export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: Item[]; totalCount: number; latestDate: string | null }[]> {
