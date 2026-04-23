@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import Link from "next/link";
 import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
@@ -101,7 +102,13 @@ function ScrollCard({
             item.people.map((p, i) => (
               <span key={p.slug} className="flex items-center gap-0.5">
                 {i > 0 && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
-                <span>{p.name}</span>
+                <Link
+                  href={"/standuper/" + p.slug}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-white transition-colors"
+                >
+                  {p.name}
+                </Link>
                 <HeartButton type="person" slug={p.slug} size={13} />
               </span>
             ))
