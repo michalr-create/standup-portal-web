@@ -35,38 +35,64 @@ function odcinekLabel(n: number): string {
   return "odcink\u00f3w";
 }
 
-function ShowCard({ show, totalCount, latestDate }: { show: Show; totalCount: number; latestDate: string | null }) {
+function ShowCard({ show, totalCount, latestDate, latestThumbnail }: {
+  show: Show;
+  totalCount: number;
+  latestDate: string | null;
+  latestThumbnail: string | null;
+}) {
   const latestLabel = latestDate
     ? new Date(latestDate).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" })
     : null;
 
   return (
-    <Link
-      href={"/format/" + show.slug}
-      className="group flex items-center gap-4 p-4 rounded-2xl transition-all hover:bg-[var(--ink-3)]"
-      style={{ border: "1px solid var(--line)" }}
-    >
+    <Link href={"/format/" + show.slug} className="group block text-left">
       <div
-        className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg shrink-0"
-        style={{ background: "var(--coral)", color: "var(--ink)" }}
+        className="overflow-hidden relative"
+        style={{
+          aspectRatio: "16/10",
+          borderRadius: "14px",
+          border: "1px solid var(--line)",
+          background: "var(--ink-3)",
+        }}
       >
-        {show.name.charAt(0)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-black text-base leading-tight" style={{ color: "var(--paper)" }}>
-          {show.name}
-        </div>
-        {show.description && (
-          <div className="text-sm mt-0.5 line-clamp-1" style={{ color: "var(--paper-dim)" }}>
-            {show.description}
-          </div>
+        {latestThumbnail && (
+          <img
+            src={latestThumbnail}
+            alt={show.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            style={{ opacity: 0.45 }}
+          />
         )}
-        <div className="mono text-xs mt-1 flex gap-3" style={{ color: "var(--paper-mute)" }}>
-          <span>{totalCount} {odcinekLabel(totalCount)}</span>
-          {latestLabel && <span>ostatni: {latestLabel}</span>}
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to top, rgba(11,11,11,.95) 35%, rgba(11,11,11,.15) 100%)" }}
+        />
+        <div
+          className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-md"
+          style={{ background: "rgba(11,11,11,.75)", backdropFilter: "blur(6px)", color: "var(--paper)", fontSize: "11px", fontWeight: 700 }}
+        >
+          <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--coral)" }} />
+          Format
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div
+            className="font-extrabold leading-tight mb-1"
+            style={{ fontSize: "16px", letterSpacing: "-.01em", color: "var(--paper)" }}
+          >
+            {show.name}
+          </div>
+          {show.description && (
+            <div className="line-clamp-1 mb-2" style={{ fontSize: "13px", color: "var(--paper-dim)" }}>
+              {show.description}
+            </div>
+          )}
+          <div className="mono flex gap-3" style={{ fontSize: "11px", color: "var(--paper-mute)" }}>
+            <span>{totalCount} {odcinekLabel(totalCount)}</span>
+            {latestLabel && <span>ostatni: {latestLabel}</span>}
+          </div>
         </div>
       </div>
-      <span className="text-lg shrink-0" style={{ color: "var(--paper-mute)" }}>{"\u2192"}</span>
     </Link>
   );
 }
@@ -145,9 +171,9 @@ export default async function StanduperPage({ params }: Props) {
               </h2>
             </div>
             {defaultShows.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                {defaultShows.map(({ show, totalCount, latestDate }) => (
-                  <ShowCard key={show.id} show={show} totalCount={totalCount} latestDate={latestDate} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+                {defaultShows.map(({ show, totalCount, latestDate, latestThumbnail }) => (
+                  <ShowCard key={show.id} show={show} totalCount={totalCount} latestDate={latestDate} latestThumbnail={latestThumbnail} />
                 ))}
               </div>
             )}

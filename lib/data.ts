@@ -594,6 +594,7 @@ export async function getDefaultShowsForPerson(personId: number): Promise<{
   show: Show;
   totalCount: number;
   latestDate: string | null;
+  latestThumbnail: string | null;
 }[]> {
   const { data: defaults } = await supabase
     .from("show_default_people")
@@ -613,23 +614,28 @@ export async function getDefaultShowsForPerson(personId: number): Promise<{
 
   const { data: items } = await supabase
     .from("content_items")
-    .select("show_id, published_at")
+    .select("show_id, published_at, thumbnail_url")
     .in("show_id", showIds)
     .eq("status", "approved")
     .is("merged_into_id", null);
 
   const countMap = new Map<number, number>();
   const latestMap = new Map<number, string>();
+  const thumbnailMap = new Map<number, string>();
   for (const item of items || []) {
     countMap.set(item.show_id, (countMap.get(item.show_id) || 0) + 1);
     const cur = latestMap.get(item.show_id);
-    if (!cur || item.published_at > cur) latestMap.set(item.show_id, item.published_at);
+    if (!cur || item.published_at > cur) {
+      latestMap.set(item.show_id, item.published_at);
+      if (item.thumbnail_url) thumbnailMap.set(item.show_id, item.thumbnail_url);
+    }
   }
 
   return shows.map((s: { id: number; name: string; slug: string; description: string | null; photo_url: string | null; category_id: number | null; youtube_channel_url: string | null; spotify_show_url: string | null; apple_podcasts_url: string | null; website_url: string | null }) => ({
     show: { ...s, category_name: null, category_slug: null },
     totalCount: countMap.get(s.id) || 0,
     latestDate: latestMap.get(s.id) || null,
+    latestThumbnail: thumbnailMap.get(s.id) || null,
   }));
 }
 
