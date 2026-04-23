@@ -11,13 +11,6 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-const SECTIONS: { key: string; label: string }[] = [
-  { key: "special", label: "Specials" },
-  { key: "standup", label: "Standup" },
-  { key: "wywiady", label: "Wywiady" },
-  { key: "kulisy", label: "Kulisy" },
-  { key: "shorts", label: "Shorts" },
-];
 
 function groupItems(items: Item[]): Map<string, Item[]> {
   const map = new Map<string, Item[]>();
@@ -124,8 +117,8 @@ export default async function StanduperPage({ params }: Props) {
           </div>
         )}
 
-        {/* Specials + standalone category sections */}
-        {SECTIONS.map(({ key, label }) => {
+        {/* Specials, Standup */}
+        {[{ key: "special", label: "Specials" }, { key: "standup", label: "Standup" }].map(({ key, label }) => {
           const sectionItems = grouped.get(key);
           if (!sectionItems || sectionItems.length === 0) return null;
           return (
@@ -163,6 +156,25 @@ export default async function StanduperPage({ params }: Props) {
             )}
           </section>
         )}
+
+        {/* Wywiady, Kulisy, Shorts */}
+        {[{ key: "wywiady", label: "Wywiady" }, { key: "kulisy", label: "Kulisy" }, { key: "shorts", label: "Shorts" }].map(({ key, label }) => {
+          const sectionItems = grouped.get(key);
+          if (!sectionItems || sectionItems.length === 0) return null;
+          return (
+            <section key={key} className="mb-14">
+              <div className="flex items-baseline gap-3 mb-6">
+                <h2 className="font-black m-0 leading-none" style={{ fontSize: "clamp(22px, 3vw, 30px)", letterSpacing: "-.02em" }}>
+                  {label}<span className="dot-accent">.</span>
+                </h2>
+                <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".14em" }}>
+                  {sectionItems.length} {materialLabel(sectionItems.length)}
+                </span>
+              </div>
+              <ItemsBrowser items={sectionItems} />
+            </section>
+          );
+        })}
       </div>
     </div>
   );
