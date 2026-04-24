@@ -4,7 +4,7 @@ import ItemsBrowser from "@/app/components/ItemsBrowser";
 import HeartButton from "@/app/components/HeartButton";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 function odcinekLabel(n: number): string {
   if (n === 1) return "odcinek";

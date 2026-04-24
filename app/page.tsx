@@ -11,8 +11,7 @@ import HomeVideoGrid from "./components/HomeVideoGrid";
 import FavoritesSection from "./components/FavoritesSection";
 import HeartButton from "./components/HeartButton";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120;
 
 
 function SectionHead({ title, sub, linkHref, linkText }: { title: string; sub?: string; linkHref?: string; linkText?: string }) {

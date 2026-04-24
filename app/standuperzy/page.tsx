@@ -1,7 +1,7 @@
 import { getAllPeople } from "@/lib/data";
 import StanduperzyList from "@/app/components/StanduperzyList";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function StanduperzyPage() {
   const people = await getAllPeople();

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getAllShows, getItemsByShowSlug } from "@/lib/data";
 import type { Show } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 function odcinekLabel(n: number): string {
   if (n === 1) return "odcinek";

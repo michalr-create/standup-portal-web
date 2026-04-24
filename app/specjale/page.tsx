@@ -1,7 +1,7 @@
 import { getItemsByTagSlug } from "@/lib/data";
 import FilterableItemsBrowser from "@/app/components/FilterableItemsBrowser";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 export default async function SpecjalePage() {
   const items = await getItemsByTagSlug("special", 100);

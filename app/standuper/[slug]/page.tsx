@@ -5,7 +5,7 @@ import ItemsBrowser from "@/app/components/ItemsBrowser";
 import HeartButton from "@/app/components/HeartButton";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 type Props = {
   params: Promise<{ slug: string }>;

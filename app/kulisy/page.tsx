@@ -2,7 +2,7 @@ import { getItemsByCategorySlug, getCategoryBySlug } from "@/lib/data";
 import FilterableItemsBrowser from "@/app/components/FilterableItemsBrowser";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 export default async function KulisyPage() {
   const [category, items] = await Promise.all([
