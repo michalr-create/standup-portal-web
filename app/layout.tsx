@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getAllCategories, getAllShows, getAllPeople } from "@/lib/data";
 import MobileDrawer from "./components/MobileDrawer";
 import InstallButton from "./components/InstallButton";
+import NavSearch from "./components/NavSearch";
 
 export const metadata: Metadata = {
   title: "parska. \u2014 polski stand-up w jednym miejscu",
@@ -91,6 +92,7 @@ export default async function RootLayout({
 
           <div className="flex-1" />
 
+          <NavSearch />
           <InstallButton />
           <MobileDrawer categories={categories} shows={shows} people={people} />
         </nav>

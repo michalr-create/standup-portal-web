@@ -640,6 +640,53 @@ export async function getDefaultShowsForPerson(personId: number): Promise<{
 }
 
 // =================================================================
+// QUERY: wyszukiwanie globalne
+// =================================================================
+export async function searchAll(q: string): Promise<{
+  people: Person[];
+  items: Item[];
+  shows: Show[];
+}> {
+  const term = `%${q.trim()}%`;
+
+  const [peopleRes, itemsRes, showsRes] = await Promise.all([
+    supabase
+      .from("people")
+      .select("id, name, slug, bio, photo_url, role")
+      .ilike("name", term)
+      .eq("is_active", true)
+      .limit(10),
+    supabase
+      .from("content_items")
+      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+      .eq("status", "approved")
+      .is("merged_into_id", null)
+      .ilike("title", term)
+      .order("published_at", { ascending: false })
+      .limit(24),
+    supabase
+      .from("shows")
+      .select("id, name, slug, description, photo_url, category_id, youtube_channel_url, spotify_show_url, apple_podcasts_url, website_url")
+      .ilike("name", term)
+      .eq("is_active", true)
+      .limit(10),
+  ]);
+
+  const items = await hydrateItems(itemsRes.data || []);
+  const shows = (showsRes.data || []).map((s: { id: number; name: string; slug: string; description: string | null; photo_url: string | null; category_id: number | null; youtube_channel_url: string | null; spotify_show_url: string | null; apple_podcasts_url: string | null; website_url: string | null }) => ({
+    ...s,
+    category_name: null,
+    category_slug: null,
+  }));
+
+  return {
+    people: (peopleRes.data || []) as Person[],
+    items,
+    shows,
+  };
+}
+
+// =================================================================
 // QUERY: najnowsze odcinki z kazdego show (do sekcji Formaty)
 // =================================================================
 export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: Item[]; totalCount: number; latestDate: string | null }[]> {

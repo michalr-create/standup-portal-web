@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Props = {
   categories: { id: number; name: string; slug: string }[];
@@ -12,6 +13,18 @@ type Props = {
 
 export default function MobileDrawer({ categories, shows, people }: Props) {
   const [open, setOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const router = useRouter();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = searchQ.trim();
+    if (trimmed) {
+      router.push(`/szukaj?q=${encodeURIComponent(trimmed)}`);
+      setOpen(false);
+      setSearchQ("");
+    }
+  };
 
   return (
     <>
@@ -47,6 +60,35 @@ export default function MobileDrawer({ categories, shows, people }: Props) {
                 <span style={{ color: "var(--paper)" }}>{"✕"}</span>
               </button>
             </div>
+
+            <form
+              onSubmit={handleSearch}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-6"
+              style={{ background: "var(--ink-3)", border: "1px solid var(--line)" }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ color: "var(--paper-mute)", flexShrink: 0 }}
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="search"
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                placeholder="Szukaj standuperów, filmów..."
+                className="bg-transparent outline-none w-full text-sm placeholder:opacity-40"
+                style={{ color: "var(--paper)" }}
+              />
+            </form>
 
             <div className="space-y-6">
               <div>
