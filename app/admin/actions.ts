@@ -281,7 +281,7 @@ if (error || !items) return { items: [], totalCount: 0, personTags: [], allCateg
   revalidatePath("/");
 }
 
-export async function getItemsByStatus(status: string, search = "", page = 0, categoryId: number | null = null) {
+export async function getItemsByStatus(status: string, search = "", page = 0, categoryId: number | null = null, sort: "created_at" | "published_at" = "created_at") {
   await requireAuth();
   const sb = getAdminSupabase();
   const offset = page * PAGE_SIZE;
@@ -291,7 +291,7 @@ export async function getItemsByStatus(status: string, search = "", page = 0, ca
     .select("*", { count: "exact" })
     .eq("status", status)
     .is("merged_into_id", null)
-    .order("created_at", { ascending: false })
+    .order(sort, { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
   if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);

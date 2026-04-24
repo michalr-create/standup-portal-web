@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50;
 
 type Props = {
-  searchParams: Promise<{ status?: string; q?: string; page?: string; cat?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; cat?: string; sort?: string }>;
 };
 
 export default async function AdminHomePage({ searchParams }: Props) {
@@ -20,13 +20,14 @@ export default async function AdminHomePage({ searchParams }: Props) {
   const search = params.q || "";
   const page = Math.max(0, parseInt(params.page || "0", 10));
   const categoryId = params.cat ? parseInt(params.cat, 10) : null;
+  const sort: "created_at" | "published_at" = params.sort === "published_at" ? "published_at" : "created_at";
 
   const [data, counts] = await Promise.all([
     currentStatus === "pending"
       ? getPendingItems(search, page)
       : currentStatus === "featured"
       ? getFeaturedItems(search, page)
-      : getItemsByStatus(currentStatus, search, page, categoryId),
+      : getItemsByStatus(currentStatus, search, page, categoryId, sort),
     getStatusCounts(),
   ]);
 
@@ -41,6 +42,7 @@ export default async function AdminHomePage({ searchParams }: Props) {
     if (search) p.set("q", search);
     if (page > 0) p.set("page", String(page));
     if (categoryId != null) p.set("cat", String(categoryId));
+    if (sort !== "created_at") p.set("sort", sort);
     for (const [k, v] of Object.entries(overrides)) {
       if (v === undefined || v === "") p.delete(k);
       else p.set(k, String(v));
@@ -53,6 +55,16 @@ export default async function AdminHomePage({ searchParams }: Props) {
     p.set("status", currentStatus);
     if (search) p.set("q", search);
     if (catId != null) p.set("cat", String(catId));
+    if (sort !== "created_at") p.set("sort", sort);
+    return `/admin?${p.toString()}`;
+  };
+
+  const buildSortUrl = (s: "created_at" | "published_at") => {
+    const p = new URLSearchParams();
+    p.set("status", currentStatus);
+    if (search) p.set("q", search);
+    if (categoryId != null) p.set("cat", String(categoryId));
+    if (s !== "created_at") p.set("sort", s);
     return `/admin?${p.toString()}`;
   };
 
@@ -85,23 +97,43 @@ export default async function AdminHomePage({ searchParams }: Props) {
 
       <AdminSearchBar defaultValue={search} currentStatus={currentStatus} />
 
-      {(currentStatus === "approved" || currentStatus === "rejected") && allCategories.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          <Link
-            href={buildCatUrl(null)}
-            className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryId == null ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
-          >
-            Wszystkie
-          </Link>
-          {allCategories.map((c) => (
-            <Link
-              key={c.id}
-              href={buildCatUrl(c.id)}
-              className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryId === c.id ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
-            >
-              {c.name}
-            </Link>
-          ))}
+      {(currentStatus === "approved" || currentStatus === "rejected") && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          {allCategories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <Link
+                href={buildCatUrl(null)}
+                className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryId == null ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
+              >
+                Wszystkie
+              </Link>
+              {allCategories.map((c) => (
+                <Link
+                  key={c.id}
+                  href={buildCatUrl(c.id)}
+                  className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryId === c.id ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </div>
+          )}
+          {currentStatus === "approved" && (
+            <div className="flex gap-1.5 ml-auto">
+              <Link
+                href={buildSortUrl("created_at")}
+                className={`text-xs px-3 py-1 rounded-full border transition-colors ${sort === "created_at" ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
+              >
+                Data dodania
+              </Link>
+              <Link
+                href={buildSortUrl("published_at")}
+                className={`text-xs px-3 py-1 rounded-full border transition-colors ${sort === "published_at" ? "bg-white text-black border-white" : "bg-transparent text-gray-400 border-neutral-700 hover:border-neutral-500"}`}
+              >
+                Data filmiku
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
