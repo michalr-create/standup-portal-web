@@ -555,36 +555,90 @@ export async function getFeaturedItems(limit = 6): Promise<Item[]> {
 }
 
 // =================================================================
-// QUERY: specjale (przez tag)
+// QUERY: wpisy z danym tagiem (paginacja po published_at desc)
 // =================================================================
-export async function getItemsByTagSlug(tagSlug: string, limit = 10): Promise<Item[]> {
-  const { data: tag } = await supabase
+const ITEM_COLUMNS =
+  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds";
+
+type ContentItemRow = {
+  id: number;
+  title: string;
+  url: string;
+  thumbnail_url: string | null;
+  published_at: string | null;
+  source_id: number;
+  show_id: number | null;
+  category_id: number | null;
+  episode_group_id: string | null;
+  duration_seconds: number | null;
+};
+
+export type PagedItems = {
+  items: Item[];
+  total: number;
+};
+
+export async function getItemsByTagSlugPage(
+  tagSlug: string,
+  limit = 24,
+  offset = 0,
+): Promise<PagedItems> {
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 24;
+  const safeOffset = Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0;
+
+  const { data: tag, error: tagError } = await supabase
     .from("tags")
     .select("id")
     .eq("slug", tagSlug)
     .maybeSingle();
 
-  if (!tag) return [];
+  if (tagError || !tag) return { items: [], total: 0 };
 
-  const { data: ctRows } = await supabase
-    .from("content_tags")
-    .select("content_item_id")
-    .eq("tag_id", tag.id);
-
-  const itemIds = (ctRows || []).map((row) => row.content_item_id);
-  if (itemIds.length === 0) return [];
-
-  const { data, error } = await supabase
+  const query = supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .select(`${ITEM_COLUMNS}, content_tags!inner(tag_id)`, { count: "exact" })
     .eq("status", "approved")
     .is("merged_into_id", null)
-    .in("id", itemIds)
+    .eq("content_tags.tag_id", tag.id)
     .order("published_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false });
 
-  if (error || !data) return [];
-  return hydrateItems(data);
+  const { data, error, count } = await query.range(safeOffset, safeOffset + safeLimit - 1);
+
+  // Zakres poza koncem zbioru (416) nie zwraca count — dolicz osobno, zeby pager mogl wrocic na ostatnia strone.
+  if (error?.code === "PGRST103") {
+    const { count: total, error: countError } = await supabase
+      .from("content_items")
+      .select("id, content_tags!inner(tag_id)", { count: "exact", head: true })
+      .eq("status", "approved")
+      .is("merged_into_id", null)
+      .eq("content_tags.tag_id", tag.id);
+    if (countError) {
+      console.error("Blad pobierania tagu:", countError);
+      return { items: [], total: 0 };
+    }
+    return { items: [], total: total ?? 0 };
+  }
+
+  if (error || !data) {
+    console.error("Blad pobierania tagu:", error);
+    return { items: [], total: 0 };
+  }
+
+  const rows: ContentItemRow[] = data.map((row) => {
+    const { content_tags: _embedded, ...item } = row as ContentItemRow & { content_tags?: unknown };
+    return item;
+  });
+
+  return {
+    items: await hydrateItems(rows),
+    total: count ?? 0,
+  };
+}
+
+export async function getItemsByTagSlug(tagSlug: string, limit = 10, offset = 0): Promise<Item[]> {
+  const { items } = await getItemsByTagSlugPage(tagSlug, limit, offset);
+  return items;
 }
 
 // =================================================================

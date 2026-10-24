@@ -6,17 +6,34 @@ import ItemsBrowser from "./ItemsBrowser";
 
 type CountWord = { one: string; many: string };
 
-function countLabel(n: number, total: number, word: CountWord, isFiltered: boolean): string {
-  const w = n === 1 ? word.one : word.many;
-  return isFiltered ? `${n} z ${total} ${w}` : `${n} ${w}`;
+function countLabel(
+  shown: number,
+  inView: number,
+  word: CountWord,
+  isFiltered: boolean,
+  catalogTotal?: number,
+): string {
+  if (catalogTotal != null && !isFiltered) {
+    const w = catalogTotal === 1 ? word.one : word.many;
+    return `${catalogTotal} ${w}`;
+  }
+  const w = shown === 1 ? word.one : word.many;
+  if (isFiltered) {
+    return catalogTotal != null
+      ? `${shown} z ${inView} ${w} na tej stronie`
+      : `${shown} z ${inView} ${w}`;
+  }
+  return `${shown} ${w}`;
 }
 
 export default function FilterableItemsBrowser({
   items,
   countWord = { one: "pozycja", many: "pozycji" },
+  catalogTotal,
 }: {
   items: Item[];
   countWord?: CountWord;
+  catalogTotal?: number;
 }) {
   const [search, setSearch] = useState("");
   const [personSlug, setPersonSlug] = useState("");
@@ -137,7 +154,7 @@ export default function FilterableItemsBrowser({
           className="mono text-xs uppercase"
           style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
         >
-          {countLabel(filtered.length, items.length, countWord, isFiltered)}
+          {countLabel(filtered.length, items.length, countWord, isFiltered, catalogTotal)}
         </span>
         {isFiltered && (
           <button
