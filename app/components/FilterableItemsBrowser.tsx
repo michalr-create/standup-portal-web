@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Item } from "@/lib/data";
 import ItemsBrowser from "./ItemsBrowser";
+import { sortStandupTagChips } from "./standupTagChipOrder";
 import { tagDisplayName } from "./tagDisplayName";
 
 type CountWord = { one: string; many: string };
@@ -129,10 +130,13 @@ export default function FilterableItemsBrowser({
   items,
   countWord = { one: "pozycja", many: "pozycji" },
   catalogTotal,
+  tagChipOrder = "alphabetical",
 }: {
   items: Item[];
   countWord?: CountWord;
   catalogTotal?: number;
+  /** Standup category chips pin Special, Stand-up impro, then klipy. */
+  tagChipOrder?: "alphabetical" | "standup";
 }) {
   const [search, setSearch] = useState("");
   const [personSlug, setPersonSlug] = useState("");
@@ -157,8 +161,10 @@ export default function FilterableItemsBrowser({
         if (!map.has(t.slug)) map.set(t.slug, t);
       }
     }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "pl"));
-  }, [items]);
+    const tags = [...map.values()];
+    if (tagChipOrder === "standup") return sortStandupTagChips(tags);
+    return tags.sort((a, b) => a.name.localeCompare(b.name, "pl"));
+  }, [items, tagChipOrder]);
 
   const { rowRef, showFade } = useChipRowFade(availableTags.length);
 

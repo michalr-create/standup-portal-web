@@ -23,7 +23,11 @@ export default async function StandupPage() {
             <p className="mt-2" style={{ color: "var(--paper-dim)", fontSize: "17px" }}>{category.description}</p>
           )}
         </header>
-        <FilterableItemsBrowser items={items} countWord={{ one: "pozycja", many: "pozycji" }} />
+        <FilterableItemsBrowser
+          items={items}
+          countWord={{ one: "pozycja", many: "pozycji" }}
+          tagChipOrder="standup"
+        />
       </div>
     </div>
   );
