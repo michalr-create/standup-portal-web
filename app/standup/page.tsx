@@ -63,12 +63,12 @@ export default async function StandupPage({ searchParams }: Props) {
   return (
     <div className="band">
       <div className="max-w-6xl mx-auto">
-        <header className="mb-8">
+        <header className="mb-4 md:mb-8">
           <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}>
             {category.name}<span className="dot-accent">.</span>
           </h1>
           {category.description && (
-            <p className="mt-2" style={{ color: "var(--paper-dim)", fontSize: "17px" }}>{category.description}</p>
+            <p className="mt-2 text-[15px] md:text-[17px]" style={{ color: "var(--paper-dim)" }}>{category.description}</p>
           )}
         </header>
         <FilterableItemsBrowser

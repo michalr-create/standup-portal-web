@@ -31,16 +31,64 @@ type CountWord = { one: string; many: string };
 const CHIP_ROW_MOBILE = "(max-width: 767px)";
 
 const filterStyles = `
-.fib-controls {
+.fib-filters {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  min-width: 0;
+  max-width: 100%;
+}
+.fib-search {
+  width: 100%;
+  min-width: 0;
+}
+.fib-person-wrap {
+  position: relative;
   min-width: 0;
   max-width: 100%;
 }
 .fib-person {
+  -webkit-appearance: none;
+  appearance: none;
+  width: auto;
   max-width: 100%;
+  min-height: 40px;
+  margin: 0;
+  background-color: transparent;
+  background-image: linear-gradient(rgba(239, 232, 220, .10), rgba(239, 232, 220, .10));
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 34px 100%;
+  color: var(--paper);
+  border: 1px solid rgba(239, 232, 220, .42);
+  border-radius: 10px;
+  padding: 0 36px 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fib-person[data-active="true"] {
+  border-color: var(--coral);
+  background-image: linear-gradient(rgba(232, 89, 74, .22), rgba(232, 89, 74, .22));
+}
+.fib-person-chevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 0;
+  height: 0;
+  margin-top: -3px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--paper);
+  pointer-events: none;
 }
 .fib-chip-scroller {
   position: relative;
@@ -57,14 +105,32 @@ const filterStyles = `
   display: none;
 }
 @media (max-width: 767px) {
-  .fib-controls {
-    flex-direction: column;
+  .fib-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-bottom: 12px;
     align-items: stretch;
+  }
+  .fib-search {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+  }
+  .fib-filters:not(:has(.fib-person)) .fib-search {
+    grid-column: 1 / -1;
+  }
+  .fib-person-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    width: clamp(8.5rem, 42vw, 11rem);
   }
   .fib-person {
     width: 100%;
   }
   .fib-chip-scroller {
+    grid-column: 1 / -1;
+    grid-row: 2;
     width: 100%;
   }
   .fib-chip-row {
@@ -84,6 +150,20 @@ const filterStyles = `
   }
 }
 @media (min-width: 768px) {
+  .fib-filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 12px;
+  }
+  .fib-search {
+    flex: 1 0 100%;
+  }
+  .fib-person {
+    field-sizing: content;
+    max-width: 18rem;
+  }
   /* Chips stay in the same wrapping row as the person select. */
   .fib-chip-scroller,
   .fib-chip-row {
@@ -335,8 +415,10 @@ export default function FilterableItemsBrowser({
     border: "1px solid var(--line)",
     color: "var(--paper)",
     borderRadius: "10px",
-    padding: "10px 14px",
+    padding: "0 14px",
+    height: "40px",
     fontSize: "15px",
+    lineHeight: "38px",
     outline: "none",
     fontFamily: "inherit",
     boxSizing: "border-box",
@@ -345,9 +427,10 @@ export default function FilterableItemsBrowser({
   return (
     <div>
       <style>{filterStyles}</style>
-      <div className="mb-6" style={{ display: "flex", flexDirection: "column", gap: "12px", minWidth: 0, maxWidth: "100%" }}>
+      <div className="fib-filters">
         <input
           ref={inputRef}
+          className="fib-search"
           type="search"
           placeholder={"Szukaj po tytule\u2026"}
           value={activeSearch}
@@ -356,42 +439,34 @@ export default function FilterableItemsBrowser({
             else setSearch(e.target.value);
           }}
           aria-label={"Szukaj po tytule"}
-          style={{ ...inputBase, width: "100%" }}
+          style={inputBase}
         />
 
-        {(people.length > 0 || availableTags.length > 0) && (
-          <div className="fib-controls">
-            {people.length > 0 && (
-              <select
-                className="fib-person"
-                aria-label="Standuper"
-                value={activePerson}
-                onChange={(e) => {
-                  if (server) goToFilters({ osoba: e.target.value });
-                  else setPersonSlug(e.target.value);
-                }}
-                style={{
-                  ...inputBase,
-                  cursor: "pointer",
-                  appearance: "none",
-                  backgroundImage:
-                    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23EFE8DC' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 12px center",
-                  paddingRight: "36px",
-                }}
-              >
-                <option value="">Wszyscy standuperzy</option>
-                {people.map((p) => (
-                  <option key={p.slug} value={p.slug}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            )}
+        {people.length > 0 && (
+          <div className="fib-person-wrap">
+            <select
+              className="fib-person"
+              data-active={activePerson ? "true" : "false"}
+              aria-label="Standuper"
+              value={activePerson}
+              onChange={(e) => {
+                if (server) goToFilters({ osoba: e.target.value });
+                else setPersonSlug(e.target.value);
+              }}
+            >
+              <option value="">Wszyscy</option>
+              {people.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <span className="fib-person-chevron" aria-hidden="true" />
+          </div>
+        )}
 
-            {availableTags.length > 0 && (
-              <div className="fib-chip-scroller">
+        {availableTags.length > 0 && (
+          <div className="fib-chip-scroller">
                 <div ref={rowRef} className="fib-chip-row scrollbar-hide">
                   {availableTags.map((tag) => {
                     const active = activeTag === tag.slug;
@@ -419,12 +494,16 @@ export default function FilterableItemsBrowser({
                         }}
                         style={{
                           position: "relative",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                           background: active ? "var(--coral)" : "rgba(255,255,255,.06)",
                           border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
                           color: active ? "#fff" : "var(--paper-dim)",
                           borderRadius: "20px",
-                          padding: "7px 14px",
-                          fontSize: "13px",
+                          padding: "0 14px",
+                          minHeight: "40px",
+                          fontSize: "14px",
                           fontWeight: active ? 700 : 400,
                           cursor: isChipPending ? "progress" : "pointer",
                           transition: "background 0.15s, border-color 0.15s, color 0.15s",
@@ -451,8 +530,6 @@ export default function FilterableItemsBrowser({
                   data-on={showFade ? "true" : "false"}
                   aria-hidden="true"
                 />
-              </div>
-            )}
           </div>
         )}
       </div>
