@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { Item } from "@/lib/data";
 import {
   OPEN_YOUTUBE_LABEL,
   OPEN_YOUTUBE_TITLE,
+  PLAYER_HINT_LINE,
   WAKE_LOCK_FAILED,
   WAKE_LOCK_TITLE,
   WAKE_LOCK_UNSUPPORTED_TITLE,
@@ -97,10 +98,16 @@ function syncVisualViewport() {
   root.style.setProperty("--video-vv-left", `${Math.round(vv?.offsetLeft ?? 0)}px`);
 }
 
+const iconBtnClass = "video-modal-icon-btn shrink-0 inline-flex items-center justify-center min-h-11 min-w-11 h-11 w-11 rounded-full p-0";
+
 const iconBtnStyle: CSSProperties = {
   background: "rgba(255,255,255,0.1)",
   color: "var(--paper)",
 };
+
+function youtubePosterUrl(videoId: string): string {
+  return `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
+}
 
 const barIconBtnStyle: CSSProperties = {
   background: "rgba(11,11,11,0.72)",
@@ -185,6 +192,46 @@ function TimerControls({
   );
 }
 
+function PlayerHint({ supported }: { supported: boolean }) {
+  const [open, setOpen] = useState(false);
+  const detail = playerHint(supported);
+  const detailId = useId();
+  const hintRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (!hintRef.current || hintRef.current.getClientRects().length === 0) return;
+      event.stopPropagation();
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open]);
+
+  return (
+    <div className="video-modal-hint-wrap" ref={hintRef}>
+      <p className="video-modal-hint-line">
+        <span>{PLAYER_HINT_LINE}</span>
+        <button
+          type="button"
+          className="video-modal-why"
+          aria-expanded={open}
+          aria-controls={detailId}
+          title={detail}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {"Dlaczego?"}
+        </button>
+      </p>
+      <p className="video-modal-hint" id={detailId} hidden={!open}>
+        {detail}
+      </p>
+    </div>
+  );
+}
+
 function PlayerTools({
   timer,
   wakeSupported,
@@ -210,37 +257,81 @@ function PlayerTools({
   onToggleWake: () => void;
   onOpenYoutube: () => void;
 }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  const moreId = useId();
   const wakeTitle = wakeSupported ? WAKE_LOCK_TITLE : WAKE_LOCK_UNSUPPORTED_TITLE;
   const wakeLabel = wakeLockButtonLabel(wakeSupported && keepAwake);
+  const toolsActive = timer.choice !== "off" || timer.stopped || keepAwake || Boolean(wakeError);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest(".video-modal-secondary") || target.closest(".video-modal-aux")) return;
+      setMoreOpen(false);
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!moreOpen || timer.menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (!toolsRef.current || toolsRef.current.getClientRects().length === 0) return;
+      event.stopPropagation();
+      setMoreOpen(false);
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [moreOpen, timer.menuOpen]);
+
   return (
-    <div className="video-modal-tools">
-      <TimerControls {...timer} />
+    <div className="video-modal-tools" ref={toolsRef}>
       <button
         type="button"
-        className="video-modal-timer-btn"
-        aria-pressed={wakeSupported ? keepAwake : undefined}
-        aria-label={`${wakeLabel}. ${wakeTitle}`}
-        title={wakeTitle}
-        disabled={!wakeSupported}
-        onClick={onToggleWake}
-      >
-        {wakeLabel}
-      </button>
-      {wakeError && (
-        <span className="video-modal-timer-status" role="status">
-          {wakeError}
-        </span>
-      )}
-      <button
-        type="button"
-        className="video-modal-timer-btn"
+        className="video-modal-youtube"
         aria-label={`${OPEN_YOUTUBE_LABEL}. ${OPEN_YOUTUBE_TITLE}`}
         title={OPEN_YOUTUBE_TITLE}
         onClick={onOpenYoutube}
       >
         {OPEN_YOUTUBE_LABEL}
       </button>
-      {showHint && <p className="video-modal-hint">{playerHint(wakeSupported)}</p>}
+      <div className="video-modal-aux">
+        <button
+          type="button"
+          className="video-modal-timer-btn video-modal-more-btn"
+          aria-expanded={moreOpen}
+          aria-controls={moreId}
+          aria-label={toolsActive ? "Wi\u0119cej ustawie\u0144 odtwarzania, w\u0142\u0105czone" : "Wi\u0119cej ustawie\u0144 odtwarzania"}
+          onClick={() => setMoreOpen((open) => !open)}
+        >
+          {"\u22ef Wi\u0119cej"}
+          {toolsActive && <span className="video-modal-more-dot" aria-hidden="true" />}
+        </button>
+        {showHint && <PlayerHint supported={wakeSupported} />}
+      </div>
+      <div className={moreOpen ? "video-modal-secondary is-open" : "video-modal-secondary"} id={moreId}>
+        <TimerControls {...timer} />
+        <button
+          type="button"
+          className="video-modal-timer-btn"
+          aria-pressed={wakeSupported ? keepAwake : undefined}
+          aria-label={`${wakeLabel}. ${wakeTitle}`}
+          title={wakeTitle}
+          disabled={!wakeSupported}
+          onClick={onToggleWake}
+        >
+          {wakeLabel}
+        </button>
+        {wakeError && (
+          <span className="video-modal-timer-status" role="status">
+            {wakeError}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -271,6 +362,9 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   );
   const [keepAwake, setKeepAwake] = useState(false);
   const [wakeError, setWakeError] = useState<string | null>(null);
+  const [readyFor, setReadyFor] = useState<string | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const frameReady = readyFor === videoId;
 
   const iframeSrc = embedSrc(videoId, phoneEmbed);
   const remaining = remainingSeconds(deadline, now);
@@ -632,6 +726,25 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     openYoutubeWatchInDocument(videoId, document);
   };
 
+  const onHeadingTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (!phoneEmbed || cover || event.touches.length !== 1) return;
+    const target = event.target;
+    if (target instanceof Element && target.closest("button, a, input, textarea")) return;
+    const touch = event.touches[0];
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const onHeadingTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    const dy = touch.clientY - start.y;
+    const dx = touch.clientX - start.x;
+    if (dy >= 72 && dy > Math.abs(dx) * 1.5) onClose();
+  };
+
   const toolProps = {
     timer: timerProps,
     wakeSupported,
@@ -645,7 +758,18 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     <div className={cover ? "video-modal is-cover" : "video-modal"} role="dialog" aria-modal="true" aria-label={item.title}>
       <div className="video-modal-backdrop" onClick={onClose} />
       <div className="video-modal-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="video-modal-player" ref={playerRef}>
+        <div className="video-modal-player" ref={playerRef} aria-busy={!frameReady}>
+          <div className={frameReady ? "video-modal-poster is-gone" : "video-modal-poster"} aria-hidden="true">
+            <img
+              src={youtubePosterUrl(videoId)}
+              alt=""
+              decoding="async"
+              onError={(event) => {
+                event.currentTarget.hidden = true;
+              }}
+            />
+            <span className="video-modal-spinner" />
+          </div>
           <iframe
             ref={iframeRef}
             id={YT_FRAME_ID}
@@ -655,13 +779,17 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
             allow={YT_ALLOW}
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
+            onLoad={(event) => {
+              if (!event.currentTarget.src.includes(`/embed/${videoId}`)) return;
+              setReadyFor(videoId);
+            }}
           />
           <div className="video-modal-player-bar">
-            <PlayerTools {...toolProps} showHint={false} />
+            <PlayerTools key={`bar-${videoId}`} {...toolProps} showHint={false} />
             <div className="video-modal-actions">
               <button
                 type="button"
-                className="video-modal-exit shrink-0 w-9 h-9 rounded-full items-center justify-center"
+                className={`${iconBtnClass} video-modal-exit`}
                 style={barIconBtnStyle}
                 onClick={exitCover}
                 aria-label={"Wyjd\u017a z pe\u0142nego ekranu"}
@@ -671,8 +799,8 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ ...barIconBtnStyle, fontSize: "20px", lineHeight: "1" }}
+                className={iconBtnClass}
+                style={barIconBtnStyle}
                 aria-label="Zamknij"
               >
                 {"\u00d7"}
@@ -682,43 +810,50 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
         </div>
 
         <div className="video-modal-meta">
-          <div className="min-w-0">
-            <h3
-              className="font-extrabold leading-tight line-clamp-2"
-              style={{ fontSize: "17px", color: "var(--paper)", letterSpacing: "-.01em" }}
-            >
-              {item.title}
-            </h3>
-            {label && (
-              <p className="mt-1" style={{ fontSize: "13px", color: "var(--paper-dim)" }}>
-                {label}
-              </p>
-            )}
-            <PlayerTools {...toolProps} showHint />
-          </div>
+          <div
+            className="video-modal-heading"
+            onTouchStart={onHeadingTouchStart}
+            onTouchEnd={onHeadingTouchEnd}
+            onTouchCancel={() => { swipeStartRef.current = null; }}
+          >
+            <div className="min-w-0">
+              <h3
+                className="font-extrabold leading-tight line-clamp-2"
+                style={{ fontSize: "17px", color: "var(--paper)", letterSpacing: "-.01em" }}
+              >
+                {item.title}
+              </h3>
+              {label && (
+                <p className="mt-1" style={{ fontSize: "13px", color: "var(--paper-dim)" }}>
+                  {label}
+                </p>
+              )}
+            </div>
 
-          <div className="video-modal-actions">
-            {phoneEmbed && (
+            <div className="video-modal-actions">
+              {phoneEmbed && (
+                <button
+                  type="button"
+                  onClick={() => { void enterCover(); }}
+                  className={iconBtnClass}
+                  style={iconBtnStyle}
+                  aria-label={"Pe\u0142ny ekran"}
+                >
+                  <ExpandIcon />
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => { void enterCover(); }}
-                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+                onClick={onClose}
+                className={iconBtnClass}
                 style={iconBtnStyle}
-                aria-label={"Pe\u0142ny ekran"}
+                aria-label="Zamknij"
               >
-                <ExpandIcon />
+                {"\u00d7"}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ ...iconBtnStyle, fontSize: "20px", lineHeight: "1" }}
-              aria-label="Zamknij"
-            >
-              {"\u00d7"}
-            </button>
+            </div>
           </div>
+          <PlayerTools key={`meta-${videoId}`} {...toolProps} showHint />
         </div>
       </div>
     </div>,

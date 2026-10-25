@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   OPEN_YOUTUBE_LABEL,
+  PLAYER_HINT_LINE,
   WAKE_LOCK_FAILED,
   WAKE_LOCK_OFF_LABEL,
   createWakeLockSession,
@@ -47,6 +48,8 @@ test("labels stay honest about what the controls do", () => {
   assert.match(playerHint(true), /nie jest|film staje|Premium/i);
   assert.match(playerHint(false), /nie trzyma ekranu/);
   assert.match(playerHint(true), /Premium/);
+  assert.equal(PLAYER_HINT_LINE, "Po zgaszeniu ekranu film staje.");
+  assert.doesNotMatch(PLAYER_HINT_LINE, /w tle|Premium/);
   assert.equal(OPEN_YOUTUBE_LABEL, "Otwórz w YouTube");
   assert.match(WAKE_LOCK_FAILED, /Nie udało się/);
 });
