@@ -4,31 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import HeartButton from "@/app/components/HeartButton";
 import type { Item } from "@/lib/data";
+import { formatDuration, timeAgo } from "@/lib/format";
 
 const PERSON_KEY = "parska_fav_persons";
 const SHOW_KEY = "parska_fav_shows";
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "";
-  if (seconds >= 3600) {
-    const h = Math.floor(seconds / 3600);
-    const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
-    const s = String(seconds % 60).padStart(2, "0");
-    return `${h}:${m}:${s}`;
-  }
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function timeAgo(d: string | null): string {
-  if (!d) return "";
-  const diff = Date.now() - new Date(d).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "dzi\u015b";
-  if (days === 1) return "wczoraj";
-  if (days < 7) return `${days} dni temu`;
-  try { return new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" }); }
-  catch { return ""; }
-}
 
 type FavDetail = { slug: string; name: string };
 type ApiResponse = { items: Item[]; people: FavDetail[]; shows: FavDetail[] };
@@ -225,8 +204,8 @@ export default function UlubionePage() {
                           </h4>
                           <div className="flex items-center gap-2" style={{ color: "var(--paper-dim)", fontSize: "13px" }}>
                             <span>{label}</span>
-                            {label && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
-                            <span className="mono" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
+                            {label && <span style={{ color: "var(--paper-meta)" }}>{"\u00b7"}</span>}
+                            <span className="mono" style={{ color: "var(--paper-meta)", fontSize: "11px" }}>
                               {timeAgo(item.published_at)}
                             </span>
                           </div>

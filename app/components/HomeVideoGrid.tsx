@@ -7,33 +7,7 @@ import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { getYouTubeId } from "@/lib/youtube";
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "";
-  if (seconds >= 3600) {
-    const h = Math.floor(seconds / 3600);
-    const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
-    const s = String(seconds % 60).padStart(2, "0");
-    return `${h}:${m}:${s}`;
-  }
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function timeAgo(dateString: string | null): string {
-  if (!dateString) return "";
-  const diff = Date.now() - new Date(dateString).getTime();
-  const hours = Math.floor(diff / 3600000);
-  if (hours < 1) return "przed chwil\u0105";
-  if (hours < 24) return `${hours} godz temu`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "wczoraj";
-  if (days < 7) return `${days} dni temu`;
-  try {
-    return new Date(dateString).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return "";
-  }
-}
+import { formatDuration, timeAgo } from "@/lib/format";
 
 export default function HomeVideoGrid({ items }: { items: Item[] }) {
   const { watched, markWatched } = useWatchHistory();
@@ -134,7 +108,7 @@ export default function HomeVideoGrid({ items }: { items: Item[] }) {
                 {item.people.length > 0 ? (
                   item.people.map((p, i) => (
                     <span key={p.slug} className="inline-flex items-center gap-1">
-                      {i > 0 && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
+                      {i > 0 && <span style={{ color: "var(--paper-meta)" }}>{"\u00b7"}</span>}
                       <Link
                         href={"/standuper/" + p.slug}
                         className="hover:text-white transition-colors"
@@ -150,9 +124,9 @@ export default function HomeVideoGrid({ items }: { items: Item[] }) {
                   <span>{item.showName || ""}</span>
                 )}
                 {(item.people.length > 0 || item.showName) && (
-                  <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>
+                  <span style={{ color: "var(--paper-meta)" }}>{"\u00b7"}</span>
                 )}
-                <span className="mono" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
+                <span className="mono" style={{ color: "var(--paper-meta)", fontSize: "11px" }}>
                   {timeAgo(item.published_at)}
                 </span>
               </div>
