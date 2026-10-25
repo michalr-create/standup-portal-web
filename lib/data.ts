@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { supabase } from "@/lib/supabase";
 
 export type Item = {
@@ -409,6 +410,53 @@ export async function getAllPeople(): Promise<Person[]> {
 
   return data || [];
 }
+
+type PersonItemCountRow = {
+  person_id: number | null;
+  content_tags: { count: number }[] | { count: number } | null;
+};
+
+function approvedCountFromRow(row: PersonItemCountRow): number {
+  const tags = row.content_tags;
+  const entries = Array.isArray(tags) ? tags : tags ? [tags] : [];
+  return entries.reduce((sum, entry) => {
+    const n = Number(entry?.count);
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+}
+
+// Liczba zatwierdzonych pozycji (bez scalonych duplikatów) per osoba.
+// Agregat PostgREST: content_items musi być w select, inaczej filtr statusu nie wchodzi do count.
+const PERSON_COUNT_PAGE = 1000;
+
+export const getApprovedItemCountsByPersonId = cache(async (): Promise<Map<number, number>> => {
+  const counts = new Map<number, number>();
+
+  for (let offset = 0; ; offset += PERSON_COUNT_PAGE) {
+    const { data, error } = await supabase
+      .from("tags")
+      .select("person_id, content_tags(count, content_items!inner())")
+      .eq("tag_type", "person")
+      .eq("content_tags.content_items.status", "approved")
+      .is("content_tags.content_items.merged_into_id", null)
+      .order("person_id", { ascending: true })
+      .range(offset, offset + PERSON_COUNT_PAGE - 1);
+
+    if (error) {
+      console.error("Blad liczenia pozycji:", error);
+      break;
+    }
+
+    const rows = (data ?? []) as PersonItemCountRow[];
+    for (const row of rows) {
+      if (row.person_id == null) continue;
+      counts.set(row.person_id, (counts.get(row.person_id) ?? 0) + approvedCountFromRow(row));
+    }
+    if (rows.length < PERSON_COUNT_PAGE) break;
+  }
+
+  return counts;
+});
 
 // =================================================================
 // QUERY: lista wszystkich aktywnych shows (do sidebara/strony Formaty)

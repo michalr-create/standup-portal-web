@@ -1,7 +1,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllShows, getAllPeople } from "@/lib/data";
+import { getAllShows, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
+import { peopleByActivity } from "@/lib/standuperzy-directory";
 import MobileDrawer from "./components/MobileDrawer";
 import InstallButton from "./components/InstallButton";
 import NavSearch from "./components/NavSearch";
@@ -30,10 +31,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [shows, people] = await Promise.all([
+  const [shows, people, itemCounts] = await Promise.all([
     getAllShows(),
     getAllPeople(),
+    getApprovedItemCountsByPersonId(),
   ]);
+  const footerPeople = peopleByActivity(people, itemCounts, 8);
 
   const navLinks = [
     { href: "/", label: "Start" },
@@ -141,13 +144,18 @@ export default async function RootLayout({
                 Standuperzy
               </h5>
               <ul className="space-y-2">
-                {people.slice(0, 8).map((p) => (
+                {footerPeople.map((p) => (
                   <li key={p.slug}>
                     <Link href={"/standuper/" + p.slug} className="text-sm hover:text-white transition-colors" style={{ color: "var(--paper-dim)" }}>
                       {p.name}
                     </Link>
                   </li>
                 ))}
+                <li className="pt-2">
+                  <Link href="/standuperzy" className="text-sm font-bold hover:text-white transition-colors" style={{ color: "var(--coral)" }}>
+                    {"Wszyscy standuperzy \u2192"}
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -163,6 +171,11 @@ export default async function RootLayout({
                     </Link>
                   </li>
                 ))}
+                <li className="pt-2">
+                  <Link href="/formaty" className="text-sm font-bold hover:text-white transition-colors" style={{ color: "var(--coral)" }}>
+                    {"Wszystkie formaty \u2192"}
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>
