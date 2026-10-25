@@ -183,8 +183,8 @@ export default async function StanduperPage({ params }: Props) {
           </section>
         )}
 
-        {/* Wywiady, Kulisy, Shorts */}
-        {[{ key: "wywiady", label: "Wywiady" }, { key: "kulisy", label: "Kulisy" }, { key: "shorts", label: "Shorts" }].map(({ key, label }) => {
+        {/* Wywiady, Kulisy, Roast, Shorts */}
+        {[{ key: "wywiady", label: "Wywiady" }, { key: "kulisy", label: "Kulisy" }, { key: "roast", label: "Roast" }, { key: "shorts", label: "Shorts" }].map(({ key, label }) => {
           const sectionItems = grouped.get(key);
           if (!sectionItems || sectionItems.length === 0) return null;
           return (
