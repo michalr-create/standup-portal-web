@@ -8,8 +8,23 @@ import { useWatchHistory } from "../hooks/useWatchHistory";
 import { getYouTubeId } from "@/lib/youtube";
 import { formatDuration } from "@/lib/format";
 import CardByline from "./CardByline";
+import {
+  DEFAULT_GRID_CLASS,
+  DEFAULT_THUMB_ASPECT,
+  SHORTS_GRID_CLASS,
+  SHORTS_THUMB_ASPECT,
+  resolveItemsBrowserVariant,
+  type ItemsBrowserVariant,
+} from "./itemsBrowserLayout";
 
-export default function ItemsBrowser({ items }: { items: Item[] }) {
+export default function ItemsBrowser({
+  items,
+  variant,
+}: {
+  items: Item[];
+  variant?: ItemsBrowserVariant;
+}) {
+  const layout = resolveItemsBrowserVariant(items, variant);
   const { watched, markWatched } = useWatchHistory();
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
 
@@ -34,7 +49,7 @@ export default function ItemsBrowser({ items }: { items: Item[] }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className={layout === "shorts" ? SHORTS_GRID_CLASS : DEFAULT_GRID_CLASS}>
         {items.map((item) => {
           const isWatched = watched.has(item.url);
           const solePerson = item.people.length === 1 ? item.people[0] : null;
@@ -49,7 +64,7 @@ export default function ItemsBrowser({ items }: { items: Item[] }) {
                 <div
                   className="overflow-hidden relative"
                   style={{
-                    aspectRatio: "16/10",
+                    aspectRatio: layout === "shorts" ? SHORTS_THUMB_ASPECT : DEFAULT_THUMB_ASPECT,
                     borderRadius: "14px",
                     border: "1px solid var(--line)",
                     background: "var(--ink-3)",

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Item } from "@/lib/data";
 import { categoryBrowseHref } from "@/lib/category-browse";
 import ItemsBrowser from "./ItemsBrowser";
+import type { ItemsBrowserVariant } from "./itemsBrowserLayout";
 import { sortStandupTagChips } from "./standupTagChipOrder";
 import { tagDisplayName } from "./tagDisplayName";
 import {
@@ -212,6 +213,7 @@ export default function FilterableItemsBrowser({
   catalogTotal,
   tagChipOrder = "alphabetical",
   serverFilters,
+  variant,
 }: {
   items: Item[];
   countWord?: CountWord;
@@ -219,6 +221,8 @@ export default function FilterableItemsBrowser({
   /** Standup category chips pin Special, Stand-up impro, then klipy. */
   tagChipOrder?: "alphabetical" | "standup";
   serverFilters?: ServerItemFilters;
+  /** Portrait thumbs and a 2-column phone grid. Used by /shorts. */
+  variant?: ItemsBrowserVariant;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -500,7 +504,7 @@ export default function FilterableItemsBrowser({
       </div>
 
       <div aria-busy={pendingTagSlug ? true : undefined}>
-        <ItemsBrowser items={filtered} />
+        <ItemsBrowser items={filtered} variant={variant} />
       </div>
     </div>
   );
