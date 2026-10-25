@@ -30,7 +30,7 @@ export default function InstallButton() {
   return (
     <button
       onClick={handleClick}
-      className="mono text-xs uppercase rounded-full px-3 py-2 transition-colors hover:bg-[var(--ink-3)]"
+      className="mono text-xs uppercase rounded-full px-3 py-2 transition-colors hover:bg-[var(--ink-3)] hidden max-lg:inline-flex xl:inline-flex"
       style={{ color: "var(--paper-dim)", border: "1px solid var(--line-2)" }}
     >
       Zainstaluj

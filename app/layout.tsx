@@ -58,7 +58,7 @@ export default async function RootLayout({
       <body>
         {/* NAV */}
         <nav
-          className="sticky top-0 z-40 flex items-center gap-4 lg:gap-6 px-4 lg:px-10 py-3 lg:py-4"
+          className="sticky top-0 z-40 flex items-center gap-4 xl:gap-6 px-4 xl:px-10 py-3 lg:py-4 overflow-x-clip"
           style={{
             background: "rgba(11,11,11,.75)",
             backdropFilter: "blur(14px)",
@@ -74,12 +74,12 @@ export default async function RootLayout({
             parska<span className="dot-accent">.</span>
           </Link>
 
-          <ul className="hidden md:flex gap-1 list-none p-0 m-0">
+          <ul className="hidden lg:flex gap-1 list-none p-0 m-0 shrink-0">
             {navLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="px-3 py-2 rounded-full font-semibold text-sm transition-all hover:bg-[var(--ink-3)] flex items-center gap-1.5"
+                  className="px-2 py-2 xl:px-3 rounded-full font-semibold text-sm whitespace-nowrap transition-all hover:bg-[var(--ink-3)] flex items-center gap-1.5"
                   style={{ color: "var(--paper-dim)" }}
                 >
                   {link.href === "/ulubione" && (
