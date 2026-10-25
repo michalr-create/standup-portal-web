@@ -6,6 +6,7 @@ import {
   getLatestPerShow,
 } from "@/lib/data";
 import type { Show } from "@/lib/data";
+import { selectHomeFormats } from "@/lib/home-shows";
 import ScrollRow from "./components/ScrollRow";
 import HomeVideoGrid from "./components/HomeVideoGrid";
 import FavoritesSection from "./components/FavoritesSection";
@@ -101,6 +102,7 @@ export default async function HomePage() {
     getItemsByTagSlug("special", 10),
     getLatestPerShow(3),
   ]);
+  const activeShows = selectHomeFormats(showSections);
 
   return (
     <>
@@ -131,7 +133,12 @@ export default async function HomePage() {
         <section className="band">
           <div className="max-w-6xl mx-auto">
             <SectionHead title="Nowe" sub={"Ostatnie 7 dni \u00b7 " + recentItems.length + " " + pozycjaLabel(recentItems.length)} linkHref="/standup" linkText={"Zobacz wszystkie \u2192"} />
-            <HomeVideoGrid items={recentItems} />
+            <div className="md:hidden">
+              <ScrollRow items={recentItems} />
+            </div>
+            <div className="hidden md:block">
+              <HomeVideoGrid items={recentItems} />
+            </div>
           </div>
         </section>
       )}
@@ -160,7 +167,7 @@ export default async function HomePage() {
       )}
 
       {/* FORMATY */}
-      {showSections.length > 0 && (
+      {activeShows.length > 0 && (
         <section className="band band-light">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-end justify-between mb-8 gap-6 flex-wrap">
@@ -169,7 +176,7 @@ export default async function HomePage() {
                   Formaty<span className="dot-accent">.</span>
                 </h2>
                 <span className="mono text-xs uppercase" style={{ color: "#555", letterSpacing: ".16em" }}>
-                  Cykliczne programy
+                  {"Aktywne \u00b7 " + activeShows.length}
                 </span>
               </div>
               <Link href="/formaty" className="mono text-xs uppercase pb-0.5 transition-colors hover:text-black" style={{ color: "#333", letterSpacing: ".14em", borderBottom: "1px solid rgba(11,11,11,.15)" }}>
@@ -177,7 +184,7 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {showSections.map(({ show, totalCount, latestDate }) => (
+              {activeShows.map(({ show, totalCount, latestDate }) => (
                 <ShowBlock key={show.id} show={show} totalCount={totalCount} latestDate={latestDate} />
               ))}
             </div>
