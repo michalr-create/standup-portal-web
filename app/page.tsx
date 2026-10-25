@@ -103,13 +103,14 @@ export default async function HomePage() {
     getLatestPerShow(3),
   ]);
   const activeShows = selectHomeFormats(showSections);
+  const noweHref = recentItems.length > 0 ? "#nowe" : "/standup";
 
   return (
     <>
       {/* HERO */}
-      <header className="px-6 lg:px-10 pt-12 pb-10" style={{ borderBottom: "1px solid var(--line)" }}>
+      <header className="px-6 lg:px-10 pt-6 pb-6 md:pt-12 md:pb-10" style={{ borderBottom: "1px solid var(--line)" }}>
         <div className="max-w-6xl mx-auto">
-          <div className="mono text-xs uppercase mb-5 flex items-center gap-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
+          <div className="mono text-xs uppercase mb-3 md:mb-5 flex items-center gap-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
             <span>polski stand-up {"\u00b7"} jeden adres</span>
             {recentItems.length > 0 && (
               <span style={{ color: "var(--coral)" }}>
@@ -117,20 +118,32 @@ export default async function HomePage() {
               </span>
             )}
           </div>
-          <h1 className="font-black m-0 mb-5" style={{ fontSize: "clamp(42px, 6vw, 88px)", lineHeight: ".92", letterSpacing: "-.035em" }}>
+          <h1 className="font-black m-0 mb-3 text-[34px] leading-[0.92] tracking-[-0.035em] sm:text-[42px] md:mb-5 md:text-[clamp(42px,6vw,88px)]">
             Ca{"ł"}y polski{" "}
             <span className="serif" style={{ color: "var(--coral)", whiteSpace: "nowrap" }}>stand-up</span>
             <br />w jednym miejscu<span style={{ color: "var(--coral)" }}>.</span>
           </h1>
-          <p className="text-lg leading-relaxed max-w-2xl m-0" style={{ color: "var(--paper-dim)", fontSize: "19px", lineHeight: "1.55" }}>
-            Codziennie przegl{"ą"}damy YouTube, strony komik{"ó"}w i informacje z klub{"ó"}w, {"ż"}eby zebra{"ć"} to, co naprawd{"ę"} warto obejrze{"ć"}. Nowe specjale, wywiady, formaty i terminy tras {"—"} bez scrollowania po dziesi{"ę"}ciu zak{"ł"}adkach.
+          <p className="m-0 max-w-2xl text-[15.5px] leading-snug md:text-[19px] md:leading-relaxed" style={{ color: "var(--paper-dim)" }}>
+            Nowe nagrania, specjale, wywiady i formaty {"\u2014"} w jednym miejscu.
+            <span className="hidden md:inline">
+              {" Codziennie przegl\u0105damy YouTube i strony komik\u00f3w, \u017ceby zebra\u0107 to, co naprawd\u0119 warto obejrze\u0107."}
+            </span>
           </p>
+          <div className="mt-5 md:mt-7">
+            <Link
+              href={noweHref}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2.5 text-sm font-black text-[var(--ink)] transition-colors hover:bg-[var(--coral-hi)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--paper)]"
+            >
+              Zobacz nowe
+              <span aria-hidden="true">{"\u2192"}</span>
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* NOWE */}
       {recentItems.length > 0 && (
-        <section className="band">
+        <section id="nowe" className="band scroll-mt-16">
           <div className="max-w-6xl mx-auto">
             <SectionHead title="Nowe" sub={"Ostatnie 7 dni \u00b7 " + recentItems.length + " " + pozycjaLabel(recentItems.length)} linkHref="/standup" linkText={"Zobacz wszystkie \u2192"} />
             <div className="md:hidden">

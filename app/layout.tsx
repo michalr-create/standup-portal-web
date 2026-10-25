@@ -9,7 +9,7 @@ import NavSearch from "./components/NavSearch";
 
 export const metadata: Metadata = {
   title: "parska. \u2014 polski stand-up w jednym miejscu",
-  description: "Agregator polskiego stand-upu. Nowe nagrania, specjale, wywiady, formaty i trasy.",
+  description: "Agregator polskiego stand-upu. Nowe nagrania, specjale, wywiady i formaty.",
   manifest: "/manifest.json",
   icons: {
     icon: [
