@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { searchAll } from "@/lib/data";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
@@ -8,38 +9,164 @@ type Props = {
   searchParams: Promise<{ q?: string }>;
 };
 
+const RECOVERY = [
+  { href: "/standuperzy", label: "Standuperzy" },
+  { href: "/formaty", label: "Formaty" },
+  { href: "/standup", label: "Standup" },
+] as const;
+
+function wynikLabel(n: number): string {
+  if (n === 1) return "wynik";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "wyniki";
+  return "wyników";
+}
+
+function SearchField({ query }: { query: string }) {
+  return (
+    <form
+      key={query}
+      action="/szukaj"
+      method="get"
+      role="search"
+      className="flex w-full items-stretch gap-2"
+    >
+      <label htmlFor="szukaj-q" className="sr-only">
+        Szukaj standuperów, filmów i formatów
+      </label>
+      <input
+        id="szukaj-q"
+        name="q"
+        type="search"
+        defaultValue={query}
+        placeholder="Standuper, film, format…"
+        enterKeyHint="search"
+        autoComplete="off"
+        className="min-h-14 min-w-0 flex-1 appearance-none rounded-2xl px-4 text-[17px] outline-none placeholder:text-[var(--paper-mute)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+        style={{
+          background: "var(--ink-3)",
+          border: "1px solid var(--line-2)",
+          color: "var(--paper)",
+        }}
+      />
+      <button
+        type="submit"
+        className="inline-flex min-h-14 min-w-11 shrink-0 items-center justify-center rounded-2xl px-5 text-base font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--paper)]"
+        style={{ background: "var(--coral)", color: "var(--ink)" }}
+      >
+        Szukaj
+      </button>
+    </form>
+  );
+}
+
+function RecoveryLinks() {
+  return (
+    <div className="mt-8">
+      <p
+        className="mono mb-3 text-xs uppercase"
+        style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
+      >
+        Przejdź do
+      </p>
+      <nav aria-label="Inne działy" className="flex flex-wrap justify-center gap-3">
+        {RECOVERY.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="chip inline-flex min-h-11 items-center justify-center px-4"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+function Prompt({
+  eyebrow,
+  title,
+  lead,
+  query,
+}: {
+  eyebrow: string;
+  title: string;
+  lead: ReactNode;
+  query: string;
+}) {
+  return (
+    <div className="band">
+      <div className="mx-auto max-w-xl py-6 text-center sm:py-12">
+        <div
+          className="mono mb-3 text-xs uppercase"
+          style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
+        >
+          {eyebrow}
+        </div>
+        <h1
+          className="m-0 font-black leading-none"
+          style={{ fontSize: "clamp(32px, 6vw, 48px)", letterSpacing: "-.025em" }}
+        >
+          {title}
+          <span className="dot-accent">.</span>
+        </h1>
+        <p className="mx-auto mb-8 mt-4 max-w-md break-words text-base" style={{ color: "var(--paper-dim)" }}>
+          {lead}
+        </p>
+        <SearchField query={query} />
+        <RecoveryLinks />
+      </div>
+    </div>
+  );
+}
+
 export default async function SzukajPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const query = q?.trim() || "";
 
   if (!query) {
     return (
-      <div className="band">
-        <div className="max-w-6xl mx-auto text-center py-20">
-          <p style={{ color: "var(--paper-mute)" }}>Wpisz frazę, żeby wyszukać.</p>
-        </div>
-      </div>
+      <Prompt
+        eyebrow="Szukaj"
+        title="Czego szukasz"
+        lead="Wpisz frazę, żeby wyszukać."
+        query=""
+      />
     );
   }
 
   const { people, items, shows } = await searchAll(query);
   const totalCount = people.length + items.length + shows.length;
 
+  if (totalCount === 0) {
+    return (
+      <Prompt
+        eyebrow="Wyniki wyszukiwania"
+        title="Brak wyników"
+        lead={<>Nic nie pasuje do „{query}”. Spróbuj innej frazy.</>}
+        query={query}
+      />
+    );
+  }
+
   return (
     <div className="band">
       <div className="max-w-6xl mx-auto">
-        <header className="mb-12">
+        <header className="mb-8">
           <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
             Wyniki wyszukiwania
           </div>
           <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
-            {`\u201e${query}\u201d`}<span className="dot-accent">.</span>
+            „{query}”<span className="dot-accent">.</span>
           </h1>
-          <p className="mt-3" style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
-            {totalCount === 0
-              ? "Brak wynik\u00f3w."
-              : `${totalCount} ${totalCount === 1 ? "wynik" : totalCount < 5 ? "wyniki" : "wynik\u00f3w"}`}
+          <p className="mt-3 mb-6" style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
+            {totalCount} {wynikLabel(totalCount)}
           </p>
+          <div className="max-w-2xl">
+            <SearchField query={query} />
+          </div>
         </header>
 
         {people.length > 0 && (
@@ -110,7 +237,7 @@ export default async function SzukajPage({ searchParams }: Props) {
                       </div>
                     )}
                   </div>
-                  <span style={{ color: "var(--paper-mute)" }}>{"\u2192"}</span>
+                  <span style={{ color: "var(--paper-mute)" }}>→</span>
                 </Link>
               ))}
             </div>
