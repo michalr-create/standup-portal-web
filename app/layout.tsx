@@ -117,7 +117,7 @@ export default async function RootLayout({
                 parska<span className="dot-accent">.</span>
               </div>
               <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--paper-dim)" }}>
-                {"Niezale\u017cny agregator polskiego stand-upu. R\u0119cznie moderowane zestawienia nowych nagra\u0144, specjali, wywiad\u00f3w i termin\u00f3w tras."}
+                {"Niezale\u017cny agregator polskiego stand-upu. R\u0119cznie moderowane zestawienia nowych nagra\u0144, specjali, wywiad\u00f3w i format\u00f3w."}
               </p>
               <div className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".18em" }}>
                 {"parska.pl \u00b7 od 2025"}
