@@ -23,7 +23,11 @@ export default async function ShortsPage() {
             <p className="mt-2" style={{ color: "var(--paper-dim)", fontSize: "17px" }}>{category.description}</p>
           )}
         </header>
-        <FilterableItemsBrowser items={items} countWord={{ one: "kr\u00f3tki klip", many: "kr\u00f3tkich klip\u00f3w" }} />
+        <FilterableItemsBrowser
+          items={items}
+          countWord={{ one: "kr\u00f3tki klip", many: "kr\u00f3tkich klip\u00f3w" }}
+          variant="shorts"
+        />
       </div>
     </div>
   );
