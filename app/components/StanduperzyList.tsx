@@ -46,41 +46,42 @@ export default function StanduperzyList({ people }: { people: Person[] }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {filtered.map((person) => (
-            <Link
+            <div
               key={person.id}
-              href={"/standuper/" + person.slug}
-              className="group flex items-center gap-4 p-4 rounded-2xl transition-all hover:bg-[var(--ink-3)]"
+              className="group flex items-center gap-2 rounded-2xl py-2 pl-4 pr-2 transition-all hover:bg-[var(--ink-3)]"
               style={{ border: "1px solid var(--line)" }}
             >
-              {/* Avatar */}
-              <div
-                className="w-12 h-12 rounded-full shrink-0 grid place-items-center font-black text-sm"
-                style={{
-                  background: "linear-gradient(135deg, var(--coral), #F2A65A)",
-                  color: "var(--ink)",
-                }}
+              <Link
+                href={"/standuper/" + person.slug}
+                className="flex min-w-0 flex-1 items-center gap-4 py-2"
               >
-                {person.name.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2)}
-              </div>
-
-              <div className="min-w-0">
-                <div className="font-bold text-sm group-hover:text-white transition-colors" style={{ color: "var(--paper)" }}>
-                  {person.name}
+                <div
+                  className="w-12 h-12 rounded-full shrink-0 grid place-items-center font-black text-sm"
+                  style={{
+                    background: "linear-gradient(135deg, var(--coral), #F2A65A)",
+                    color: "var(--ink)",
+                  }}
+                >
+                  {person.name.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2)}
                 </div>
-                {person.role && (
-                  <div className="mono text-xs" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
-                    {person.role}
-                  </div>
-                )}
-              </div>
 
-              <div className="ml-auto flex items-center gap-0.5">
-                <HeartButton type="person" slug={person.slug} />
-                <span className="text-sm" style={{ color: "var(--paper-mute)" }}>
+                <div className="min-w-0">
+                  <div className="font-bold text-sm group-hover:text-white transition-colors" style={{ color: "var(--paper)" }}>
+                    {person.name}
+                  </div>
+                  {person.role && (
+                    <div className="mono text-xs" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
+                      {person.role}
+                    </div>
+                  )}
+                </div>
+
+                <span className="ml-auto text-sm" style={{ color: "var(--paper-mute)" }}>
                   {"\u2192"}
                 </span>
-              </div>
-            </Link>
+              </Link>
+              <HeartButton type="person" slug={person.slug} name={person.name} />
+            </div>
           ))}
         </div>
       )}
