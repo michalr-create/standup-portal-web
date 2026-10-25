@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { Item } from "@/lib/data";
 import { categoryBrowseHref } from "@/lib/category-browse";
 import ItemsBrowser from "./ItemsBrowser";
 import { sortStandupTagChips } from "./standupTagChipOrder";
 import { tagDisplayName } from "./tagDisplayName";
+import {
+  pendingTagAfterServerFilters,
+  serverFilterKey,
+  tagChipClick,
+} from "./tagChipPending";
 
 type FacetPerson = { slug: string; name: string };
 type FacetTag = { name: string; slug: string; tag_type: string };
@@ -84,7 +90,38 @@ const filterStyles = `
     display: contents;
   }
 }
+.fib-chip-dots {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.fib-chip-dots > span {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: fib-chip-dot 0.9s infinite ease-in-out both;
+}
+.fib-chip-dots > span:nth-child(2) { animation-delay: 0.15s; }
+.fib-chip-dots > span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes fib-chip-dot {
+  0%, 80%, 100% { opacity: 0.28; }
+  40% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fib-chip-dots > span {
+    animation: none;
+    opacity: 1;
+  }
+}
 `;
+
+const TAG_CHIP_PENDING_MS = 10_000;
 
 function useChipRowFade(itemCount: number) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -187,7 +224,42 @@ export default function FilterableItemsBrowser({
   const [search, setSearch] = useState("");
   const [personSlug, setPersonSlug] = useState("");
   const [tagSlug, setTagSlug] = useState("");
+  // Tag clicks soft-navigate and wait on the server render. This is set in the
+  // click itself so the chip shows it is busy before that render returns.
+  // Repeat clicks on that chip are ignored until the rendered filters change.
+  const [pendingTagSlug, setPendingTagSlug] = useState<string | null>(null);
+  const pendingTagRef = useRef<string | null>(null);
   const server = serverFilters;
+  const renderedFilterKey = server
+    ? serverFilterKey({
+        personSlug: server.personSlug,
+        tagSlug: server.tagSlug,
+        search: server.search,
+      })
+    : "";
+  const renderedFilterKeyRef = useRef(renderedFilterKey);
+
+  useEffect(() => {
+    const previous = renderedFilterKeyRef.current;
+    if (previous === renderedFilterKey) return;
+    renderedFilterKeyRef.current = renderedFilterKey;
+    const nextPending = pendingTagAfterServerFilters(
+      pendingTagRef.current,
+      previous,
+      renderedFilterKey,
+    );
+    pendingTagRef.current = nextPending;
+    setPendingTagSlug(nextPending);
+  }, [renderedFilterKey]);
+
+  useEffect(() => {
+    if (!pendingTagSlug) return;
+    const id = window.setTimeout(() => {
+      pendingTagRef.current = null;
+      setPendingTagSlug(null);
+    }, TAG_CHIP_PENDING_MS);
+    return () => window.clearTimeout(id);
+  }, [pendingTagSlug]);
 
   const commitSearch = (q: string) => {
     if (!server) return;
@@ -323,17 +395,30 @@ export default function FilterableItemsBrowser({
                 <div ref={rowRef} className="fib-chip-row scrollbar-hide">
                   {availableTags.map((tag) => {
                     const active = activeTag === tag.slug;
+                    const label = tagDisplayName(tag.name);
+                    const isChipPending = pendingTagSlug === tag.slug;
                     return (
                       <button
                         key={tag.slug}
                         type="button"
                         aria-pressed={active}
+                        aria-busy={isChipPending || undefined}
+                        aria-disabled={isChipPending || undefined}
+                        aria-label={isChipPending ? `${label}, \u0142adowanie` : undefined}
                         onClick={() => {
                           const next = active ? "" : tag.slug;
-                          if (server) goToFilters({ tag: next });
-                          else setTagSlug(next);
+                          if (!server) {
+                            setTagSlug(next);
+                            return;
+                          }
+                          const action = tagChipClick(pendingTagRef.current, activeTag, tag.slug);
+                          if (action.type === "ignore") return;
+                          pendingTagRef.current = action.pendingChipSlug;
+                          flushSync(() => setPendingTagSlug(action.pendingChipSlug));
+                          goToFilters({ tag: action.tag });
                         }}
                         style={{
+                          position: "relative",
                           background: active ? "var(--coral)" : "rgba(255,255,255,.06)",
                           border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
                           color: active ? "#fff" : "var(--paper-dim)",
@@ -341,7 +426,7 @@ export default function FilterableItemsBrowser({
                           padding: "7px 14px",
                           fontSize: "13px",
                           fontWeight: active ? 700 : 400,
-                          cursor: "pointer",
+                          cursor: isChipPending ? "progress" : "pointer",
                           transition: "background 0.15s, border-color 0.15s, color 0.15s",
                           fontFamily: "inherit",
                           lineHeight: 1,
@@ -349,7 +434,14 @@ export default function FilterableItemsBrowser({
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {tagDisplayName(tag.name)}
+                        {isChipPending && (
+                          <span className="fib-chip-dots" aria-hidden="true">
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        )}
+                        <span style={isChipPending ? { visibility: "hidden" } : undefined}>{label}</span>
                       </button>
                     );
                   })}
@@ -407,7 +499,9 @@ export default function FilterableItemsBrowser({
         )}
       </div>
 
-      <ItemsBrowser items={filtered} />
+      <div aria-busy={pendingTagSlug ? true : undefined}>
+        <ItemsBrowser items={filtered} />
+      </div>
     </div>
   );
 }
