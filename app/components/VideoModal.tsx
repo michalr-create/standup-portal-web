@@ -3,6 +3,22 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { Item } from "@/lib/data";
+import {
+  EMPTY_YT_SNAPSHOT,
+  SLEEP_OPTIONS,
+  isTimedOption,
+  isTimerDue,
+  isYouTubeOrigin,
+  parseYtMessage,
+  readYtPayload,
+  remainingSeconds,
+  shouldStopAtEnd,
+  sleepButtonLabel,
+  ytCommand,
+  ytListening,
+  type SleepOptionId,
+  type YtSnapshot,
+} from "@/lib/sleep-timer";
 
 type Props = {
   item: Item;
@@ -10,22 +26,22 @@ type Props = {
   onClose: () => void;
 };
 
-const TIMER_OPTIONS = [
-  { label: "15 min", secs: 900 },
-  { label: "30 min", secs: 1800 },
-  { label: "45 min", secs: 2700 },
-  { label: "1 godz", secs: 3600 },
-  { label: "2 godz", secs: 7200 },
-];
-
+const YT_FRAME_ID = "parska-yt";
+const YT_TARGET = "https://www.youtube.com";
 const YT_ALLOW = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen";
 
 const PHONE_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 560px) and (pointer: coarse)";
 
-function formatTimer(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+function embedSrc(videoId: string, phoneEmbed: boolean): string {
+  const params = new URLSearchParams({
+    autoplay: "1",
+    playsinline: "1",
+    enablejsapi: "1",
+  });
+  if (phoneEmbed) params.set("fs", "0");
+  // The widget API drops commands unless the embed was opened for this origin.
+  if (typeof window !== "undefined") params.set("origin", window.location.origin);
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }
 
 function isPhoneEmbed(): boolean {
@@ -67,28 +83,6 @@ function syncVisualViewport() {
   root.style.setProperty("--video-vv-left", `${Math.round(vv?.offsetLeft ?? 0)}px`);
 }
 
-const timerBtnStyle: CSSProperties = {
-  fontSize: "11px",
-  color: "var(--paper-mute)",
-  background: "rgba(255,255,255,0.07)",
-  padding: "3px 10px",
-  borderRadius: "999px",
-  border: "1px solid rgba(255,255,255,0.1)",
-  cursor: "pointer",
-  lineHeight: "1.6",
-};
-
-const timerOptStyle: CSSProperties = {
-  fontSize: "11px",
-  color: "var(--paper-dim)",
-  background: "rgba(255,255,255,0.08)",
-  padding: "3px 10px",
-  borderRadius: "999px",
-  border: "1px solid rgba(255,255,255,0.12)",
-  cursor: "pointer",
-  lineHeight: "1.6",
-};
-
 const iconBtnStyle: CSSProperties = {
   background: "rgba(255,255,255,0.1)",
   color: "var(--paper)",
@@ -117,50 +111,61 @@ function CollapseIcon() {
 }
 
 function TimerControls({
+  choice,
   remaining,
-  showOptions,
+  stopped,
+  menuOpen,
+  onToggleMenu,
+  onSelect,
   onCancel,
-  onPick,
-  onOpen,
-  onCloseOptions,
 }: {
+  choice: SleepOptionId;
   remaining: number | null;
-  showOptions: boolean;
+  stopped: boolean;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onSelect: (id: SleepOptionId) => void;
   onCancel: () => void;
-  onPick: (secs: number) => void;
-  onOpen: () => void;
-  onCloseOptions: () => void;
 }) {
+  const running = choice !== "off";
   return (
-    <div className="video-modal-timer mt-3 flex items-center gap-2 flex-wrap">
-      {remaining !== null ? (
-        <>
-          <span className="mono" style={{ fontSize: "12px", color: "var(--paper-dim)" }}>
-            {"\u23f1 Wy\u0142\u0105czy si\u0119 za "}{formatTimer(remaining)}
-          </span>
-          <button type="button" onClick={onCancel} style={timerBtnStyle}>
+    <div className="video-modal-timer" data-sleep={stopped ? "stopped" : choice}>
+      <div className="video-modal-timer-row">
+        <button
+          type="button"
+          className="video-modal-timer-btn"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={onToggleMenu}
+        >
+          {sleepButtonLabel(choice, remaining)}
+        </button>
+        {running && (
+          <button type="button" className="video-modal-timer-btn" onClick={onCancel}>
             Anuluj
           </button>
-        </>
-      ) : showOptions ? (
-        <>
-          {TIMER_OPTIONS.map((opt) => (
-            <button key={opt.secs} type="button" onClick={() => onPick(opt.secs)} style={timerOptStyle}>
-              {opt.label}
+        )}
+        {stopped && (
+          <span className="video-modal-timer-status" role="status">
+            Zatrzymano
+          </span>
+        )}
+      </div>
+      {menuOpen && (
+        <div className="video-modal-timer-menu" role="menu" aria-label="Wy\u0142\u0105cznik czasowy">
+          {SLEEP_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={choice === option.id}
+              className="video-modal-timer-option"
+              onClick={() => onSelect(option.id)}
+            >
+              {option.label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={onCloseOptions}
-            style={{ fontSize: "13px", color: "var(--paper-mute)", padding: "2px 4px", cursor: "pointer" }}
-          >
-            {"\u2715"}
-          </button>
-        </>
-      ) : (
-        <button type="button" onClick={onOpen} style={timerBtnStyle}>
-          {"\u23f1 Wy\u0142\u0105cznik czasowy"}
-        </button>
+        </div>
       )}
     </div>
   );
@@ -172,23 +177,72 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   const phoneEmbedRef = useRef(false);
   const shellRequestedRef = useRef(false);
   const redirectingRef = useRef(false);
-  const [remaining, setRemaining] = useState<number | null>(null);
-  const [showOptions, setShowOptions] = useState(false);
+  const [choice, setChoice] = useState<SleepOptionId>("off");
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const [cover, setCover] = useState(false);
   const [phoneEmbed] = useState(isPhoneEmbed);
   phoneEmbedRef.current = phoneEmbed;
+  const ytRef = useRef<YtSnapshot>(EMPTY_YT_SNAPSHOT);
+  const seenPlayingRef = useRef(false);
+  const finishedRef = useRef(false);
+  const haltTimersRef = useRef<number[]>([]);
+  const finishRef = useRef<(kind: "pause" | "stop") => void>(() => {});
 
-  const params = new URLSearchParams({
-    autoplay: "1",
-    playsinline: "1",
-    enablejsapi: "1",
-  });
-  if (phoneEmbed) params.set("fs", "0");
-  const iframeSrc = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  const iframeSrc = embedSrc(videoId, phoneEmbed);
+  const remaining = remainingSeconds(deadline, now);
+
+  const postToPlayer = (message: unknown) => {
+    iframeRef.current?.contentWindow?.postMessage(JSON.stringify(message), YT_TARGET);
+  };
+
+  const sendPlayerCommand = (func: string) => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+    postToPlayer(ytListening(iframe.id));
+    postToPlayer(ytCommand(func, iframe.id));
+    // Bare command covers players that ignore the widget envelope.
+    iframe.contentWindow.postMessage(
+      JSON.stringify({ event: "command", func, args: [] }),
+      YT_TARGET,
+    );
+  };
+
+  const clearHaltTimers = () => {
+    haltTimersRef.current.forEach((id) => window.clearTimeout(id));
+    haltTimersRef.current = [];
+  };
+
+  const sendHalt = (kind: "pause" | "stop") => {
+    sendPlayerCommand("pauseVideo");
+    const retry = window.setTimeout(() => sendPlayerCommand("pauseVideo"), 200);
+    const followUp = window.setTimeout(() => {
+      const state = ytRef.current.playerState;
+      if (kind === "stop" || state !== 2) sendPlayerCommand("stopVideo");
+    }, 900);
+    haltTimersRef.current.push(retry, followUp);
+  };
+
+  finishRef.current = (kind) => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    clearHaltTimers();
+    setChoice("off");
+    setDeadline(null);
+    setMenuOpen(false);
+    setStopped(true);
+    sendHalt(kind);
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      if (menuOpen) {
+        setMenuOpen(false);
+        return;
+      }
       if (cover) {
         setCover(false);
         const doc = document as FullscreenDocument;
@@ -201,7 +255,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose, cover]);
+  }, [onClose, cover, menuOpen]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -209,10 +263,92 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    setRemaining(null);
-    setShowOptions(false);
+    setChoice("off");
+    setDeadline(null);
+    setMenuOpen(false);
+    setStopped(false);
     setCover(false);
+    finishedRef.current = false;
+    seenPlayingRef.current = false;
+    ytRef.current = EMPTY_YT_SNAPSHOT;
+    clearHaltTimers();
   }, [videoId]);
+
+  useEffect(() => () => clearHaltTimers(), []);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    let ready = false;
+    let tries = 0;
+    const listen = () => {
+      postToPlayer(ytListening(iframe.id));
+      postToPlayer(ytCommand("addEventListener", iframe.id, ["onStateChange"]));
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== iframe.contentWindow) return;
+      if (!isYouTubeOrigin(event.origin)) return;
+      const payload = readYtPayload(event.data);
+      ytRef.current = parseYtMessage(payload, ytRef.current);
+      if (ytRef.current.playerState === 1) seenPlayingRef.current = true;
+      if (payload && typeof payload === "object" && (payload as { event?: string }).event === "onReady") {
+        ready = true;
+      }
+    };
+    const retry = window.setInterval(() => {
+      if (ready || tries >= 15) {
+        window.clearInterval(retry);
+        return;
+      }
+      tries += 1;
+      listen();
+    }, 500);
+    listen();
+    iframe.addEventListener("load", listen);
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.clearInterval(retry);
+      iframe.removeEventListener("load", listen);
+      window.removeEventListener("message", onMessage);
+    };
+  }, [iframeSrc]);
+
+  useEffect(() => {
+    if (deadline === null) return;
+    const tick = () => {
+      const current = Date.now();
+      setNow(current);
+      if (isTimerDue(deadline, current)) finishRef.current("pause");
+    };
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    const timeout = window.setTimeout(tick, Math.max(0, deadline - Date.now()));
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [deadline]);
+
+  useEffect(() => {
+    if (choice !== "end") return;
+    const interval = window.setInterval(() => {
+      if (shouldStopAtEnd(ytRef.current, videoId, seenPlayingRef.current)) {
+        finishRef.current("stop");
+      }
+    }, 400);
+    return () => window.clearInterval(interval);
+  }, [choice, videoId]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest(".video-modal-timer")) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointer);
+    return () => document.removeEventListener("pointerdown", onPointer);
+  }, [menuOpen]);
 
   useEffect(() => {
     let timers: number[] = [];
@@ -275,20 +411,6 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     };
   }, []);
 
-  useEffect(() => {
-    if (remaining === null) return;
-    if (remaining <= 0) {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
-        "*"
-      );
-      setRemaining(null);
-      return;
-    }
-    const id = setTimeout(() => setRemaining((r) => (r !== null ? r - 1 : null)), 1000);
-    return () => clearTimeout(id);
-  }, [remaining]);
-
   const label = item.people.length > 0
     ? item.people.map((p) => p.name).join(" \u00b7 ")
     : item.showName || "";
@@ -326,13 +448,37 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     }
   };
 
+  const selectSleep = (id: SleepOptionId) => {
+    setMenuOpen(false);
+    setStopped(false);
+    finishedRef.current = false;
+    clearHaltTimers();
+    if (id === "off") {
+      setChoice("off");
+      setDeadline(null);
+      return;
+    }
+    if (id === "end") {
+      setChoice("end");
+      setDeadline(null);
+      return;
+    }
+    const option = SLEEP_OPTIONS.find((itemOption) => itemOption.id === id);
+    if (!option || !isTimedOption(option)) return;
+    const start = Date.now();
+    setNow(start);
+    setChoice(id);
+    setDeadline(start + option.seconds * 1000);
+  };
+
   const timerProps = {
+    choice,
     remaining,
-    showOptions,
-    onCancel: () => setRemaining(null),
-    onPick: (secs: number) => { setRemaining(secs); setShowOptions(false); },
-    onOpen: () => setShowOptions(true),
-    onCloseOptions: () => setShowOptions(false),
+    stopped,
+    menuOpen,
+    onToggleMenu: () => setMenuOpen((open) => !open),
+    onSelect: selectSleep,
+    onCancel: () => selectSleep("off"),
   };
 
   return createPortal(
@@ -342,6 +488,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
         <div className="video-modal-player" ref={playerRef}>
           <iframe
             ref={iframeRef}
+            id={YT_FRAME_ID}
             className="video-modal-iframe"
             src={iframeSrc}
             title={item.title}
