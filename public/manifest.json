@@ -1,7 +1,7 @@
 {
   "name": "parska — polski stand-up w jednym miejscu",
   "short_name": "parska",
-  "description": "Agregator polskiego stand-upu. Nowe specjale, klipy, podcasty, trasy i open-miki.",
+  "description": "Agregator polskiego stand-upu. Nowe nagrania, specjale, wywiady i formaty.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
