@@ -16,7 +16,7 @@ export default async function SzukajPage({ searchParams }: Props) {
     return (
       <div className="band">
         <div className="max-w-6xl mx-auto text-center py-20">
-          <p style={{ color: "var(--paper-mute)" }}>Wpisz fraz\u0119, \u017ceby wyszuka\u0107.</p>
+          <p style={{ color: "var(--paper-mute)" }}>Wpisz frazę, żeby wyszukać.</p>
         </div>
       </div>
     );

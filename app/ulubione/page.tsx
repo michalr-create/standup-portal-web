@@ -56,16 +56,16 @@ export default function UlubionePage() {
             Ulubione<span className="dot-accent">.</span>
           </h1>
           <p style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
-            Zapisane w przegl\u0105darce \u00b7 bez konta
+            Zapisane w przeglądarce · bez konta
           </p>
         </header>
 
         {!hasAny && !loading && (
           <div className="text-center py-20" style={{ color: "var(--paper-mute)" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>{"♡"}</div>
-            <p className="text-lg">Nie masz jeszcze \u017cadnych ulubionych.</p>
+            <p className="text-lg">Nie masz jeszcze żadnych ulubionych.</p>
             <p className="mt-2 text-sm">
-              Dodaj ulubione klikaj\u0105c serduszko na profilu standupera lub formatu.
+              Dodaj ulubione klikając serduszko na profilu standupera lub formatu.
             </p>
             <div className="flex gap-4 justify-center mt-6">
               <Link href="/standuperzy" className="chip">Standuperzy</Link>
@@ -148,15 +148,15 @@ export default function UlubionePage() {
             {/* Najnowsze treści */}
             <section>
               <h2 className="font-black mb-6" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
-                Najnowsze tre\u015bci
+                Najnowsze treści
               </h2>
               {loading ? (
                 <div className="text-sm" style={{ color: "var(--paper-mute)" }}>
-                  \u0141adowanie\u2026
+                  Ładowanie…
                 </div>
               ) : data.items.length === 0 ? (
                 <p style={{ color: "var(--paper-mute)", fontSize: "14px" }}>
-                  Brak tre\u015bci dla wybranych ulubionych.
+                  Brak treści dla wybranych ulubionych.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
