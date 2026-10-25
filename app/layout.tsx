@@ -1,7 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllCategories, getAllShows, getAllPeople } from "@/lib/data";
+import { getAllShows, getAllPeople } from "@/lib/data";
 import MobileDrawer from "./components/MobileDrawer";
 import InstallButton from "./components/InstallButton";
 import NavSearch from "./components/NavSearch";
@@ -30,8 +30,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [categories, shows, people] = await Promise.all([
-    getAllCategories(),
+  const [shows, people] = await Promise.all([
     getAllShows(),
     getAllPeople(),
   ]);
@@ -94,7 +93,10 @@ export default async function RootLayout({
 
           <NavSearch />
           <InstallButton />
-          <MobileDrawer categories={categories} shows={shows} people={people} />
+          <MobileDrawer
+            navLinks={navLinks}
+            shows={shows.slice(0, 8).map(({ id, name, slug }) => ({ id, name, slug }))}
+          />
         </nav>
 
         {/* MAIN */}

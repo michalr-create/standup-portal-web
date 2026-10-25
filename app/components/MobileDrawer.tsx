@@ -1,36 +1,143 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+type NavLink = { href: string; label: string };
+
 type Props = {
-  categories: { id: number; name: string; slug: string }[];
+  navLinks: NavLink[];
   shows: { id: number; name: string; slug: string }[];
-  people: { id: number; name: string; slug: string }[];
 };
 
-export default function MobileDrawer({ categories, shows, people }: Props) {
+const MAX_VISIBLE_SHOWS = 8;
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function focusableIn(root: HTMLElement) {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => {
+    if (el.hasAttribute("disabled") || el.getAttribute("aria-hidden") === "true") return false;
+    if (el.closest("[hidden]")) return false;
+    const style = window.getComputedStyle(el);
+    return style.display !== "none" && style.visibility !== "hidden";
+  });
+}
+
+function HeartIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
+export default function MobileDrawer({ navLinks, shows }: Props) {
   const [open, setOpen] = useState(false);
+  const [showsOpen, setShowsOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const router = useRouter();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const showsPanelId = useId();
+  const visibleShows = shows.slice(0, MAX_VISIBLE_SHOWS);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setShowsOpen(false);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = searchQ.trim();
     if (trimmed) {
       router.push(`/szukaj?q=${encodeURIComponent(trimmed)}`);
-      setOpen(false);
+      close();
       setSearchQ("");
     }
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    panel.focus({ preventScroll: true });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const items = focusableIn(panel);
+      if (items.length === 0) {
+        event.preventDefault();
+        panel.focus({ preventScroll: true });
+        return;
+      }
+
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+
+      const inside = active instanceof Node && panel.contains(active) && active !== panel;
+
+      if (event.shiftKey) {
+        if (active === first || !inside) {
+          event.preventDefault();
+          last.focus();
+        }
+        return;
+      }
+
+      if (active === last || !inside) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown, true);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.body.style.overflow = previousOverflow;
+      (previouslyFocused ?? triggerRef.current)?.focus();
+    };
+  }, [open, close]);
+
   return (
     <>
       <button
+        ref={triggerRef}
+        type="button"
         onClick={() => setOpen(true)}
-        className="md:hidden w-9 h-9 flex flex-col items-center justify-center gap-1.5"
+        className="md:hidden min-h-11 min-w-11 w-11 h-11 flex flex-col items-center justify-center gap-1.5"
+        aria-label="Menu"
+        aria-expanded={open}
+        aria-controls={panelId}
       >
         <span className="w-5 h-0.5 rounded-full" style={{ background: "var(--paper)" }} />
         <span className="w-5 h-0.5 rounded-full" style={{ background: "var(--paper)" }} />
@@ -42,22 +149,31 @@ export default function MobileDrawer({ categories, shows, people }: Props) {
           <div
             className="absolute inset-0"
             style={{ background: "rgba(0,0,0,.6)" }}
-            onClick={() => setOpen(false)}
+            onClick={close}
+            aria-hidden="true"
           />
           <div
-            className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] overflow-y-auto p-6"
+            ref={panelRef}
+            id={panelId}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            tabIndex={-1}
+            className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] overflow-y-auto px-5 pt-4 pb-8 outline-none"
             style={{ background: "var(--ink-2)", borderLeft: "1px solid var(--line)" }}
           >
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-4">
               <span className="font-black text-xl" style={{ letterSpacing: "-.03em" }}>
                 parska<span className="dot-accent">.</span>
               </span>
               <button
-                onClick={() => setOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full"
+                type="button"
+                onClick={close}
+                className="min-h-11 min-w-11 w-11 h-11 flex items-center justify-center rounded-full"
                 style={{ background: "var(--ink-3)" }}
+                aria-label="Zamknij"
               >
-                <span style={{ color: "var(--paper)" }}>{"✕"}</span>
+                <span style={{ color: "var(--paper)" }}>{"\u2715"}</span>
               </button>
             </div>
 
@@ -90,74 +206,97 @@ export default function MobileDrawer({ categories, shows, people }: Props) {
               />
             </form>
 
-            <div className="space-y-6">
+            <nav aria-label="G\u0142\u00f3wne">
+              <ul className="list-none p-0 m-0">
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      onClick={close}
+                      className="flex items-center gap-2 min-h-11 px-3 py-3 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
+                      style={{ color: "var(--paper)" }}
+                    >
+                      {link.href === "/ulubione" && <HeartIcon />}
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            <div
+              className="mt-4 pt-4 space-y-4"
+              style={{ borderTop: "1px solid var(--line)" }}
+            >
               <div>
-                <h4
-                  className="mono text-xs uppercase mb-3"
-                  style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
+                <button
+                  type="button"
+                  aria-expanded={showsOpen}
+                  aria-controls={showsPanelId}
+                  onClick={() => setShowsOpen((value) => !value)}
+                  className="flex w-full min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-3 text-sm font-semibold hover:bg-[var(--ink-3)]"
+                  style={{ color: "var(--paper-dim)" }}
                 >
-                  Kategorie
-                </h4>
-                <ul className="space-y-1">
-                  {categories.map((cat) => (
-                    <li key={cat.slug}>
+                  <span>Formaty</span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    className={"shrink-0 transition-transform" + (showsOpen ? " rotate-180" : "")}
+                    style={{ color: "var(--paper-mute)" }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {showsOpen && (
+                  <ul id={showsPanelId} className="list-none p-0 m-0 pb-1">
+                    {visibleShows.map((show) => (
+                      <li key={show.id}>
+                        <Link
+                          href={"/format/" + show.slug}
+                          onClick={close}
+                          className="flex items-center min-h-11 px-3 py-3 rounded-lg text-sm transition-colors hover:bg-[var(--ink-3)]"
+                          style={{ color: "var(--paper-dim)" }}
+                        >
+                          {show.name}
+                        </Link>
+                      </li>
+                    ))}
+                    <li>
                       <Link
-                        href={`/${cat.slug}`}
-                        onClick={() => setOpen(false)}
-                        className="block px-3 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
-                        style={{ color: "var(--paper-dim)" }}
+                        href="/formaty"
+                        onClick={close}
+                        className="flex items-center min-h-11 px-3 py-3 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
+                        style={{ color: "var(--paper)" }}
                       >
-                        {cat.name}
+                        {"Wszystkie formaty \u2192"}
                       </Link>
                     </li>
-                  ))}
-                </ul>
+                  </ul>
+                )}
               </div>
 
               <div>
                 <h4
-                  className="mono text-xs uppercase mb-3"
+                  className="mono text-xs uppercase mb-1 px-3"
                   style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
                 >
-                  Formaty
+                  Osoby
                 </h4>
-                <ul className="space-y-1">
-                  {shows.map((show) => (
-                    <li key={show.slug}>
-                      <Link
-                        href={`/format/${show.slug}`}
-                        onClick={() => setOpen(false)}
-                        className="block px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--ink-3)]"
-                        style={{ color: "var(--paper-dim)" }}
-                      >
-                        {show.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h4
-                  className="mono text-xs uppercase mb-3"
-                  style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
+                <Link
+                  href="/standuperzy"
+                  onClick={close}
+                  className="flex items-center min-h-11 px-3 py-3 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
+                  style={{ color: "var(--paper)" }}
                 >
-                  Standuperzy
-                </h4>
-                <ul className="space-y-1">
-                  {people.map((p) => (
-                    <li key={p.slug}>
-                      <Link
-                        href={`/standuper/${p.slug}`}
-                        onClick={() => setOpen(false)}
-                        className="block px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--ink-3)]"
-                        style={{ color: "var(--paper-dim)" }}
-                      >
-                        {p.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                  {"Wszyscy standuperzy \u2192"}
+                </Link>
               </div>
             </div>
           </div>
