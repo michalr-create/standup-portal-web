@@ -172,6 +172,25 @@ a.pager-btn:hover {
   margin-left: 5px;
 }
 
+/* Favorite heart — 44px tap target, small glyph. Pop scales the glyph only. */
+.heart-btn {
+  -webkit-tap-highlight-color: transparent;
+  transition: color .15s ease;
+}
+.heart-btn:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+.heart-btn > span {
+  transition: transform .2s ease;
+}
+.heart-btn-disc {
+  background: rgba(239, 232, 220, .92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 4px rgba(11, 11, 11, .28);
+}
+
 /* Format card (light bg) */
 .fcard {
   border: 1px solid rgba(11,11,11,.10);

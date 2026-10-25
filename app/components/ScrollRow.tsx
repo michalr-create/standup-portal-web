@@ -44,86 +44,93 @@ function ScrollCard({
   isWatched: boolean;
   onClick: () => void;
 }) {
-  return (
-    <button
-      onClick={onClick}
-      className="group block vcard text-left w-72 sm:w-80 shrink-0 snap-start"
-    >
-      <div
-        className="overflow-hidden relative"
-        style={{
-          aspectRatio: "16/10",
-          borderRadius: "14px",
-          border: "1px solid var(--line)",
-          background: "var(--ink-3)",
-        }}
-      >
-        {item.thumbnail_url && (
-          <img
-            src={item.thumbnail_url}
-            alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            style={{ opacity: isWatched ? 0.7 : 1 }}
-          />
-        )}
-        {item.duration_seconds != null && (
-          <div
-            className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
-            style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
-          >
-            {formatDuration(item.duration_seconds)}
-          </div>
-        )}
-        {isWatched && (
-          <div
-            className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center"
-            style={{ background: "var(--coral)", fontSize: "12px", color: "#fff", fontWeight: 700 }}
-          >
-            {"✓"}
-          </div>
-        )}
-        <div className="play-overlay">
-          <div className="play-btn" />
-        </div>
-      </div>
+  const solePerson = item.people.length === 1 ? item.people[0] : null;
 
-      <div className="pt-3 px-0.5">
-        <h4
-          className="font-extrabold leading-tight mb-1 line-clamp-2"
-          style={{ fontSize: "16px", letterSpacing: "-.01em" }}
-        >
-          {item.title}
-        </h4>
+  return (
+    <article className="group vcard relative text-left w-72 sm:w-80 shrink-0 snap-start">
+      <button type="button" onClick={onClick} className="block text-left w-full">
         <div
-          className="flex items-center gap-1 flex-wrap"
-          style={{ color: "var(--paper-dim)", fontSize: "13px" }}
+          className="overflow-hidden relative"
+          style={{
+            aspectRatio: "16/10",
+            borderRadius: "14px",
+            border: "1px solid var(--line)",
+            background: "var(--ink-3)",
+          }}
         >
-          {item.people.length > 0 ? (
-            item.people.map((p, i) => (
-              <span key={p.slug} className="flex items-center gap-0.5">
-                {i > 0 && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
-                <Link
-                  href={"/standuper/" + p.slug}
-                  onClick={(e) => e.stopPropagation()}
-                  className="hover:text-white transition-colors"
-                >
-                  {p.name}
-                </Link>
-                <HeartButton type="person" slug={p.slug} size={13} />
-              </span>
-            ))
-          ) : (
-            <span>{item.showName || ""}</span>
+          {item.thumbnail_url && (
+            <img
+              src={item.thumbnail_url}
+              alt={item.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              style={{ opacity: isWatched ? 0.7 : 1 }}
+            />
           )}
-          {(item.people.length > 0 || item.showName) && (
-            <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>
+          {item.duration_seconds != null && (
+            <div
+              className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
+              style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
+            >
+              {formatDuration(item.duration_seconds)}
+            </div>
           )}
-          <span className="mono" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
-            {timeAgo(item.published_at)}
-          </span>
+          {isWatched && (
+            <div
+              className={`absolute top-2.5 w-6 h-6 rounded-full flex items-center justify-center ${solePerson ? "right-16" : "right-2.5"}`}
+              style={{ background: "var(--coral)", fontSize: "12px", color: "#fff", fontWeight: 700 }}
+            >
+              {"✓"}
+            </div>
+          )}
+          <div className="play-overlay">
+            <div className="play-btn" />
+          </div>
         </div>
+
+        <div className="pt-3 px-0.5">
+          <h4
+            className="font-extrabold leading-tight line-clamp-2"
+            style={{ fontSize: "16px", letterSpacing: "-.01em" }}
+          >
+            {item.title}
+          </h4>
+        </div>
+      </button>
+      {solePerson && (
+        <div className="absolute top-1 right-1 z-20">
+          <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
+        </div>
+      )}
+      <div
+        className="mt-1 px-0.5 flex items-center gap-x-1.5 gap-y-0 flex-wrap"
+        style={{ color: "var(--paper-dim)", fontSize: "13px" }}
+      >
+        {item.people.length > 0 ? (
+          item.people.map((p, i) => (
+            <span key={p.slug} className="inline-flex items-center gap-1">
+              {i > 0 && <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>}
+              <Link
+                href={"/standuper/" + p.slug}
+                className="hover:text-white transition-colors"
+              >
+                {p.name}
+              </Link>
+              {item.people.length > 1 && (
+                <HeartButton type="person" slug={p.slug} name={p.name} size={15} />
+              )}
+            </span>
+          ))
+        ) : (
+          <span>{item.showName || ""}</span>
+        )}
+        {(item.people.length > 0 || item.showName) && (
+          <span style={{ color: "var(--paper-mute)" }}>{"\u00b7"}</span>
+        )}
+        <span className="mono" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
+          {timeAgo(item.published_at)}
+        </span>
       </div>
-    </button>
+    </article>
   );
 }
 
