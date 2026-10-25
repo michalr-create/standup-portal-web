@@ -3,7 +3,9 @@ import { test } from "node:test";
 import {
   DIRECTORY_LETTERS,
   directoryLetter,
+  formatItemCount,
   groupPeopleByLetter,
+  jumpLettersFromGroups,
   peopleByActivity,
   pozycjaCountLabel,
 } from "./standuperzy-directory.ts";
@@ -29,6 +31,37 @@ test("directory letters keep \u0141 after L and \u017b at the end", () => {
   assert.equal(letters[letters.length - 1], "\u017b");
   assert.equal(directoryLetter(" \u0142ukasz "), "\u0141");
   assert.equal(directoryLetter(""), "#");
+});
+
+test("jump bar lists only letters that have people, in index order", () => {
+  const groups = groupPeopleByLetter([
+    { name: "Abelard Giza" },
+    { name: "Cezary" },
+    { name: "\u0141ukasz Lotek Lodkowski" },
+    { name: "Magda Kubicka" },
+    { name: "#nocna" },
+  ]);
+  assert.deepEqual(jumpLettersFromGroups(groups), ["A", "C", "\u0141", "M", "#"]);
+  assert.equal(jumpLettersFromGroups(groups).includes("B"), false);
+  assert.equal(jumpLettersFromGroups([]).length, 0);
+});
+
+test("jump bar follows the search filter", () => {
+  const people = [
+    { name: "Abelard Giza" },
+    { name: "Bartek" },
+    { name: "Magda Kubicka" },
+  ];
+  const filtered = people.filter((person) => person.name.toLowerCase().includes("m"));
+  assert.deepEqual(jumpLettersFromGroups(groupPeopleByLetter(filtered)), ["M"]);
+});
+
+test("item count line is omitted when there are no items", () => {
+  assert.equal(formatItemCount(0), null);
+  assert.equal(formatItemCount(-2), null);
+  assert.equal(formatItemCount(1), "1 pozycja");
+  assert.equal(formatItemCount(22), "22 pozycje");
+  assert.equal(formatItemCount(5), "5 pozycji");
 });
 
 test("grouping keeps database order inside a letter", () => {

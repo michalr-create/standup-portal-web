@@ -57,6 +57,22 @@ export function groupPeopleByLetter<T extends { name: string }>(
   return groups;
 }
 
+/**
+ * Litery paska A–Z: tylko te, które mają osoby w `groups`.
+ * Kolejność alfabetu polskiego, potem kubełki spoza indeksu (np. „#”).
+ */
+export function jumpLettersFromGroups(groups: readonly { letter: string }[]): string[] {
+  const present = new Set(groups.map((group) => group.letter));
+  const known = new Set<string>(DIRECTORY_LETTERS);
+  const ordered = DIRECTORY_LETTERS.filter((letter) => present.has(letter));
+  const extra: string[] = [];
+  for (const group of groups) {
+    if (known.has(group.letter) || extra.includes(group.letter)) continue;
+    extra.push(group.letter);
+  }
+  return [...ordered, ...extra];
+}
+
 /** 1 pozycja, 2 pozycje, 5 pozycji, 22 pozycje, 701 pozycja. */
 export function pozycjaCountLabel(n: number): string {
   const abs = Math.abs(Math.trunc(n));
@@ -65,6 +81,12 @@ export function pozycjaCountLabel(n: number): string {
   if (mod10 === 1 && mod100 !== 11) return "pozycja";
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 > 20)) return "pozycje";
   return "pozycji";
+}
+
+/** Liczba pozycji albo null, gdy nie ma czego pokazać (0 i mniej). */
+export function formatItemCount(count: number): string | null {
+  if (count <= 0) return null;
+  return count + " " + pozycjaCountLabel(count);
 }
 
 export function peopleByActivity<T extends { id: number; name: string }>(
