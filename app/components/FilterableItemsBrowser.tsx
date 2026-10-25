@@ -1,10 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Item } from "@/lib/data";
+import { categoryBrowseHref } from "@/lib/category-browse";
 import ItemsBrowser from "./ItemsBrowser";
 import { sortStandupTagChips } from "./standupTagChipOrder";
 import { tagDisplayName } from "./tagDisplayName";
+
+type FacetPerson = { slug: string; name: string };
+type FacetTag = { name: string; slug: string; tag_type: string };
+
+export type ServerItemFilters = {
+  pathname: string;
+  personSlug: string;
+  tagSlug: string;
+  search: string;
+  people: FacetPerson[];
+  tags: FacetTag[];
+};
 
 type CountWord = { one: string; many: string };
 
@@ -112,8 +126,9 @@ function countLabel(
   word: CountWord,
   isFiltered: boolean,
   catalogTotal?: number,
+  serverFiltered = false,
 ): string {
-  if (catalogTotal != null && !isFiltered) {
+  if (catalogTotal != null && (serverFiltered || !isFiltered)) {
     const w = catalogTotal === 1 ? word.one : word.many;
     return `${catalogTotal} ${w}`;
   }
@@ -126,23 +141,68 @@ function countLabel(
   return `${shown} ${w}`;
 }
 
+function useUrlSearch(committed: string, enabled: boolean, commit: (value: string) => void) {
+  const [draft, setDraft] = useState(committed);
+  const draftRef = useRef(draft);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const commitRef = useRef(commit);
+  draftRef.current = draft;
+  commitRef.current = commit;
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (input && document.activeElement === input) return;
+    setDraft(committed);
+  }, [committed]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (draft.trim() === committed.trim()) return;
+    const handle = window.setTimeout(() => {
+      const latest = draftRef.current.trim();
+      if (latest === committed.trim()) return;
+      commitRef.current(latest);
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [draft, committed, enabled]);
+
+  return { draft, setDraft, inputRef };
+}
+
 export default function FilterableItemsBrowser({
   items,
   countWord = { one: "pozycja", many: "pozycji" },
   catalogTotal,
   tagChipOrder = "alphabetical",
+  serverFilters,
 }: {
   items: Item[];
   countWord?: CountWord;
   catalogTotal?: number;
   /** Standup category chips pin Special, Stand-up impro, then klipy. */
   tagChipOrder?: "alphabetical" | "standup";
+  serverFilters?: ServerItemFilters;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [personSlug, setPersonSlug] = useState("");
   const [tagSlug, setTagSlug] = useState("");
+  const server = serverFilters;
+
+  const commitSearch = (q: string) => {
+    if (!server) return;
+    router.replace(categoryBrowseHref(server.pathname, {
+      osoba: server.personSlug,
+      tag: server.tagSlug,
+      q,
+    }));
+  };
+  const { draft, setDraft, inputRef } = useUrlSearch(server?.search ?? "", !!server, commitSearch);
 
   const people = useMemo(() => {
+    if (server) {
+      return [...server.people].sort((a, b) => a.name.localeCompare(b.name, "pl"));
+    }
     const map = new Map<string, string>();
     for (const item of items) {
       for (const p of item.people) {
@@ -152,32 +212,51 @@ export default function FilterableItemsBrowser({
     return [...map.entries()]
       .map(([slug, name]) => ({ slug, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "pl"));
-  }, [items]);
+  }, [items, server]);
 
   const availableTags = useMemo(() => {
+    const sortTags = <T extends { name: string; slug: string }>(tags: T[]): T[] => {
+      if (tagChipOrder === "standup") return sortStandupTagChips(tags);
+      return [...tags].sort((a, b) => a.name.localeCompare(b.name, "pl"));
+    };
+    if (server) return sortTags(server.tags);
     const map = new Map<string, { name: string; slug: string; tag_type: string }>();
     for (const item of items) {
       for (const t of item.tags) {
         if (!map.has(t.slug)) map.set(t.slug, t);
       }
     }
-    const tags = [...map.values()];
-    if (tagChipOrder === "standup") return sortStandupTagChips(tags);
-    return tags.sort((a, b) => a.name.localeCompare(b.name, "pl"));
-  }, [items, tagChipOrder]);
+    return sortTags([...map.values()]);
+  }, [items, server, tagChipOrder]);
 
   const { rowRef, showFade } = useChipRowFade(availableTags.length);
 
+  const activePerson = server ? server.personSlug : personSlug;
+  const activeTag = server ? server.tagSlug : tagSlug;
+  const activeSearch = server ? draft : search;
+
   const filtered = useMemo(() => {
+    if (server) return items;
     let result = items;
     const q = search.trim().toLowerCase();
     if (q) result = result.filter((i) => i.title.toLowerCase().includes(q));
     if (personSlug) result = result.filter((i) => i.people.some((p) => p.slug === personSlug));
     if (tagSlug) result = result.filter((i) => i.tags.some((t) => t.slug === tagSlug));
     return result;
-  }, [items, search, personSlug, tagSlug]);
+  }, [items, search, personSlug, tagSlug, server]);
 
-  const isFiltered = !!search.trim() || !!personSlug || !!tagSlug;
+  const isFiltered = server
+    ? !!(server.personSlug || server.tagSlug || server.search || draft.trim())
+    : !!search.trim() || !!personSlug || !!tagSlug;
+
+  const goToFilters = (next: { osoba?: string; tag?: string; q?: string }) => {
+    if (!server) return;
+    router.push(categoryBrowseHref(server.pathname, {
+      osoba: next.osoba ?? server.personSlug,
+      tag: next.tag ?? server.tagSlug,
+      q: next.q ?? draft.trim(),
+    }));
+  };
 
   const inputBase: React.CSSProperties = {
     background: "rgba(255,255,255,.06)",
@@ -196,10 +275,15 @@ export default function FilterableItemsBrowser({
       <style>{filterStyles}</style>
       <div className="mb-6" style={{ display: "flex", flexDirection: "column", gap: "12px", minWidth: 0, maxWidth: "100%" }}>
         <input
+          ref={inputRef}
           type="search"
           placeholder={"Szukaj po tytule\u2026"}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={activeSearch}
+          onChange={(e) => {
+            if (server) setDraft(e.target.value);
+            else setSearch(e.target.value);
+          }}
+          aria-label={"Szukaj po tytule"}
           style={{ ...inputBase, width: "100%" }}
         />
 
@@ -208,8 +292,12 @@ export default function FilterableItemsBrowser({
             {people.length > 0 && (
               <select
                 className="fib-person"
-                value={personSlug}
-                onChange={(e) => setPersonSlug(e.target.value)}
+                aria-label="Standuper"
+                value={activePerson}
+                onChange={(e) => {
+                  if (server) goToFilters({ osoba: e.target.value });
+                  else setPersonSlug(e.target.value);
+                }}
                 style={{
                   ...inputBase,
                   cursor: "pointer",
@@ -234,12 +322,17 @@ export default function FilterableItemsBrowser({
               <div className="fib-chip-scroller">
                 <div ref={rowRef} className="fib-chip-row scrollbar-hide">
                   {availableTags.map((tag) => {
-                    const active = tagSlug === tag.slug;
+                    const active = activeTag === tag.slug;
                     return (
                       <button
                         key={tag.slug}
                         type="button"
-                        onClick={() => setTagSlug(active ? "" : tag.slug)}
+                        aria-pressed={active}
+                        onClick={() => {
+                          const next = active ? "" : tag.slug;
+                          if (server) goToFilters({ tag: next });
+                          else setTagSlug(next);
+                        }}
                         style={{
                           background: active ? "var(--coral)" : "rgba(255,255,255,.06)",
                           border: `1px solid ${active ? "var(--coral)" : "var(--line)"}`,
@@ -277,12 +370,21 @@ export default function FilterableItemsBrowser({
           className="mono text-xs uppercase"
           style={{ color: "var(--paper-mute)", letterSpacing: ".16em", minWidth: 0, flex: "1 1 auto" }}
         >
-          {countLabel(filtered.length, items.length, countWord, isFiltered, catalogTotal)}
+          {countLabel(filtered.length, items.length, countWord, isFiltered, catalogTotal, !!server)}
         </span>
         {isFiltered && (
           <button
             type="button"
-            onClick={() => { setSearch(""); setPersonSlug(""); setTagSlug(""); }}
+            onClick={() => {
+              if (server) {
+                setDraft("");
+                router.push(server.pathname);
+                return;
+              }
+              setSearch("");
+              setPersonSlug("");
+              setTagSlug("");
+            }}
             style={{
               color: "var(--coral)",
               fontSize: "13px",

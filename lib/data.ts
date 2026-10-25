@@ -197,6 +197,8 @@ export async function getAllApprovedItems(limit = 100): Promise<Item[]> {
 // =================================================================
 // QUERY: zatwierdzone wpisy w danej kategorii
 // =================================================================
+// Limit dotyczy jednej strony listy. Filtry osoby i tagu idą przez getCategoryBrowse,
+// bo obcięcie do pierwszych N wpisów gubi starsze pozycje tej osoby (w tym speciale).
 export async function getItemsByCategorySlug(slug: string, limit = 100): Promise<Item[]> {
   const { data: cat } = await supabase
     .from("categories")
@@ -639,6 +641,219 @@ export async function getItemsByTagSlugPage(
 export async function getItemsByTagSlug(tagSlug: string, limit = 10, offset = 0): Promise<Item[]> {
   const { items } = await getItemsByTagSlugPage(tagSlug, limit, offset);
   return items;
+}
+
+// =================================================================
+// QUERY: strona kategorii z filtrem osoby, tagu i tytułu (dokładny count)
+// =================================================================
+export type CategoryFacetPerson = { slug: string; name: string };
+export type CategoryFacetTag = { name: string; slug: string; tag_type: string };
+
+export type CategoryBrowse = {
+  items: Item[];
+  total: number;
+  people: CategoryFacetPerson[];
+  tags: CategoryFacetTag[];
+};
+
+export type CategoryBrowseQuery = {
+  limit?: number;
+  offset?: number;
+  personSlug?: string;
+  tagSlug?: string;
+  search?: string;
+};
+
+const CATEGORY_BROWSE_MAX = 100;
+const FACET_PAGE = 1000;
+
+function escapeIlike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+function sortByPolishName<T extends { name: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => a.name.localeCompare(b.name, "pl"));
+}
+
+type ItemFilter = {
+  categoryId: number;
+  personTagId: number | null;
+  contentTagId: number | null;
+  search: string;
+};
+
+function browseSelect(filter: ItemFilter, columns: string): string {
+  if (filter.personTagId && filter.contentTagId) {
+    return `${columns}, person_link:content_tags!inner(tag_id), topic_link:content_tags!inner(tag_id)`;
+  }
+  if (filter.personTagId || filter.contentTagId) {
+    return `${columns}, content_tags!inner(tag_id)`;
+  }
+  return columns;
+}
+
+type ItemQuery = {
+  eq: (column: string, value: unknown) => ItemQuery;
+  is: (column: string, value: null) => ItemQuery;
+  ilike: (column: string, value: string) => ItemQuery;
+};
+
+// Aliasy zagnieżdżeń (person_link) nie są kolumnami tabeli — filtr idzie po nich jako po relacji.
+function applyItemFilter<Q>(query: Q, filter: ItemFilter): Q {
+  let next = query as unknown as ItemQuery;
+  next = next
+    .eq("status", "approved")
+    .eq("category_id", filter.categoryId)
+    .is("merged_into_id", null);
+  if (filter.personTagId && filter.contentTagId) {
+    next = next.eq("person_link.tag_id", filter.personTagId).eq("topic_link.tag_id", filter.contentTagId);
+  } else if (filter.personTagId || filter.contentTagId) {
+    next = next.eq("content_tags.tag_id", filter.personTagId ?? filter.contentTagId);
+  }
+  if (filter.search) next = next.ilike("title", `%${escapeIlike(filter.search)}%`);
+  return next as unknown as Q;
+}
+
+async function listPeopleInCategory(categoryId: number): Promise<CategoryFacetPerson[]> {
+  const map = new Map<string, string>();
+  for (let offset = 0; ; offset += FACET_PAGE) {
+    const { data, error } = await supabase
+      .from("tags")
+      .select("slug, name, content_tags!inner(content_items!inner(id))")
+      .eq("tag_type", "person")
+      .eq("content_tags.content_items.status", "approved")
+      .eq("content_tags.content_items.category_id", categoryId)
+      .is("content_tags.content_items.merged_into_id", null)
+      .order("slug", { ascending: true })
+      .range(offset, offset + FACET_PAGE - 1);
+    if (error) {
+      console.error("Blad pobierania standuperow kategorii:", error);
+      break;
+    }
+    const rows = (data ?? []) as { slug: string; name: string }[];
+    for (const row of rows) {
+      if (row.slug && row.name) map.set(row.slug, row.name);
+    }
+    if (rows.length < FACET_PAGE) break;
+  }
+  return sortByPolishName([...map.entries()].map(([slug, name]) => ({ slug, name })));
+}
+
+async function listTagsInCategory(categoryId: number): Promise<CategoryFacetTag[]> {
+  const map = new Map<string, CategoryFacetTag>();
+  for (let offset = 0; ; offset += FACET_PAGE) {
+    const { data, error } = await supabase
+      .from("tags")
+      .select("slug, name, tag_type, content_tags!inner(content_items!inner(id))")
+      .neq("tag_type", "person")
+      .eq("content_tags.content_items.status", "approved")
+      .eq("content_tags.content_items.category_id", categoryId)
+      .is("content_tags.content_items.merged_into_id", null)
+      .order("slug", { ascending: true })
+      .range(offset, offset + FACET_PAGE - 1);
+    if (error) {
+      console.error("Blad pobierania tagow kategorii:", error);
+      break;
+    }
+    const rows = (data ?? []) as CategoryFacetTag[];
+    for (const row of rows) {
+      if (row.slug && row.name && row.tag_type) map.set(row.slug, row);
+    }
+    if (rows.length < FACET_PAGE) break;
+  }
+  return sortByPolishName([...map.values()]);
+}
+
+async function findTagId(slug: string, person: boolean): Promise<number | null> {
+  let query = supabase.from("tags").select("id").eq("slug", slug);
+  query = person ? query.eq("tag_type", "person") : query.neq("tag_type", "person");
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) return null;
+  return data.id;
+}
+
+function stripBrowseEmbeds(row: ContentItemRow & {
+  content_tags?: unknown;
+  person_link?: unknown;
+  topic_link?: unknown;
+}): ContentItemRow {
+  const { content_tags: _contentTags, person_link: _personLink, topic_link: _topicLink, ...item } = row;
+  return item;
+}
+
+async function countFilteredItems(filter: ItemFilter): Promise<number> {
+  const { count, error } = await applyItemFilter(
+    supabase.from("content_items").select(browseSelect(filter, "id"), { count: "exact", head: true }),
+    filter,
+  );
+  if (error) {
+    console.error("Blad liczenia kategorii:", error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+async function pageFilteredItems(filter: ItemFilter, limit: number, offset: number): Promise<PagedItems> {
+  const { data, error, count } = await applyItemFilter(
+    supabase.from("content_items").select(browseSelect(filter, ITEM_COLUMNS), { count: "exact" }),
+    filter,
+  )
+    .order("published_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error?.code === "PGRST103") {
+    return { items: [], total: await countFilteredItems(filter) };
+  }
+  if (error || !data) {
+    console.error("Blad pobierania kategorii:", error);
+    return { items: [], total: 0 };
+  }
+
+  const rows = (data as unknown as Array<ContentItemRow & {
+    content_tags?: unknown;
+    person_link?: unknown;
+    topic_link?: unknown;
+  }>).map(stripBrowseEmbeds);
+
+  return {
+    items: await hydrateItems(rows),
+    total: count ?? 0,
+  };
+}
+
+export async function getCategoryBrowse(slug: string, query: CategoryBrowseQuery = {}): Promise<CategoryBrowse> {
+  const empty: CategoryBrowse = { items: [], total: 0, people: [], tags: [] };
+  const limit = Number.isFinite(query.limit) ? Math.min(CATEGORY_BROWSE_MAX, Math.max(1, Math.floor(query.limit!))) : 24;
+  const offset = Number.isFinite(query.offset) ? Math.max(0, Math.floor(query.offset!)) : 0;
+  const personSlug = query.personSlug?.trim() ?? "";
+  const tagSlug = query.tagSlug?.trim() ?? "";
+  const search = query.search?.trim() ?? "";
+
+  const { data: cat, error: catError } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (catError || !cat) return empty;
+
+  const [people, tags, personTagId, contentTagId] = await Promise.all([
+    listPeopleInCategory(cat.id),
+    listTagsInCategory(cat.id),
+    personSlug ? findTagId(personSlug, true) : Promise.resolve(null),
+    tagSlug ? findTagId(tagSlug, false) : Promise.resolve(null),
+  ]);
+
+  if ((personSlug && personTagId == null) || (tagSlug && contentTagId == null)) {
+    return { items: [], total: 0, people, tags };
+  }
+
+  const page = await pageFilteredItems(
+    { categoryId: cat.id, personTagId, contentTagId, search },
+    limit,
+    offset,
+  );
+  return { items: page.items, total: page.total, people, tags };
 }
 
 // =================================================================
