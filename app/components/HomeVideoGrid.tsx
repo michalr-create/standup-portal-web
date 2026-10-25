@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { getYouTubeId } from "@/lib/youtube";
-import { formatDuration, timeAgo } from "@/lib/format";
+import { formatDuration } from "@/lib/format";
+import CardByline from "./CardByline";
 
 export default function HomeVideoGrid({ items }: { items: Item[] }) {
   const { watched, markWatched } = useWatchHistory();
@@ -32,7 +32,7 @@ export default function HomeVideoGrid({ items }: { items: Item[] }) {
           const solePerson = item.people.length === 1 ? item.people[0] : null;
 
           return (
-            <article key={item.id} className="group vcard relative text-left w-full">
+            <article key={item.id} className="group vcard relative text-left w-full min-w-0">
               <button
                 type="button"
                 onClick={() => handleClick(item)}
@@ -101,35 +101,7 @@ export default function HomeVideoGrid({ items }: { items: Item[] }) {
                   <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
                 </div>
               )}
-              <div
-                className="mt-1.5 px-0.5 flex items-center gap-x-1.5 gap-y-0 flex-wrap"
-                style={{ color: "var(--paper-dim)", fontSize: "13px" }}
-              >
-                {item.people.length > 0 ? (
-                  item.people.map((p, i) => (
-                    <span key={p.slug} className="inline-flex items-center gap-1">
-                      {i > 0 && <span style={{ color: "var(--paper-meta)" }}>{"\u00b7"}</span>}
-                      <Link
-                        href={"/standuper/" + p.slug}
-                        className="hover:text-white transition-colors"
-                      >
-                        {p.name}
-                      </Link>
-                      {item.people.length > 1 && (
-                        <HeartButton type="person" slug={p.slug} name={p.name} size={15} />
-                      )}
-                    </span>
-                  ))
-                ) : (
-                  <span>{item.showName || ""}</span>
-                )}
-                {(item.people.length > 0 || item.showName) && (
-                  <span style={{ color: "var(--paper-meta)" }}>{"\u00b7"}</span>
-                )}
-                <span className="mono" style={{ color: "var(--paper-meta)", fontSize: "11px" }}>
-                  {timeAgo(item.published_at)}
-                </span>
-              </div>
+              <CardByline item={item} />
             </article>
           );
         })}
