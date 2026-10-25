@@ -7,18 +7,20 @@ import { timeAgo } from "@/lib/format";
 
 const rowClass = [
   "flex h-5 min-h-5 min-w-0 flex-nowrap items-center gap-x-1.5",
-  "overflow-hidden px-0.5 leading-5",
+  "overflow-hidden pl-0.5 pr-1.5 leading-5",
 ].join(" ");
 
-const nameClass = [
-  "inline-block max-w-full min-w-0 truncate align-middle",
-  "hover:text-white transition-colors",
-].join(" ");
+const peopleClass = "block min-w-0 truncate pr-1";
+
+const nameClass = "align-middle hover:text-white transition-colors";
+
+const dateGroupClass = "inline-flex shrink-0 items-center gap-x-1.5";
 
 /**
- * One-line people · date row. Names truncate inside the people cluster;
- * the date stays fully visible (`shrink-0`). `h-5` matches one 13px line
- * so cards with no people still line up with multi-author cards.
+ * One-line people · date row. Names ellipsize only inside the people
+ * cluster (`min-w-0 truncate`). The date middot lives with the date in a
+ * `shrink-0` group, outside that overflow box, so the ellipsis cannot eat
+ * the separator. `h-5` keeps every card meta on one line.
  */
 export default function CardByline({
   item,
@@ -36,7 +38,7 @@ export default function CardByline({
       data-card-meta=""
       style={{ color: "var(--paper-dim)", fontSize: "13px" }}
     >
-      <span className="block min-w-0 truncate">
+      <span className={peopleClass}>
         {hasPeople ? (
           item.people.map((p, i) => (
             <span key={p.slug}>
@@ -56,21 +58,19 @@ export default function CardByline({
             </span>
           ))
         ) : (
-          <span className="inline-block max-w-full min-w-0 truncate align-middle">
-            {item.showName || ""}
-          </span>
+          item.showName || ""
         )}
       </span>
-      {hasLabel && (
-        <span className="shrink-0" style={{ color: "var(--paper-meta)" }}>
-          {"\u00b7"}
+      <span className={dateGroupClass} data-card-date="">
+        {hasLabel && (
+          <span style={{ color: "var(--paper-meta)" }}>{"\u00b7"}</span>
+        )}
+        <span
+          className="mono whitespace-nowrap"
+          style={{ color: "var(--paper-meta)", fontSize: "11px" }}
+        >
+          {timeAgo(item.published_at)}
         </span>
-      )}
-      <span
-        className="mono shrink-0 whitespace-nowrap"
-        style={{ color: "var(--paper-meta)", fontSize: "11px" }}
-      >
-        {timeAgo(item.published_at)}
       </span>
     </div>
   );
