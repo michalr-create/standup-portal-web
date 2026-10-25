@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getAllShows, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
 import { peopleByActivity } from "@/lib/standuperzy-directory";
 import MobileDrawer from "./components/MobileDrawer";
-import InstallButton from "./components/InstallButton";
+import InstallButton, { InstallBand, InstallProvider } from "./components/InstallButton";
 import NavSearch from "./components/NavSearch";
 
 export const metadata: Metadata = {
@@ -58,7 +58,7 @@ export default async function RootLayout({
       <body>
         {/* NAV */}
         <nav
-          className="sticky top-0 z-40 flex items-center gap-4 xl:gap-6 px-4 xl:px-10 py-3 lg:py-4 overflow-x-clip"
+          className="sticky top-0 z-40 overflow-x-clip"
           style={{
             background: "rgba(11,11,11,.75)",
             backdropFilter: "blur(14px)",
@@ -66,41 +66,46 @@ export default async function RootLayout({
             borderBottom: "1px solid var(--line)",
           }}
         >
-          <Link
-            href="/"
-            className="flex items-baseline gap-0.5 font-black text-2xl lg:text-3xl shrink-0"
-            style={{ letterSpacing: "-.03em" }}
-          >
-            parska<span className="dot-accent">.</span>
-          </Link>
+          <InstallProvider>
+            <div className="flex items-center gap-4 xl:gap-6 px-4 xl:px-10 py-3 lg:py-4">
+              <Link
+                href="/"
+                className="flex items-baseline gap-0.5 font-black text-2xl lg:text-3xl shrink-0"
+                style={{ letterSpacing: "-.03em" }}
+              >
+                parska<span className="dot-accent">.</span>
+              </Link>
 
-          <ul className="hidden lg:flex gap-1 list-none p-0 m-0 shrink-0">
-            {navLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="px-2 py-2 xl:px-3 rounded-full font-semibold text-sm whitespace-nowrap transition-all hover:bg-[var(--ink-3)] flex items-center gap-1.5"
-                  style={{ color: "var(--paper-dim)" }}
-                >
-                  {link.href === "/ulubione" && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  )}
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+              <ul className="hidden lg:flex gap-1 list-none p-0 m-0 shrink-0">
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="px-2 py-2 xl:px-3 rounded-full font-semibold text-sm whitespace-nowrap transition-all hover:bg-[var(--ink-3)] flex items-center gap-1.5"
+                      style={{ color: "var(--paper-dim)" }}
+                    >
+                      {link.href === "/ulubione" && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                      )}
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
 
-          <div className="flex-1" />
+              <div className="flex-1" />
 
-          <NavSearch />
-          <InstallButton />
-          <MobileDrawer
-            navLinks={navLinks}
-            shows={shows.slice(0, 8).map(({ id, name, slug }) => ({ id, name, slug }))}
-          />
+              <NavSearch />
+              <InstallButton />
+              <MobileDrawer
+                navLinks={navLinks}
+                shows={shows.slice(0, 8).map(({ id, name, slug }) => ({ id, name, slug }))}
+              />
+            </div>
+            <InstallBand />
+          </InstallProvider>
         </nav>
 
         {/* MAIN */}
