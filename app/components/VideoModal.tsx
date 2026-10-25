@@ -4,6 +4,20 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { Item } from "@/lib/data";
 import {
+  OPEN_YOUTUBE_LABEL,
+  OPEN_YOUTUBE_TITLE,
+  WAKE_LOCK_FAILED,
+  WAKE_LOCK_TITLE,
+  WAKE_LOCK_UNSUPPORTED_TITLE,
+  createWakeLockSession,
+  nextPlaybackEnded,
+  openYoutubeWatchInDocument,
+  playerHint,
+  screenWakeLockSupported,
+  shouldHoldWakeLock,
+  wakeLockButtonLabel,
+} from "@/lib/player-session";
+import {
   EMPTY_YT_SNAPSHOT,
   SLEEP_OPTIONS,
   isTimedOption,
@@ -171,6 +185,66 @@ function TimerControls({
   );
 }
 
+function PlayerTools({
+  timer,
+  wakeSupported,
+  keepAwake,
+  wakeError,
+  showHint,
+  onToggleWake,
+  onOpenYoutube,
+}: {
+  timer: {
+    choice: SleepOptionId;
+    remaining: number | null;
+    stopped: boolean;
+    menuOpen: boolean;
+    onToggleMenu: () => void;
+    onSelect: (id: SleepOptionId) => void;
+    onCancel: () => void;
+  };
+  wakeSupported: boolean;
+  keepAwake: boolean;
+  wakeError: string | null;
+  showHint: boolean;
+  onToggleWake: () => void;
+  onOpenYoutube: () => void;
+}) {
+  const wakeTitle = wakeSupported ? WAKE_LOCK_TITLE : WAKE_LOCK_UNSUPPORTED_TITLE;
+  const wakeLabel = wakeLockButtonLabel(wakeSupported && keepAwake);
+  return (
+    <div className="video-modal-tools">
+      <TimerControls {...timer} />
+      <button
+        type="button"
+        className="video-modal-timer-btn"
+        aria-pressed={wakeSupported ? keepAwake : undefined}
+        aria-label={`${wakeLabel}. ${wakeTitle}`}
+        title={wakeTitle}
+        disabled={!wakeSupported}
+        onClick={onToggleWake}
+      >
+        {wakeLabel}
+      </button>
+      {wakeError && (
+        <span className="video-modal-timer-status" role="status">
+          {wakeError}
+        </span>
+      )}
+      <button
+        type="button"
+        className="video-modal-timer-btn"
+        aria-label={`${OPEN_YOUTUBE_LABEL}. ${OPEN_YOUTUBE_TITLE}`}
+        title={OPEN_YOUTUBE_TITLE}
+        onClick={onOpenYoutube}
+      >
+        {OPEN_YOUTUBE_LABEL}
+      </button>
+      {showHint && <p className="video-modal-hint">{playerHint(wakeSupported)}</p>}
+    </div>
+  );
+}
+
 export default function VideoModal({ item, videoId, onClose }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -190,6 +264,13 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   const finishedRef = useRef(false);
   const haltTimersRef = useRef<number[]>([]);
   const finishRef = useRef<(kind: "pause" | "stop") => void>(() => {});
+  const wakeSessionRef = useRef<ReturnType<typeof createWakeLockSession> | null>(null);
+  const endedRef = useRef(false);
+  const [wakeSupported] = useState(() =>
+    typeof navigator !== "undefined" && screenWakeLockSupported(navigator, window.isSecureContext),
+  );
+  const [keepAwake, setKeepAwake] = useState(false);
+  const [wakeError, setWakeError] = useState<string | null>(null);
 
   const iframeSrc = embedSrc(videoId, phoneEmbed);
   const remaining = remainingSeconds(deadline, now);
@@ -270,11 +351,51 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     setCover(false);
     finishedRef.current = false;
     seenPlayingRef.current = false;
+    endedRef.current = false;
+    setKeepAwake(false);
+    setWakeError(null);
     ytRef.current = EMPTY_YT_SNAPSHOT;
     clearHaltTimers();
   }, [videoId]);
 
   useEffect(() => () => clearHaltTimers(), []);
+
+  useEffect(() => {
+    if (!wakeSupported) return;
+    const session = createWakeLockSession(navigator.wakeLock);
+    wakeSessionRef.current = session;
+    return () => {
+      void session.release();
+      if (wakeSessionRef.current === session) wakeSessionRef.current = null;
+    };
+  }, [wakeSupported]);
+
+  useEffect(() => {
+    const session = wakeSessionRef.current;
+    if (!session) return;
+    let cancelled = false;
+    const apply = () => {
+      const want = shouldHoldWakeLock({
+        enabled: keepAwake,
+        supported: wakeSupported,
+        visible: document.visibilityState === "visible",
+        ended: false,
+      });
+      void session.sync(want).then((result) => {
+        if (cancelled) return;
+        if (result === "failed") {
+          setKeepAwake(false);
+          setWakeError(WAKE_LOCK_FAILED);
+        }
+      });
+    };
+    apply();
+    document.addEventListener("visibilitychange", apply);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", apply);
+    };
+  }, [keepAwake, wakeSupported]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -291,6 +412,11 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
       const payload = readYtPayload(event.data);
       ytRef.current = parseYtMessage(payload, ytRef.current);
       if (ytRef.current.playerState === 1) seenPlayingRef.current = true;
+      const endedNow = nextPlaybackEnded(endedRef.current, ytRef.current.playerState, seenPlayingRef.current);
+      if (endedNow !== endedRef.current) {
+        endedRef.current = endedNow;
+        if (endedNow) setKeepAwake(false);
+      }
       if (payload && typeof payload === "object" && (payload as { event?: string }).event === "onReady") {
         ready = true;
       }
@@ -481,6 +607,40 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     onCancel: () => selectSleep("off"),
   };
 
+  const toggleWake = () => {
+    setWakeError(null);
+    const session = wakeSessionRef.current;
+    if (!wakeSupported || !session) return;
+    if (keepAwake) {
+      setKeepAwake(false);
+      void session.release();
+      return;
+    }
+    void session.request().then((result) => {
+      if (result === "held") {
+        setKeepAwake(true);
+        return;
+      }
+      if (result === "failed") {
+        setKeepAwake(false);
+        setWakeError(WAKE_LOCK_FAILED);
+      }
+    });
+  };
+
+  const openOnYoutube = () => {
+    openYoutubeWatchInDocument(videoId, document);
+  };
+
+  const toolProps = {
+    timer: timerProps,
+    wakeSupported,
+    keepAwake,
+    wakeError,
+    onToggleWake: toggleWake,
+    onOpenYoutube: openOnYoutube,
+  };
+
   return createPortal(
     <div className={cover ? "video-modal is-cover" : "video-modal"} role="dialog" aria-modal="true" aria-label={item.title}>
       <div className="video-modal-backdrop" onClick={onClose} />
@@ -497,7 +657,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
             referrerPolicy="strict-origin-when-cross-origin"
           />
           <div className="video-modal-player-bar">
-            <TimerControls {...timerProps} />
+            <PlayerTools {...toolProps} showHint={false} />
             <div className="video-modal-actions">
               <button
                 type="button"
@@ -534,7 +694,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
                 {label}
               </p>
             )}
-            <TimerControls {...timerProps} />
+            <PlayerTools {...toolProps} showHint />
           </div>
 
           <div className="video-modal-actions">
