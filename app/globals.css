@@ -11,6 +11,8 @@
   --ink-4: #28261F;
   --paper: #EFE8DC;
   --paper-dim: #C7C1B6;
+  /* Card meta (date, separators) on dark. 7.4:1 vs --ink, 6.8:1 vs --ink-2. */
+  --paper-meta: #A39E90;
   --paper-mute: #8A8578;
   --coral: #E8594A;
   --coral-hi: #F27365;
