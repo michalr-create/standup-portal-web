@@ -4,9 +4,9 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import HeartButton from "./HeartButton";
 import {
-  DIRECTORY_LETTERS,
+  formatItemCount,
   groupPeopleByLetter,
-  pozycjaCountLabel,
+  jumpLettersFromGroups,
 } from "@/lib/standuperzy-directory";
 
 type DirectoryPerson = {
@@ -18,11 +18,6 @@ type DirectoryPerson = {
 
 function sectionId(letter: string): string {
   return "litera-" + encodeURIComponent(letter);
-}
-
-function countLabel(count: number): string {
-  if (count <= 0) return "\u2014";
-  return count + " " + pozycjaCountLabel(count);
 }
 
 const LetterSections = memo(function LetterSections({
@@ -54,42 +49,47 @@ const LetterSections = memo(function LetterSections({
             {group.letter}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {group.people.map((person) => (
-              <div
-                key={person.id}
-                className="group flex items-center gap-2 rounded-2xl py-2 pl-4 pr-2 transition-all hover:bg-[var(--ink-3)]"
-                style={{ border: "1px solid var(--line)" }}
-              >
-                <Link
-                  href={"/standuper/" + person.slug}
-                  className="flex min-w-0 flex-1 items-center gap-4 py-2"
+            {group.people.map((person) => {
+              const countText = formatItemCount(person.itemCount);
+              return (
+                <div
+                  key={person.id}
+                  className="group flex items-center gap-2 rounded-2xl py-2 pl-4 pr-2 transition-all hover:bg-[var(--ink-3)]"
+                  style={{ border: "1px solid var(--line)" }}
                 >
-                  <div
-                    className="w-12 h-12 rounded-full shrink-0 grid place-items-center font-black text-sm"
-                    style={{
-                      background: "linear-gradient(135deg, var(--coral), #F2A65A)",
-                      color: "var(--ink)",
-                    }}
+                  <Link
+                    href={"/standuper/" + person.slug}
+                    className="flex min-w-0 flex-1 items-center gap-4 py-2"
                   >
-                    {person.name.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2)}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="font-bold text-sm group-hover:text-white transition-colors" style={{ color: "var(--paper)" }}>
-                      {person.name}
+                    <div
+                      className="w-12 h-12 rounded-full shrink-0 grid place-items-center font-black text-sm"
+                      style={{
+                        background: "linear-gradient(135deg, var(--coral), #F2A65A)",
+                        color: "var(--ink)",
+                      }}
+                    >
+                      {person.name.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2)}
                     </div>
-                    <div className="mono text-xs" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
-                      {countLabel(person.itemCount)}
-                    </div>
-                  </div>
 
-                  <span className="ml-auto text-sm" style={{ color: "var(--paper-mute)" }}>
-                    {"\u2192"}
-                  </span>
-                </Link>
-                <HeartButton type="person" slug={person.slug} name={person.name} />
-              </div>
-            ))}
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm group-hover:text-white transition-colors" style={{ color: "var(--paper)" }}>
+                        {person.name}
+                      </div>
+                      {countText ? (
+                        <div className="mono text-xs" style={{ color: "var(--paper-mute)", fontSize: "11px" }}>
+                          {countText}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <span className="ml-auto text-sm" style={{ color: "var(--paper-mute)" }}>
+                      {"\u2192"}
+                    </span>
+                  </Link>
+                  <HeartButton type="person" slug={person.slug} name={person.name} />
+                </div>
+              );
+            })}
           </div>
         </section>
       ))}
@@ -111,12 +111,7 @@ export default function StanduperzyList({ people }: { people: DirectoryPerson[] 
   }, [people, search]);
 
   const groups = useMemo(() => groupPeopleByLetter(filtered), [filtered]);
-  const present = useMemo(() => new Set(groups.map((group) => group.letter)), [groups]);
-  const jumpLetters = useMemo(() => {
-    const known = new Set<string>(DIRECTORY_LETTERS);
-    const extra = groups.map((group) => group.letter).filter((letter) => !known.has(letter));
-    return [...DIRECTORY_LETTERS, ...extra];
-  }, [groups]);
+  const jumpLetters = useMemo(() => jumpLettersFromGroups(groups), [groups]);
 
   useEffect(() => {
     const nav = document.querySelector("body > nav");
@@ -134,7 +129,7 @@ export default function StanduperzyList({ people }: { people: DirectoryPerson[] 
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, []);
+  }, [jumpLetters.length]);
 
   useEffect(() => {
     let frame = 0;
@@ -171,7 +166,7 @@ export default function StanduperzyList({ people }: { people: DirectoryPerson[] 
     if (buttonBox.left < barBox.left || buttonBox.right > barBox.right) {
       scroller.scrollLeft += buttonBox.left - barBox.left - (barBox.width - buttonBox.width) / 2;
     }
-  }, [activeLetter]);
+  }, [activeLetter, jumpLetters]);
 
   const scrollToLetter = (letter: string) => {
     const el = document.getElementById(sectionId(letter));
@@ -206,6 +201,7 @@ export default function StanduperzyList({ people }: { people: DirectoryPerson[] 
       <nav
         ref={barRef}
         aria-label={"Skocz do litery"}
+        hidden={jumpLetters.length === 0}
         className="sticky z-30 mb-6"
         style={{
           top: offsets.nav,
@@ -213,27 +209,24 @@ export default function StanduperzyList({ people }: { people: DirectoryPerson[] 
           borderBottom: "1px solid var(--line)",
         }}
       >
-        <div ref={scrollerRef} className="flex gap-0.5 overflow-x-auto scrollbar-hide py-2">
+        <div ref={scrollerRef} className="flex flex-nowrap gap-1 overflow-x-auto scrollbar-hide py-2">
           {jumpLetters.map((letter) => {
-            const enabled = present.has(letter);
-            const current = letter === activeLetter && enabled;
+            const current = letter === activeLetter;
             return (
               <button
                 key={letter}
                 type="button"
                 data-jump={letter}
-                disabled={!enabled}
                 aria-current={current ? "true" : undefined}
                 aria-label={"Skocz do litery " + letter}
                 onClick={() => scrollToLetter(letter)}
-                className="mono shrink-0 inline-flex items-center justify-center h-9 min-w-8 px-1.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                className="mono shrink-0 inline-flex items-center justify-center h-10 min-w-10 px-1.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
                 style={{
-                  color: current ? "var(--ink)" : enabled ? "var(--paper)" : "var(--paper-mute)",
+                  color: current ? "var(--ink)" : "var(--paper)",
                   background: current ? "var(--paper)" : "transparent",
-                  opacity: enabled ? 1 : 0.35,
-                  fontSize: "12px",
+                  fontSize: "14px",
                   fontWeight: 700,
-                  cursor: enabled ? "pointer" : "default",
+                  cursor: "pointer",
                 }}
               >
                 {letter}
