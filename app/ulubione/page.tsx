@@ -3,8 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import HeartButton from "@/app/components/HeartButton";
+import VideoModal from "@/app/components/VideoModal";
+import CardByline from "@/app/components/CardByline";
+import { useWatchHistory } from "@/app/hooks/useWatchHistory";
+import { getYouTubeId } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
-import { formatDuration, timeAgo } from "@/lib/format";
+import { formatDuration } from "@/lib/format";
 
 const PERSON_KEY = "parska_fav_persons";
 const SHOW_KEY = "parska_fav_shows";
@@ -18,8 +22,20 @@ export default function UlubionePage() {
   const [showSlugs, setShowSlugs] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
+  const { watched, markWatched } = useWatchHistory();
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const handleClick = (item: Item) => {
+    const videoId = getYouTubeId(item.url);
+    if (videoId) {
+      markWatched(item.url);
+      setModal({ item, videoId });
+    } else {
+      window.open(item.url, "_blank", "noopener,noreferrer");
+    }
+  };
 
   useEffect(() => {
     const ps: string[] = JSON.parse(localStorage.getItem(PERSON_KEY) || "[]");
@@ -46,6 +62,7 @@ export default function UlubionePage() {
   const hasAny = personSlugs.length > 0 || showSlugs.length > 0;
 
   return (
+    <>
     <div className="band">
       <div className="max-w-5xl mx-auto">
         <header className="mb-10">
@@ -161,56 +178,57 @@ export default function UlubionePage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {data.items.map((item) => {
-                    const label = item.people.length > 0
-                      ? item.people.map((p) => p.name).join(" \u00b7 ")
-                      : item.showName || "";
+                    const isWatched = watched.has(item.url);
                     return (
-                      <a
-                        key={item.id}
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group block vcard"
-                      >
-                        <div
-                          className="overflow-hidden relative"
-                          style={{
-                            aspectRatio: "16/10",
-                            borderRadius: "14px",
-                            border: "1px solid var(--line)",
-                            background: "var(--ink-3)",
-                          }}
+                      <article key={item.id} className="group vcard relative text-left w-full min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => handleClick(item)}
+                          className="block text-left w-full"
                         >
-                          {item.thumbnail_url && (
-                            <img
-                              src={item.thumbnail_url}
-                              alt={item.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          )}
-                          {item.duration_seconds != null && (
-                            <div
-                              className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
-                              style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
-                            >
-                              {formatDuration(item.duration_seconds)}
-                            </div>
-                          )}
-                          <div className="play-overlay"><div className="play-btn" /></div>
-                        </div>
-                        <div className="pt-3 px-0.5">
-                          <h4 className="font-extrabold leading-tight mb-1.5 line-clamp-2" style={{ fontSize: "15px", letterSpacing: "-.01em" }}>
-                            {item.title}
-                          </h4>
-                          <div className="flex items-center gap-2" style={{ color: "var(--paper-dim)", fontSize: "13px" }}>
-                            <span>{label}</span>
-                            {label && <span style={{ color: "var(--paper-meta)" }}>{"\u00b7"}</span>}
-                            <span className="mono" style={{ color: "var(--paper-meta)", fontSize: "11px" }}>
-                              {timeAgo(item.published_at)}
-                            </span>
+                          <div
+                            className="overflow-hidden relative"
+                            style={{
+                              aspectRatio: "16/10",
+                              borderRadius: "14px",
+                              border: "1px solid var(--line)",
+                              background: "var(--ink-3)",
+                            }}
+                          >
+                            {item.thumbnail_url && (
+                              <img
+                                src={item.thumbnail_url}
+                                alt={item.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                style={{ opacity: isWatched ? 0.7 : 1 }}
+                              />
+                            )}
+                            {item.duration_seconds != null && (
+                              <div
+                                className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
+                                style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
+                              >
+                                {formatDuration(item.duration_seconds)}
+                              </div>
+                            )}
+                            {isWatched && (
+                              <div
+                                className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center"
+                                style={{ background: "var(--coral)", fontSize: "12px", color: "#fff", fontWeight: 700 }}
+                              >
+                                {"✓"}
+                              </div>
+                            )}
+                            <div className="play-overlay"><div className="play-btn" /></div>
                           </div>
-                        </div>
-                      </a>
+                          <div className="pt-3 px-0.5">
+                            <h4 className="font-extrabold leading-tight line-clamp-2" style={{ fontSize: "16px", letterSpacing: "-.01em" }}>
+                              {item.title}
+                            </h4>
+                          </div>
+                        </button>
+                        <CardByline item={item} />
+                      </article>
                     );
                   })}
                 </div>
@@ -220,5 +238,13 @@ export default function UlubionePage() {
         )}
       </div>
     </div>
+    {modal && (
+      <VideoModal
+        item={modal.item}
+        videoId={modal.videoId}
+        onClose={() => setModal(null)}
+      />
+    )}
+    </>
   );
 }
