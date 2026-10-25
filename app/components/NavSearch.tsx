@@ -22,12 +22,11 @@ export default function NavSearch() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200"
+      className="hidden lg:flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 w-[140px] xl:focus-within:w-[200px]"
       style={{
         background: focused ? "var(--ink-3)" : "transparent",
         border: "1px solid",
         borderColor: focused ? "var(--paper-mute)" : "var(--line)",
-        width: focused ? "200px" : "140px",
       }}
     >
       <svg

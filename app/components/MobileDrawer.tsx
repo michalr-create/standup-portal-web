@@ -134,7 +134,7 @@ export default function MobileDrawer({ navLinks, shows }: Props) {
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
-        className="md:hidden min-h-11 min-w-11 w-11 h-11 flex flex-col items-center justify-center gap-1.5"
+        className="lg:hidden min-h-11 min-w-11 w-11 h-11 flex flex-col items-center justify-center gap-1.5"
         aria-label="Menu"
         aria-expanded={open}
         aria-controls={panelId}
