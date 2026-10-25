@@ -20,6 +20,9 @@ export function playerHint(wakeSupported: boolean): string {
   return "Ekran zostaje włączony tylko podczas oglądania. Po zgaszeniu telefonu film staje. Tło w aplikacji YouTube wymaga Premium.";
 }
 
+/** One visible line. Screen-off playback stays in the YouTube app and is not promised here. */
+export const PLAYER_HINT_LINE = "Po zgaszeniu ekranu film staje.";
+
 export function screenWakeLockSupported(
   nav: { wakeLock?: { request?: unknown } } | null | undefined,
   secureContext: boolean,
