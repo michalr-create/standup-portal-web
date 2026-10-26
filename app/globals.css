@@ -738,3 +738,21 @@ a.pager-btn:hover {
   border: 0 !important;
   border-radius: 0 !important;
 }
+
+/* Search hit on dark UI. Ink #0B0B0B on gold #F6DE7A is 14.7:1. */
+.search-mark {
+  background: #F6DE7A;
+  color: #0B0B0B;
+  border-radius: 0.12em;
+  padding: 0 0.08em;
+  font: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+#szukaj-q::-webkit-search-cancel-button,
+#szukaj-q::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}

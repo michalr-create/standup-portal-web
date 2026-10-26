@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { SEARCH_CANDIDATE_LIMIT, SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
 import { supabase } from "@/lib/supabase";
 
 export type Item = {
@@ -980,7 +981,7 @@ export async function searchAll(q: string): Promise<{
       .is("merged_into_id", null)
       .ilike("title", term)
       .order("published_at", { ascending: false })
-      .limit(24),
+      .limit(SEARCH_CANDIDATE_LIMIT),
     supabase
       .from("shows")
       .select("id, name, slug, description, photo_url, category_id, youtube_channel_url, spotify_show_url, apple_podcasts_url, website_url")
@@ -989,7 +990,9 @@ export async function searchAll(q: string): Promise<{
       .limit(10),
   ]);
 
-  const items = await hydrateItems(itemsRes.data || []);
+  const items = await hydrateItems(
+    dedupeSearchItems(itemsRes.data || []).slice(0, SEARCH_RESULT_LIMIT),
+  );
   const shows = (showsRes.data || []).map((s: { id: number; name: string; slug: string; description: string | null; photo_url: string | null; category_id: number | null; youtube_channel_url: string | null; spotify_show_url: string | null; apple_podcasts_url: string | null; website_url: string | null }) => ({
     ...s,
     category_name: null,

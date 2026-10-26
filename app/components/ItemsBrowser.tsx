@@ -8,6 +8,7 @@ import { useWatchHistory } from "../hooks/useWatchHistory";
 import { getYouTubeId } from "@/lib/youtube";
 import { formatDuration } from "@/lib/format";
 import CardByline from "./CardByline";
+import HighlightedText from "./HighlightedText";
 import {
   DEFAULT_GRID_CLASS,
   DEFAULT_THUMB_ASPECT,
@@ -20,9 +21,11 @@ import {
 export default function ItemsBrowser({
   items,
   variant,
+  highlight,
 }: {
   items: Item[];
   variant?: ItemsBrowserVariant;
+  highlight?: string;
 }) {
   const layout = resolveItemsBrowserVariant(items, variant);
   const { watched, markWatched } = useWatchHistory();
@@ -115,7 +118,7 @@ export default function ItemsBrowser({
                     className="font-extrabold leading-tight line-clamp-2"
                     style={{ fontSize: "16px", letterSpacing: "-.01em" }}
                   >
-                    {item.title}
+                    {highlight ? <HighlightedText text={item.title} query={highlight} /> : item.title}
                   </h4>
                 </div>
               </button>
