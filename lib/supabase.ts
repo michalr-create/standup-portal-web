@@ -13,6 +13,7 @@ export type ContentItem = {
   thumbnail_url: string | null;
   published_at: string | null;
   content_type: string | null;
+  is_paid: boolean;
   source_id: number;
   sources?: {
     name: string;

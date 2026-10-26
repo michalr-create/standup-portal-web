@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   const shortsCategoryId = shortsCategory?.id ?? null;
 
   // ── Fetch items ────────────────────────────────────────────────────────
-  const baseSelect = "id, title, url, thumbnail_url, published_at, duration_seconds, show_id, category_id";
+  const baseSelect = "id, title, url, thumbnail_url, published_at, duration_seconds, show_id, category_id, is_paid";
 
   function buildBase() {
     let q = sb
@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
     content_type: null,
     source_id: 0,
     is_featured: false,
+    is_paid: item.is_paid === true,
     showName: item.show_id ? (showNameMap.get(item.show_id as number) ?? null) : null,
     categoryName: item.category_id ? (catNameMap.get(item.category_id as number) ?? null) : null,
     people: [],

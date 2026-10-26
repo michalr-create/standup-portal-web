@@ -13,6 +13,7 @@ export type Item = {
   category_id: number | null;
   episode_group_id: string | null;
   duration_seconds: number | null;
+  is_paid: boolean;
   // pola pochodne (wypełniane w hydratacji)
   showName: string | null;
   showSlug: string | null;
@@ -68,6 +69,7 @@ async function hydrateItems(rawItems: {
   category_id: number | null;
   episode_group_id: string | null;
   duration_seconds: number | null;
+  is_paid: boolean;
 }[]): Promise<Item[]> {
   if (rawItems.length === 0) return [];
 
@@ -166,6 +168,7 @@ type NpCtRow = {
     const category = item.category_id ? categoriesMap.get(item.category_id) : null;
     return {
       ...item,
+      is_paid: item.is_paid === true,
       showName: show?.name || null,
       showSlug: show?.slug || null,
       categoryName: category?.name || null,
@@ -182,7 +185,7 @@ type NpCtRow = {
 export async function getAllApprovedItems(limit = 100): Promise<Item[]> {
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
     .eq("status", "approved")
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
@@ -212,7 +215,7 @@ export async function getItemsByCategorySlug(slug: string, limit = 100): Promise
 
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
     .eq("status", "approved")
     .eq("category_id", cat.id)
     .is("merged_into_id", null)
@@ -244,7 +247,7 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
   const sourceIds = (sourcesRes.data || []).map((s) => s.id);
   const shortsCatId = shortsCatRes.data?.id;
 
-  const cols = "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds";
+  const cols = "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid";
 
   // Zapytanie 1: items z show_id ustawionym bezpośrednio
   let q1 = supabase
@@ -313,7 +316,7 @@ export async function getItemsByPersonSlug(slug: string, limit = 100): Promise<I
 
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
     .eq("status", "approved")
     .is("merged_into_id", null)
     .in("id", itemIds)
@@ -546,7 +549,7 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
 
     let query = supabase
       .from("content_items")
-      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
       .eq("status", "approved")
       .is("merged_into_id", null)
       .gte("published_at", cutoff.toISOString())
@@ -574,7 +577,7 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
   // Fallback: ostatnie 20
   let fallbackQuery = supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
     .eq("status", "approved")
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
@@ -594,7 +597,7 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
 export async function getFeaturedItems(limit = 6): Promise<Item[]> {
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
     .eq("status", "approved")
     .eq("is_featured", true)
     .is("merged_into_id", null)
@@ -609,7 +612,7 @@ export async function getFeaturedItems(limit = 6): Promise<Item[]> {
 // QUERY: wpisy z danym tagiem (paginacja po published_at desc)
 // =================================================================
 const ITEM_COLUMNS =
-  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds";
+  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid";
 
 type ContentItemRow = {
   id: number;
@@ -622,6 +625,7 @@ type ContentItemRow = {
   category_id: number | null;
   episode_group_id: string | null;
   duration_seconds: number | null;
+  is_paid: boolean;
 };
 
 export type PagedItems = {
@@ -976,7 +980,7 @@ export async function searchAll(q: string): Promise<{
       .limit(10),
     supabase
       .from("content_items")
-      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds")
+      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
       .eq("status", "approved")
       .is("merged_into_id", null)
       .ilike("title", term)

@@ -5,9 +5,11 @@ import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
-import { getYouTubeId } from "@/lib/youtube";
+import { resolveContentOpen } from "@/lib/youtube";
 import { formatDuration } from "@/lib/format";
 import CardByline from "./CardByline";
+import ContentCardAction from "./ContentCardAction";
+import PaidBadge from "./PaidBadge";
 
 function ScrollCard({
   item,
@@ -22,7 +24,7 @@ function ScrollCard({
 
   return (
     <article className="group vcard relative text-left w-72 sm:w-80 shrink-0 snap-start min-w-0">
-      <button type="button" onClick={onClick} className="block text-left w-full">
+      <ContentCardAction isPaid={item.is_paid} url={item.url} onOpen={onClick}>
         <div
           className="overflow-hidden relative"
           style={{
@@ -48,6 +50,7 @@ function ScrollCard({
               {formatDuration(item.duration_seconds)}
             </div>
           )}
+          {item.is_paid && <PaidBadge />}
           {isWatched && (
             <div
               className={`absolute top-2.5 w-6 h-6 rounded-full flex items-center justify-center ${solePerson ? "right-16" : "right-2.5"}`}
@@ -56,9 +59,11 @@ function ScrollCard({
               {"✓"}
             </div>
           )}
-          <div className="play-overlay">
-            <div className="play-btn" />
-          </div>
+          {!item.is_paid && (
+            <div className="play-overlay">
+              <div className="play-btn" />
+            </div>
+          )}
         </div>
 
         <div className="pt-3 px-0.5">
@@ -69,7 +74,7 @@ function ScrollCard({
             {item.title}
           </h4>
         </div>
-      </button>
+      </ContentCardAction>
       {solePerson && (
         <div className="absolute top-1 right-1 z-20">
           <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
@@ -126,12 +131,12 @@ export default function ScrollRow({ items }: { items: Item[] }) {
   };
 
   const handleClick = (item: Item) => {
-    const videoId = getYouTubeId(item.url);
-    if (videoId) {
+    const target = resolveContentOpen(item);
+    if (target?.type === "modal") {
       markWatched(item.url);
-      setModal({ item, videoId });
-    } else {
-      window.open(item.url, "_blank", "noopener,noreferrer");
+      setModal({ item, videoId: target.videoId });
+    } else if (target?.type === "external") {
+      window.open(target.url, "_blank", "noopener,noreferrer");
     }
   };
 

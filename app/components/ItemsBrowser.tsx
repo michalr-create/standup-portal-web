@@ -5,10 +5,12 @@ import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
-import { getYouTubeId } from "@/lib/youtube";
+import { resolveContentOpen } from "@/lib/youtube";
 import { formatDuration } from "@/lib/format";
 import CardByline from "./CardByline";
 import HighlightedText from "./HighlightedText";
+import ContentCardAction from "./ContentCardAction";
+import PaidBadge from "./PaidBadge";
 import {
   DEFAULT_GRID_CLASS,
   DEFAULT_THUMB_ASPECT,
@@ -32,12 +34,12 @@ export default function ItemsBrowser({
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
 
   const handleClick = (item: Item) => {
-    const videoId = getYouTubeId(item.url);
-    if (videoId) {
+    const target = resolveContentOpen(item);
+    if (target?.type === "modal") {
       markWatched(item.url);
-      setModal({ item, videoId });
-    } else {
-      window.open(item.url, "_blank", "noopener,noreferrer");
+      setModal({ item, videoId: target.videoId });
+    } else if (target?.type === "external") {
+      window.open(target.url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -59,10 +61,10 @@ export default function ItemsBrowser({
 
           return (
             <article key={item.id} className="group vcard relative text-left w-full min-w-0">
-              <button
-                type="button"
-                onClick={() => handleClick(item)}
-                className="block text-left w-full"
+              <ContentCardAction
+                isPaid={item.is_paid}
+                url={item.url}
+                onOpen={() => handleClick(item)}
               >
                 <div
                   className="overflow-hidden relative"
@@ -101,6 +103,7 @@ export default function ItemsBrowser({
                     <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--coral)" }} />
                     {item.categoryName || "YouTube"}
                   </div>
+                  {item.is_paid && <PaidBadge />}
                   {isWatched && (
                     <div
                       className={`absolute top-2.5 w-6 h-6 rounded-full flex items-center justify-center ${solePerson ? "right-16" : "right-2.5"}`}
@@ -109,9 +112,11 @@ export default function ItemsBrowser({
                       {"✓"}
                     </div>
                   )}
-                  <div className="play-overlay">
-                    <div className="play-btn" />
-                  </div>
+                  {!item.is_paid && (
+                    <div className="play-overlay">
+                      <div className="play-btn" />
+                    </div>
+                  )}
                 </div>
                 <div className="pt-3 px-0.5">
                   <h4
@@ -121,7 +126,7 @@ export default function ItemsBrowser({
                     {highlight ? <HighlightedText text={item.title} query={highlight} /> : item.title}
                   </h4>
                 </div>
-              </button>
+              </ContentCardAction>
               {solePerson && (
                 <div className="absolute top-1 right-1 z-20">
                   <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
