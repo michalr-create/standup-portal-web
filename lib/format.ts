@@ -32,13 +32,16 @@ export function formatDuration(seconds: number | null): string {
   return `${m}:${ss}`;
 }
 
-function formatCardDate(date: Date): string {
-  return `${date.getDate()} ${PL_MONTHS_SHORT[date.getMonth()]}`;
+function formatCardDate(date: Date, now: Date): string {
+  const label = `${date.getDate()} ${PL_MONTHS_SHORT[date.getMonth()]}`;
+  if (date.getFullYear() !== now.getFullYear()) return `${label} ${date.getFullYear()}`;
+  return label;
 }
 
 /**
  * One card style for home, listings, and favorites:
- * `teraz` / `Nh` / `wczoraj` / `Nd` / `D MMM` (no year).
+ * `teraz` / `Nh` / `wczoraj` / `Nd` / `D MMM`, and `D MMM YYYY`
+ * when the calendar year is not the current one.
  * `now` is injectable so tests can pin the clock.
  */
 export function timeAgo(iso: string | null, now: number = Date.now()): string {
@@ -57,5 +60,5 @@ export function timeAgo(iso: string | null, now: number = Date.now()): string {
     if (days < 7) return `${days}d`;
   }
 
-  return formatCardDate(date);
+  return formatCardDate(date, new Date(now));
 }

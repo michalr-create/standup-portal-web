@@ -3,6 +3,7 @@ import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson } from 
 import type { Item, Show } from "@/lib/data";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
 import HeartButton from "@/app/components/HeartButton";
+import { materialLabel, profileCountLabel, sortByDateDesc } from "@/lib/standuper-profile";
 import { notFound } from "next/navigation";
 
 export const revalidate = 120;
@@ -12,21 +13,22 @@ type Props = {
 };
 
 
+/** Section grids that render video cards. Anything else is not on the page. */
+const VISIBLE_VIDEO_KEYS = ["special", "standup", "formaty", "wywiady", "kulisy", "roast", "shorts"];
+
 function groupItems(items: Item[]): Map<string, Item[]> {
   const map = new Map<string, Item[]>();
   for (const item of items) {
     const isSpecial = item.tags.some((t) => t.slug === "special");
     const key = isSpecial ? "special" : (item.categorySlug ?? "inne");
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
+    const list = map.get(key);
+    if (list) list.push(item);
+    else map.set(key, [item]);
+  }
+  for (const [key, list] of map) {
+    map.set(key, sortByDateDesc(list, (item) => item.published_at));
   }
   return map;
-}
-
-function materialLabel(n: number): string {
-  if (n === 1) return "materia\u0142";
-  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "materia\u0142y";
-  return "materia\u0142\u00f3w";
 }
 
 function odcinekLabel(n: number): string {
@@ -110,8 +112,11 @@ export default async function StanduperPage({ params }: Props) {
   const defaultShowIds = new Set(defaultShows.map((d) => d.show.id));
   const otherItems = items.filter((i) => !i.show_id || !defaultShowIds.has(i.show_id));
   const grouped = groupItems(otherItems);
+  const shows = sortByDateDesc(defaultShows, (row) => row.latestDate);
+  const videoCount = VISIBLE_VIDEO_KEYS.reduce((n, key) => n + (grouped.get(key)?.length ?? 0), 0);
+  const formatCount = shows.length;
 
-  const hasFormatyItems = defaultShows.length > 0 || (grouped.get("formaty") ?? []).length > 0;
+  const hasFormatyItems = formatCount > 0 || (grouped.get("formaty") ?? []).length > 0;
 
   return (
     <div className="band">
@@ -124,9 +129,15 @@ export default async function StanduperPage({ params }: Props) {
             <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
               {person.name}<span className="dot-accent">.</span>
             </h1>
-            <HeartButton type="person" slug={slug} />
+            <HeartButton
+              type="person"
+              slug={slug}
+              name={person.name}
+              size={32}
+              inactiveColor="var(--paper)"
+            />
             <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-              {items.length} {materialLabel(items.length)}
+              {profileCountLabel(videoCount, formatCount)}
             </span>
           </div>
           {person.bio && (
@@ -136,7 +147,7 @@ export default async function StanduperPage({ params }: Props) {
           )}
         </header>
 
-        {items.length === 0 && (
+        {videoCount === 0 && formatCount === 0 && (
           <div className="text-center py-20">
             <div className="text-4xl mb-4">{"🎤"}</div>
             <p style={{ color: "var(--paper-mute)" }}>Brak materia{"ł"}{"ó"}w.</p>
@@ -170,9 +181,9 @@ export default async function StanduperPage({ params }: Props) {
                 Formaty<span className="dot-accent">.</span>
               </h2>
             </div>
-            {defaultShows.length > 0 && (
+            {shows.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
-                {defaultShows.map(({ show, totalCount, latestDate, latestThumbnail }) => (
+                {shows.map(({ show, totalCount, latestDate, latestThumbnail }) => (
                   <ShowCard key={show.id} show={show} totalCount={totalCount} latestDate={latestDate} latestThumbnail={latestThumbnail} />
                 ))}
               </div>
