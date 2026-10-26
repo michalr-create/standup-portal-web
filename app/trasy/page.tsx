@@ -3,11 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import TrasyFilters from "./TrasyFilters";
-import { getUpcomingEvents } from "@/lib/data";
+import Pager from "@/app/components/Pager";
+import { getTrasyListing } from "@/lib/data";
 import {
-  eventFacets,
   facetRedirect,
-  filterUpcomingEvents,
   formatEventWhen,
   formatPrice,
   groupEventsByMonth,
@@ -16,6 +15,7 @@ import {
   providerLabel,
   statusLabel,
   terminLabel,
+  trasyHref,
   warsawToday,
   type TicketLink,
   type TourEvent,
@@ -29,6 +29,8 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 120;
+
+const PAGE_SIZE = 24;
 
 type Props = {
   searchParams: Promise<TrasySearch>;
@@ -246,21 +248,24 @@ export default async function TrasyPage({ searchParams }: Props) {
   if (parsed.redirectHref) redirect(parsed.redirectHref);
 
   const now = new Date();
-  const result = await getUpcomingEvents(now);
-  const facets = eventFacets(result.events);
-  const unknownFacet = facetRedirect(parsed.filters, facets);
-  if (unknownFacet) redirect(unknownFacet);
+  const listing = await getTrasyListing(parsed.filters, parsed.page, PAGE_SIZE, now);
+  if (listing.ok) {
+    const unknownFacet = facetRedirect(parsed.filters, listing.facets, parsed.page);
+    if (unknownFacet) redirect(unknownFacet);
+    const totalPages = listing.total === 0 ? 1 : Math.ceil(listing.total / PAGE_SIZE);
+    if (parsed.page > totalPages) redirect(trasyHref({ ...parsed.filters, page: totalPages }));
+  }
 
-  const filtered = filterUpcomingEvents(result.events, parsed.filters, now);
-  const groups = groupEventsByMonth(filtered);
+  const groups = groupEventsByMonth(listing.events);
   const filteredView = hasActiveTrasyFilters(parsed.filters);
-  const countLabel = !result.ok
+  const countLabel = !listing.ok
     ? "błąd wczytywania"
-    : result.events.length === 0
+    : listing.catalogTotal === 0
       ? "na razie pusto"
       : filteredView
-        ? `${filtered.length} z ${result.events.length}`
-        : `${filtered.length} ${terminLabel(filtered.length)}`;
+        ? `${listing.total} z ${listing.catalogTotal}`
+        : `${listing.total} ${terminLabel(listing.total)}`;
+  const hrefForPage = (page: number) => trasyHref({ ...parsed.filters, page });
 
   return (
     <div className="band">
@@ -286,15 +291,15 @@ export default async function TrasyPage({ searchParams }: Props) {
           </p>
         </header>
 
-        {result.ok && (
-          <TrasyFilters filters={parsed.filters} facets={facets} today={warsawToday(now)} />
+        {listing.ok && (
+          <TrasyFilters filters={parsed.filters} facets={listing.facets} today={warsawToday(now)} />
         )}
 
-        {!result.ok ? (
+        {!listing.ok ? (
           <Notice eyebrow="trasy" title="Coś poszło nie tak">
             Nie udało się wczytać terminów. Odśwież stronę za chwilę.
           </Notice>
-        ) : filtered.length === 0 ? (
+        ) : listing.total === 0 ? (
           <Notice eyebrow="kalendarz" title="Brak terminów">
             {filteredView ? (
               <>
@@ -326,6 +331,9 @@ export default async function TrasyPage({ searchParams }: Props) {
               </section>
             ))}
           </div>
+        )}
+        {listing.ok && listing.total > 0 && (
+          <Pager page={parsed.page} total={listing.total} pageSize={PAGE_SIZE} hrefForPage={hrefForPage} />
         )}
       </div>
     </div>
