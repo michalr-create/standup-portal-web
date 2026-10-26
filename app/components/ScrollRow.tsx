@@ -177,9 +177,11 @@ export default function ScrollRow({ items }: { items: Item[] }) {
           </button>
         )}
 
+        {/* pb-6 holds the compact byline heart's 44px hit slop inside this
+            overflow-x scroller (overflow-y computes to auto and would clip it). */}
         <div
           ref={scrollRef}
-          className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-hide"
+          className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide"
         >
           {items.map((item) => (
             <ScrollCard

@@ -7,20 +7,22 @@ import { timeAgo } from "@/lib/format";
 
 const rowClass = [
   "flex h-5 min-h-5 min-w-0 flex-nowrap items-center gap-x-1.5",
-  "overflow-hidden pl-0.5 pr-1.5 leading-5",
+  "pl-0.5 pr-1.5 leading-5",
 ].join(" ");
 
-const peopleClass = "block min-w-0 truncate pr-1";
+const peopleClass = "card-byline-people block min-w-0";
 
 const nameClass = "align-middle hover:text-white transition-colors";
 
 const dateGroupClass = "inline-flex shrink-0 items-center gap-x-1.5";
 
 /**
- * One-line people · date row. Names ellipsize only inside the people
- * cluster (`min-w-0 truncate`). The date middot lives with the date in a
- * `shrink-0` group, outside that overflow box, so the ellipsis cannot eat
- * the separator. `h-5` keeps every card meta on one line.
+ * One-line people · date row. Names ellipsize at the end of the people
+ * cluster, so the first co-authors stay readable. The date middot lives
+ * with the date in a `shrink-0` group, outside that clip, so the ellipsis
+ * cannot eat the separator. `h-5` keeps every card meta on one line.
+ * The row does not clip vertically: each co-author heart is a 20px glyph
+ * with an absolute 44px hit target.
  */
 export default function CardByline({
   item,
@@ -30,6 +32,7 @@ export default function CardByline({
   className?: string;
 }) {
   const hasPeople = item.people.length > 0;
+  const multi = item.people.length > 1;
   const hasLabel = hasPeople || Boolean(item.showName);
 
   return (
@@ -38,7 +41,7 @@ export default function CardByline({
       data-card-meta=""
       style={{ color: "var(--paper-dim)", fontSize: "13px" }}
     >
-      <span className={peopleClass}>
+      <span className={`${peopleClass} ${multi ? "pr-2" : "pr-1"}`}>
         {hasPeople ? (
           item.people.map((p, i) => (
             <span key={p.slug}>
@@ -50,9 +53,9 @@ export default function CardByline({
               <Link href={"/standuper/" + p.slug} className={nameClass}>
                 {p.name}
               </Link>
-              {item.people.length > 1 && (
-                <span className="-my-3 ml-1 inline-flex align-middle">
-                  <HeartButton type="person" slug={p.slug} name={p.name} size={15} />
+              {multi && (
+                <span className="ml-1 inline-flex align-middle">
+                  <HeartButton type="person" slug={p.slug} name={p.name} size={15} compact />
                 </span>
               )}
             </span>

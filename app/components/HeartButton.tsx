@@ -10,6 +10,12 @@ type Props = {
   inactiveColor?: string;
   /** Frosted disc for the corner of a thumbnail. Icon stays small; the button is the tap target. */
   overlay?: boolean;
+  /**
+   * Multi-author byline. Glyph stays on a 20px box in normal flow.
+   * The 44px tap target is `.heart-btn-compact::before` and does not stretch the row.
+   * Header and thumbnail hearts leave this off.
+   */
+  compact?: boolean;
   /** Used in the accessible name when the control sits away from the visible label. */
   name?: string;
 };
@@ -19,10 +25,15 @@ const KEYS = { person: "parska_fav_persons", show: "parska_fav_shows" };
 const buttonClass = [
   "heart-btn",
   "inline-flex items-center justify-center shrink-0",
-  "min-h-11 min-w-11 h-11 w-11",
   "rounded-full border-0 bg-transparent p-0",
   "cursor-pointer leading-none",
 ].join(" ");
+
+/** Header, list, and thumbnail hearts: the border box itself is the 44px target. */
+const tapClass = "min-h-11 min-w-11 h-11 w-11";
+
+/** Byline glyph. Hit slop lives on ::before so this box can sit inside h-5. */
+const compactClass = "heart-btn-compact relative h-5 w-5 min-h-5 min-w-5";
 
 export default function HeartButton({
   type,
@@ -31,6 +42,7 @@ export default function HeartButton({
   size = 20,
   inactiveColor,
   overlay = false,
+  compact = false,
   name,
 }: Props) {
   const [active, setActive] = useState(false);
@@ -69,6 +81,8 @@ export default function HeartButton({
     ? "var(--coral)"
     : (inactiveColor ?? (overlay ? "rgba(11,11,11,.72)" : "var(--paper-mute)"));
 
+  const inline = compact && !overlay;
+
   return (
     <button
       type="button"
@@ -76,7 +90,7 @@ export default function HeartButton({
       onPointerDown={(e) => e.stopPropagation()}
       aria-pressed={active}
       aria-label={label}
-      className={buttonClass}
+      className={`${buttonClass} ${inline ? compactClass : tapClass}`}
       style={{ color }}
     >
       <span

@@ -174,10 +174,31 @@ a.pager-btn:hover {
   margin-left: 5px;
 }
 
-/* Favorite heart — 44px tap target, small glyph. Pop scales the glyph only. */
+/* Favorite heart — 44px tap target, small glyph. Pop scales the glyph only.
+   Compact byline hearts keep a 1.25rem glyph in flow; the pseudo is the tap target. */
 .heart-btn {
   -webkit-tap-highlight-color: transparent;
   transition: color .15s ease;
+}
+.heart-btn-compact::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  /* 0.25rem above the glyph (inside the byline top margin) and 1.25rem below
+     (the card gap / scroll-row padding). Out of flow, so the h-5 meta row
+     does not grow. */
+  top: -0.25rem;
+  transform: translateX(-50%);
+}
+/* End-ellipsis for co-author names. `clip` + `visible` keeps the compact
+   heart's vertical hit slop; `overflow: hidden` would clip it. */
+.card-byline-people {
+  overflow-x: clip;
+  overflow-y: visible;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .heart-btn:focus-visible {
   outline: 2px solid var(--coral);
