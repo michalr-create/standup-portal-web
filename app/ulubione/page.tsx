@@ -69,13 +69,13 @@ export default function UlubionePage() {
       <div className="max-w-5xl mx-auto">
         <header className="mb-10">
           <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-            Twoje konto
+            Lokalnie w przeglądarce
           </div>
           <h1 className="font-black m-0 leading-none mb-2" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
             Ulubione<span className="dot-accent">.</span>
           </h1>
           <p style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
-            Zapisane w przeglądarce · bez konta
+            Zapisane w przeglądarce · bez logowania
           </p>
         </header>
 
