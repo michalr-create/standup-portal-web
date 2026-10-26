@@ -154,8 +154,8 @@ export default async function StanduperPage({ params }: Props) {
           </div>
         )}
 
-        {/* Specials, Standup */}
-        {[{ key: "special", label: "Specials" }, { key: "standup", label: "Standup" }].map(({ key, label }) => {
+        {/* Specjale, Standup */}
+        {[{ key: "special", label: "Specjale" }, { key: "standup", label: "Standup" }].map(({ key, label }) => {
           const sectionItems = grouped.get(key);
           if (!sectionItems || sectionItems.length === 0) return null;
           return (
