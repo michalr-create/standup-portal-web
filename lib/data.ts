@@ -1,5 +1,9 @@
 import { cache } from "react";
 import { toTourEvent, type TourEvent } from "@/lib/events";
+import {
+  HOME_NOWE_SHORTS_CATEGORY_ID,
+  HOME_NOWE_SHORTS_URL_MATCH,
+} from "@/lib/home-nowe";
 import { SEARCH_CANDIDATE_LIMIT, SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
 import { supabase } from "@/lib/supabase";
 
@@ -533,33 +537,48 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
 // =================================================================
 // QUERY: nowości (ostatnie N dni, z auto-rozszerzaniem)
 // =================================================================
+type NoweQuery = {
+  neq(column: "category_id", value: number): NoweQuery;
+  not(column: "url", operator: "ilike", value: string): NoweQuery;
+};
+
+function excludeShortsFromNowe<Q>(query: Q, shortsCatId: number | null): Q {
+  // categories.id = 4 zawsze wykluczone, nawet gdy lookup sluga sie nie uda.
+  const builder = query as unknown as NoweQuery;
+  let next = builder.neq("category_id", HOME_NOWE_SHORTS_CATEGORY_ID);
+  if (shortsCatId != null && shortsCatId !== HOME_NOWE_SHORTS_CATEGORY_ID) {
+    next = next.neq("category_id", shortsCatId);
+  }
+  // Shorty YouTube przypisane do Roast (albo innej kategorii) nadal maja URL /shorts/.
+  return next.not("url", "ilike", `%${HOME_NOWE_SHORTS_URL_MATCH}%`) as unknown as Q;
+}
+
 export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Promise<Item[]> {
-  // Znajdz ID kategorii Shorts zeby ja wykluczyc
+  // Lookup sluga lapie przemianowany wiersz Shorts; id 4 i tak jest stosowane.
   const { data: shortsCat } = await supabase
     .from("categories")
     .select("id")
     .eq("slug", "shorts")
     .maybeSingle();
 
-  const shortsCatId = shortsCat?.id;
+  const shortsCatId = shortsCat?.id ?? null;
   let currentDays = days;
 
   while (currentDays <= maxDays) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - currentDays);
 
-    let query = supabase
-      .from("content_items")
-      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
-      .eq("status", "approved")
-      .is("merged_into_id", null)
-      .gte("published_at", cutoff.toISOString())
-      .order("published_at", { ascending: false })
-      .limit(20);
-
-    if (shortsCatId) {
-      query = query.neq("category_id", shortsCatId);
-    }
+    const query = excludeShortsFromNowe(
+      supabase
+        .from("content_items")
+        .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+        .eq("status", "approved")
+        .is("merged_into_id", null)
+        .gte("published_at", cutoff.toISOString())
+        .order("published_at", { ascending: false })
+        .limit(20),
+      shortsCatId,
+    );
 
     const { data, error } = await query;
 
@@ -576,17 +595,16 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
   }
 
   // Fallback: ostatnie 20
-  let fallbackQuery = supabase
-    .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
-    .eq("status", "approved")
-    .is("merged_into_id", null)
-    .order("published_at", { ascending: false })
-    .limit(20);
-
-  if (shortsCatId) {
-    fallbackQuery = fallbackQuery.neq("category_id", shortsCatId);
-  }
+  const fallbackQuery = excludeShortsFromNowe(
+    supabase
+      .from("content_items")
+      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+      .eq("status", "approved")
+      .is("merged_into_id", null)
+      .order("published_at", { ascending: false })
+      .limit(20),
+    shortsCatId,
+  );
 
   const { data } = await fallbackQuery;
   return hydrateItems(data || []);
