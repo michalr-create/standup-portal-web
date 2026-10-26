@@ -8,9 +8,9 @@ import CardByline from "@/app/components/CardByline";
 import { useWatchHistory } from "@/app/hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
-import { formatDuration } from "@/lib/format";
 import ContentCardAction from "@/app/components/ContentCardAction";
 import PaidBadge from "@/app/components/PaidBadge";
+import ThumbDuration from "@/app/components/ThumbDuration";
 
 const PERSON_KEY = "parska_fav_persons";
 const SHOW_KEY = "parska_fav_shows";
@@ -205,15 +205,8 @@ export default function UlubionePage() {
                                 style={{ opacity: isWatched ? 0.7 : 1 }}
                               />
                             )}
-                            {item.duration_seconds != null && (
-                              <div
-                                className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
-                                style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
-                              >
-                                {formatDuration(item.duration_seconds)}
-                              </div>
-                            )}
-                            {item.is_paid && <PaidBadge />}
+                            <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
+                            {item.is_paid && <PaidBadge url={item.url} />}
                             {isWatched && (
                               <div
                                 className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center"

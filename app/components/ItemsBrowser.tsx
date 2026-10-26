@@ -6,11 +6,11 @@ import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
-import { formatDuration } from "@/lib/format";
 import CardByline from "./CardByline";
 import HighlightedText from "./HighlightedText";
 import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
+import ThumbDuration from "./ThumbDuration";
 import {
   DEFAULT_GRID_CLASS,
   DEFAULT_THUMB_ASPECT,
@@ -83,14 +83,7 @@ export default function ItemsBrowser({
                       style={{ opacity: isWatched ? 0.7 : 1 }}
                     />
                   )}
-                  {item.duration_seconds != null && (
-                    <div
-                      className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
-                      style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
-                    >
-                      {formatDuration(item.duration_seconds)}
-                    </div>
-                  )}
+                  <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
                   <div
                     className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-bold"
                     style={{
@@ -103,7 +96,7 @@ export default function ItemsBrowser({
                     <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--coral)" }} />
                     {item.categoryName || "YouTube"}
                   </div>
-                  {item.is_paid && <PaidBadge />}
+                  {item.is_paid && <PaidBadge url={item.url} />}
                   {isWatched && (
                     <div
                       className={`absolute top-2.5 w-6 h-6 rounded-full flex items-center justify-center ${solePerson ? "right-16" : "right-2.5"}`}
