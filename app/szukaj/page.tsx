@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { searchAll } from "@/lib/data";
+import HighlightedText from "@/app/components/HighlightedText";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
 
 export const dynamic = "force-dynamic";
@@ -35,21 +36,32 @@ function SearchField({ query }: { query: string }) {
       <label htmlFor="szukaj-q" className="sr-only">
         Szukaj standuperów, filmów i formatów
       </label>
-      <input
-        id="szukaj-q"
-        name="q"
-        type="search"
-        defaultValue={query}
-        placeholder="Standuper, film, format…"
-        enterKeyHint="search"
-        autoComplete="off"
-        className="min-h-14 min-w-0 flex-1 appearance-none rounded-2xl px-4 text-[17px] outline-none placeholder:text-[var(--paper-mute)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
-        style={{
-          background: "var(--ink-3)",
-          border: "1px solid var(--line-2)",
-          color: "var(--paper)",
-        }}
-      />
+      <div className="relative min-w-0 flex-1">
+        <input
+          id="szukaj-q"
+          name="q"
+          type="search"
+          defaultValue={query}
+          placeholder="Standuper, film, format…"
+          enterKeyHint="search"
+          autoComplete="off"
+          className={`min-h-14 w-full appearance-none rounded-2xl text-[17px] outline-none placeholder:text-[var(--paper-mute)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)] ${query ? "pl-4 pr-14" : "px-4"}`}
+          style={{
+            background: "var(--ink-3)",
+            border: "1px solid var(--line-2)",
+            color: "var(--paper)",
+          }}
+        />
+        {query ? (
+          <Link
+            href="/szukaj"
+            aria-label="Wyczyść wyszukiwanie"
+            className="absolute right-1.5 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-2xl leading-none text-[var(--paper-dim)] hover:bg-[var(--ink-4)] hover:text-[var(--paper)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+          >
+            <span aria-hidden="true">×</span>
+          </Link>
+        ) : null}
+      </div>
       <button
         type="submit"
         className="inline-flex min-h-14 min-w-11 shrink-0 items-center justify-center rounded-2xl px-5 text-base font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--paper)]"
@@ -192,7 +204,7 @@ export default async function SzukajPage({ searchParams }: Props) {
                   </div>
                   <div className="min-w-0">
                     <div className="font-bold text-sm leading-tight truncate" style={{ color: "var(--paper)" }}>
-                      {p.name}
+                      <HighlightedText text={p.name} query={query} />
                     </div>
                     {p.role && (
                       <div className="mono text-xs mt-0.5 truncate" style={{ color: "var(--paper-mute)" }}>
@@ -229,7 +241,7 @@ export default async function SzukajPage({ searchParams }: Props) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-bold text-sm leading-tight truncate" style={{ color: "var(--paper)" }}>
-                      {s.name}
+                      <HighlightedText text={s.name} query={query} />
                     </div>
                     {s.description && (
                       <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "var(--paper-mute)" }}>
@@ -251,7 +263,7 @@ export default async function SzukajPage({ searchParams }: Props) {
                 Filmy i odcinki<span className="dot-accent">.</span>
               </h2>
             </div>
-            <ItemsBrowser items={items} />
+            <ItemsBrowser items={items} highlight={query} />
           </section>
         )}
       </div>
