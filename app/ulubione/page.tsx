@@ -6,9 +6,11 @@ import HeartButton from "@/app/components/HeartButton";
 import VideoModal from "@/app/components/VideoModal";
 import CardByline from "@/app/components/CardByline";
 import { useWatchHistory } from "@/app/hooks/useWatchHistory";
-import { getYouTubeId } from "@/lib/youtube";
+import { resolveContentOpen } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
 import { formatDuration } from "@/lib/format";
+import ContentCardAction from "@/app/components/ContentCardAction";
+import PaidBadge from "@/app/components/PaidBadge";
 
 const PERSON_KEY = "parska_fav_persons";
 const SHOW_KEY = "parska_fav_shows";
@@ -28,12 +30,12 @@ export default function UlubionePage() {
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const handleClick = (item: Item) => {
-    const videoId = getYouTubeId(item.url);
-    if (videoId) {
+    const target = resolveContentOpen(item);
+    if (target?.type === "modal") {
       markWatched(item.url);
-      setModal({ item, videoId });
-    } else {
-      window.open(item.url, "_blank", "noopener,noreferrer");
+      setModal({ item, videoId: target.videoId });
+    } else if (target?.type === "external") {
+      window.open(target.url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -181,10 +183,10 @@ export default function UlubionePage() {
                     const isWatched = watched.has(item.url);
                     return (
                       <article key={item.id} className="group vcard relative text-left w-full min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => handleClick(item)}
-                          className="block text-left w-full"
+                        <ContentCardAction
+                          isPaid={item.is_paid}
+                          url={item.url}
+                          onOpen={() => handleClick(item)}
                         >
                           <div
                             className="overflow-hidden relative"
@@ -211,6 +213,7 @@ export default function UlubionePage() {
                                 {formatDuration(item.duration_seconds)}
                               </div>
                             )}
+                            {item.is_paid && <PaidBadge />}
                             {isWatched && (
                               <div
                                 className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center"
@@ -219,14 +222,16 @@ export default function UlubionePage() {
                                 {"✓"}
                               </div>
                             )}
-                            <div className="play-overlay"><div className="play-btn" /></div>
+                            {!item.is_paid && (
+                              <div className="play-overlay"><div className="play-btn" /></div>
+                            )}
                           </div>
                           <div className="pt-3 px-0.5">
                             <h4 className="font-extrabold leading-tight line-clamp-2" style={{ fontSize: "16px", letterSpacing: "-.01em" }}>
                               {item.title}
                             </h4>
                           </div>
-                        </button>
+                        </ContentCardAction>
                         <CardByline item={item} />
                       </article>
                     );
