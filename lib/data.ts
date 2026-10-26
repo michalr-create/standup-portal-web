@@ -1,5 +1,17 @@
 import { cache } from "react";
-import { toTourEvent, type TourEvent } from "@/lib/events";
+import {
+  eventFacets,
+  hasActiveTrasyFilters,
+  toTourEvent,
+  TICKET_PROVIDERS,
+  upcomingBounds,
+  type EventFacetSource,
+  type EventFacets,
+  type EventRow,
+  type TicketProvider,
+  type TourEvent,
+  type TrasyFilters,
+} from "@/lib/events";
 import {
   HOME_NOWE_SHORTS_CATEGORY_ID,
   HOME_NOWE_SHORTS_URL_MATCH,
@@ -1060,25 +1072,185 @@ export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: 
 const UPCOMING_EVENT_COLUMNS =
   "id, person_id, title, starts_at, city, venue, venue_address, price_from, currency, status, ticket_url, ticket_provider, external_id, people!inner(name, slug, photo_url), event_ticket_links(ticket_url, ticket_provider, external_id, is_primary)";
 
-// Nadchodzące trasy widoczne dla anon (RLS: on_sale / sold_out, starts_at >= now()).
-export async function getUpcomingEvents(now = new Date()): Promise<{ events: TourEvent[]; ok: boolean }> {
-  const { data, error } = await supabase
-    .from("events")
-    .select(UPCOMING_EVENT_COLUMNS)
-    .gte("starts_at", now.toISOString())
-    .in("status", ["on_sale", "sold_out"])
+const FACET_SCAN_CAP = 50;
+
+export type TrasyListing = {
+  events: TourEvent[];
+  total: number;
+  catalogTotal: number;
+  facets: EventFacets;
+  ok: boolean;
+};
+
+const EMPTY_FACETS: EventFacets = { people: [], cities: [], portals: [] };
+
+type UpcomingFilterQuery = {
+  gte: (column: string, value: string) => UpcomingFilterQuery;
+  lt: (column: string, value: string) => UpcomingFilterQuery;
+  in: (column: string, values: readonly string[]) => UpcomingFilterQuery;
+  eq: (column: string, value: string) => UpcomingFilterQuery;
+};
+
+function upcomingSelect(filters: TrasyFilters): string {
+  if (!filters.portal) return UPCOMING_EVENT_COLUMNS;
+  return `${UPCOMING_EVENT_COLUMNS}, portal_match:event_ticket_links!inner(ticket_provider)`;
+}
+
+function applyUpcomingFilters<Q>(query: Q, filters: TrasyFilters, now: Date): Q {
+  const bounds = upcomingBounds(filters, now);
+  let next = query as unknown as UpcomingFilterQuery;
+  next = next.gte("starts_at", bounds.start.toISOString()).in("status", bounds.statuses);
+  if (bounds.end) next = next.lt("starts_at", bounds.end.toISOString());
+  if (filters.miasto) next = next.eq("city", filters.miasto);
+  if (filters.osoba) next = next.eq("people.slug", filters.osoba);
+  if (filters.portal) next = next.eq("portal_match.ticket_provider", filters.portal);
+  return next as unknown as Q;
+}
+
+function isTicketProvider(value: string): value is TicketProvider {
+  return (TICKET_PROVIDERS as readonly string[]).includes(value);
+}
+
+type FacetRow = {
+  city: string | null;
+  ticket_provider: string | null;
+  people: { name: string | null; slug: string | null } | { name: string | null; slug: string | null }[] | null;
+  event_ticket_links: { ticket_provider: string | null } | { ticket_provider: string | null }[] | null;
+};
+
+function firstEmbed<T>(value: T | T[] | null | undefined): T | null {
+  if (value == null) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function listEmbed<T>(value: T | T[] | null | undefined): T[] {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function rowToFacetSource(row: FacetRow): EventFacetSource | null {
+  const person = firstEmbed(row.people);
+  const slug = person?.slug?.trim() ?? "";
+  const name = person?.name?.trim() ?? "";
+  if (!slug || !name) return null;
+  const providers = new Set<TicketProvider>();
+  const add = (value: string | null | undefined) => {
+    const trimmed = value?.trim().toLowerCase() ?? "";
+    if (isTicketProvider(trimmed)) providers.add(trimmed);
+  };
+  add(row.ticket_provider);
+  for (const link of listEmbed(row.event_ticket_links)) add(link.ticket_provider);
+  return {
+    city: row.city?.trim() ?? "",
+    person: { slug, name },
+    links: [...providers].map((ticket_provider) => ({ ticket_provider })),
+  };
+}
+
+async function countUpcoming(filters: TrasyFilters, now: Date): Promise<number | null> {
+  const { count, error } = await applyUpcomingFilters(
+    supabase.from("events").select(upcomingSelect(filters), { count: "exact", head: true }),
+    filters,
+    now,
+  );
+  if (error) {
+    console.error("Błąd pobierania tras:", error);
+    return null;
+  }
+  return count ?? 0;
+}
+
+async function pageUpcomingEvents(
+  filters: TrasyFilters,
+  now: Date,
+  limit: number,
+  offset: number,
+): Promise<{ events: TourEvent[]; total: number } | null> {
+  const { data, error, count } = await applyUpcomingFilters(
+    supabase.from("events").select(upcomingSelect(filters), { count: "exact" }),
+    filters,
+    now,
+  )
     .order("starts_at", { ascending: true })
     .order("id", { ascending: true })
-    .limit(500);
+    .range(offset, offset + limit - 1);
 
-  if (error || !data) {
+  if (error?.code === "PGRST103") {
+    const total = await countUpcoming(filters, now);
+    if (total == null) return null;
+    return { events: [], total };
+  }
+  if (error || !data || count == null) {
     console.error("Błąd pobierania tras:", error);
-    return { events: [], ok: false };
+    return null;
   }
 
-  const events = data
-    .map((row) => toTourEvent(row as Parameters<typeof toTourEvent>[0]))
-    .filter((event): event is TourEvent => event !== null);
+  const events = (data as unknown as Array<EventRow & { portal_match?: unknown }>).flatMap((row) => {
+    const { portal_match: _portalMatch, ...eventRow } = row;
+    const event = toTourEvent(eventRow);
+    return event ? [event] : [];
+  });
 
-  return { events, ok: true };
+  return { events, total: count };
+}
+
+async function listUpcomingFacets(now: Date): Promise<EventFacets | null> {
+  const sources: EventFacetSource[] = [];
+  for (let page = 0; page < FACET_SCAN_CAP; page += 1) {
+    const offset = page * FACET_PAGE;
+    const { data, error } = await applyUpcomingFilters(
+      supabase
+        .from("events")
+        .select("city, ticket_provider, people!inner(name, slug), event_ticket_links(ticket_provider)"),
+      { osoba: "", miasto: "", od: "", doDnia: "", bilety: "", portal: "" },
+      now,
+    )
+      .order("id", { ascending: true })
+      .range(offset, offset + FACET_PAGE - 1);
+    if (error || !data) {
+      console.error("Błąd pobierania tras:", error);
+      return null;
+    }
+    const rows = data as unknown as FacetRow[];
+    for (const row of rows) {
+      const source = rowToFacetSource(row);
+      if (source) sources.push(source);
+    }
+    if (rows.length < FACET_PAGE) return eventFacets(sources);
+  }
+  console.error("Błąd pobierania tras: za dużo terminów do filtrów");
+  return null;
+}
+
+// Nadchodzące trasy (RLS: on_sale / sold_out, starts_at >= now()).
+// Filtry są w zapytaniu, zanim zadziała range — wcześniejszy limit 500
+// najbliższych dat ucinał późniejsze terminy po wybraniu standupera albo miasta.
+export async function getTrasyListing(
+  filters: TrasyFilters,
+  page: number,
+  pageSize: number,
+  now = new Date(),
+): Promise<TrasyListing> {
+  const size = Number.isFinite(pageSize) ? Math.min(100, Math.max(1, Math.floor(pageSize))) : 24;
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  const offset = (safePage - 1) * size;
+  const openFilters: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "", portal: "" };
+
+  const [pageResult, facets, catalogTotal] = await Promise.all([
+    pageUpcomingEvents(filters, now, size, offset),
+    listUpcomingFacets(now),
+    hasActiveTrasyFilters(filters) ? countUpcoming(openFilters, now) : Promise.resolve(undefined),
+  ]);
+
+  if (!pageResult || !facets || (hasActiveTrasyFilters(filters) && catalogTotal == null)) {
+    return { events: [], total: 0, catalogTotal: 0, facets: EMPTY_FACETS, ok: false };
+  }
+
+  return {
+    events: pageResult.events,
+    total: pageResult.total,
+    catalogTotal: catalogTotal ?? pageResult.total,
+    facets,
+    ok: true,
+  };
 }

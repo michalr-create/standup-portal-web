@@ -48,6 +48,13 @@ export type TrasySearch = {
   do?: string | string[];
   bilety?: string | string[];
   portal?: string | string[];
+  page?: string | string[];
+};
+
+export type EventFacetSource = {
+  city: string;
+  links: { ticket_provider: TicketProvider }[];
+  person: { slug: string; name: string };
 };
 
 export type TourPerson = {
@@ -184,7 +191,7 @@ function canonicalizeBilety(raw: string | undefined): { value: BiletyFilter; cha
   return { value: "", changed: true };
 }
 
-export function trasyHref(filters: Partial<TrasyFilters> = {}): string {
+export function trasyHref(filters: Partial<TrasyFilters> & { page?: number } = {}): string {
   const params = new URLSearchParams();
   const osoba = filters.osoba?.trim() ?? "";
   const miasto = filters.miasto?.trim() ?? "";
@@ -192,18 +199,27 @@ export function trasyHref(filters: Partial<TrasyFilters> = {}): string {
   const doDnia = filters.doDnia?.trim() ?? "";
   const bilety = filters.bilety ?? "";
   const portal = filters.portal ?? "";
+  const page = filters.page ?? 1;
   if (osoba) params.set("osoba", osoba);
   if (miasto) params.set("miasto", miasto);
   if (od) params.set("od", od);
   if (doDnia) params.set("do", doDnia);
   if (bilety) params.set("bilety", bilety);
   if (portal) params.set("portal", portal);
+  if (Number.isFinite(page) && page > 1) params.set("page", String(Math.floor(page)));
   const qs = params.toString();
   return qs ? `/trasy?${qs}` : "/trasy";
 }
 
+function parsePositivePage(raw: string | undefined): number | null {
+  if (raw == null || raw === "") return 1;
+  if (!/^[1-9]\d{0,4}$/.test(raw)) return null;
+  return Number(raw);
+}
+
 export function parseTrasySearchParams(raw: TrasySearch): {
   filters: TrasyFilters;
+  page: number;
   redirectHref: string | null;
 } {
   const osoba = canonicalizeSlug(first(raw.osoba));
@@ -229,10 +245,17 @@ export function parseTrasySearchParams(raw: TrasySearch): {
     portal: portal.value,
   };
 
-  const changed = osoba.changed || miasto.changed || od.changed || doChanged || bilety.changed || portal.changed;
+  const pageRaw = first(raw.page);
+  const parsedPage = parsePositivePage(pageRaw);
+  const pageNeedsRedirect = parsedPage == null || (pageRaw != null && pageRaw !== "" && parsedPage === 1);
+  const page = parsedPage != null && parsedPage > 1 ? parsedPage : 1;
+
+  const changed =
+    osoba.changed || miasto.changed || od.changed || doChanged || bilety.changed || portal.changed || pageNeedsRedirect;
   return {
     filters,
-    redirectHref: changed ? trasyHref(filters) : null,
+    page,
+    redirectHref: changed ? trasyHref({ ...filters, page }) : null,
   };
 }
 
@@ -400,29 +423,42 @@ export function statusToBilety(status: ListedEventStatus): BiletyFilter {
   return status === "on_sale" ? "dostepne" : "wyprzedane";
 }
 
+export function upcomingBounds(filters: TrasyFilters, now: Date): {
+  start: Date;
+  end: Date | null;
+  statuses: ListedEventStatus[];
+} {
+  const from = filters.od ? warsawDayBounds(filters.od) : null;
+  const to = filters.doDnia ? warsawDayBounds(filters.doDnia) : null;
+  const start = new Date(Math.max(now.getTime(), from?.start.getTime() ?? now.getTime()));
+  const end = to?.end ?? null;
+  const statuses: ListedEventStatus[] =
+    filters.bilety === "dostepne" ? ["on_sale"] : filters.bilety === "wyprzedane" ? ["sold_out"] : ["on_sale", "sold_out"];
+  return { start, end, statuses };
+}
+
 export function filterUpcomingEvents(
   events: TourEvent[],
   filters: TrasyFilters,
   now: Date,
 ): TourEvent[] {
-  const from = filters.od ? warsawDayBounds(filters.od) : null;
-  const to = filters.doDnia ? warsawDayBounds(filters.doDnia) : null;
-  const lower = Math.max(now.getTime(), from?.start.getTime() ?? now.getTime());
-  const upper = to?.end.getTime() ?? Number.POSITIVE_INFINITY;
-  const status = filters.bilety === "dostepne" ? "on_sale" : filters.bilety === "wyprzedane" ? "sold_out" : null;
+  const bounds = upcomingBounds(filters, now);
+  const lower = bounds.start.getTime();
+  const upper = bounds.end?.getTime() ?? Number.POSITIVE_INFINITY;
+  const statuses = new Set(bounds.statuses);
 
   return events.filter((event) => {
     const time = new Date(event.starts_at).getTime();
     if (Number.isNaN(time) || time < lower || time >= upper) return false;
     if (filters.osoba && event.person.slug !== filters.osoba) return false;
     if (filters.miasto && event.city !== filters.miasto) return false;
-    if (status && event.status !== status) return false;
+    if (!statuses.has(event.status)) return false;
     if (filters.portal && !event.links.some((link) => link.ticket_provider === filters.portal)) return false;
     return true;
   });
 }
 
-export function eventFacets(events: TourEvent[]): EventFacets {
+export function eventFacets(events: readonly EventFacetSource[]): EventFacets {
   const people = new Map<string, string>();
   const cities = new Set<string>();
   const portals = new Set<TicketProvider>();
@@ -440,7 +476,7 @@ export function eventFacets(events: TourEvent[]): EventFacets {
   };
 }
 
-export function facetRedirect(filters: TrasyFilters, facets: EventFacets): string | null {
+export function facetRedirect(filters: TrasyFilters, facets: EventFacets, page = 1): string | null {
   const next: TrasyFilters = { ...filters };
   let changed = false;
   if (next.osoba && !facets.people.some((person) => person.slug === next.osoba)) {
@@ -455,7 +491,7 @@ export function facetRedirect(filters: TrasyFilters, facets: EventFacets): strin
     next.portal = "";
     changed = true;
   }
-  return changed ? trasyHref(next) : null;
+  return changed ? trasyHref({ ...next, page }) : null;
 }
 
 function warsawPart(iso: string, type: Intl.DateTimeFormatPartTypes): string {

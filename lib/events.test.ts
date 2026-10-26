@@ -95,6 +95,33 @@ test("search params stay canonical", () => {
   assert.equal(parseTrasySearchParams({ portal: "shop" }).redirectHref, "/trasy");
 });
 
+test("page query stays with the active filters and omits the first page", () => {
+  assert.equal(trasyHref({ osoba: "abelard-giza", page: 1 }), "/trasy?osoba=abelard-giza");
+  assert.equal(trasyHref({ osoba: "abelard-giza", page: 2 }), "/trasy?osoba=abelard-giza&page=2");
+  assert.equal(
+    trasyHref({ miasto: "Kraków", bilety: "dostepne", portal: "ebilet", page: 4 }),
+    "/trasy?miasto=Krak%C3%B3w&bilety=dostepne&portal=ebilet&page=4",
+  );
+
+  const explicitFirst = parseTrasySearchParams({ page: "1", miasto: "Kraków" });
+  assert.equal(explicitFirst.page, 1);
+  assert.equal(explicitFirst.redirectHref, "/trasy?miasto=Krak%C3%B3w");
+
+  const second = parseTrasySearchParams({ page: "2", osoba: "abelard-giza", bilety: "dostepne" });
+  assert.equal(second.page, 2);
+  assert.equal(second.filters.osoba, "abelard-giza");
+  assert.equal(second.filters.bilety, "dostepne");
+  assert.equal(second.redirectHref, null);
+
+  const bad = parseTrasySearchParams({ page: "0", portal: "ebilet" });
+  assert.equal(bad.page, 1);
+  assert.equal(bad.redirectHref, "/trasy?portal=ebilet");
+
+  const messyPage = parseTrasySearchParams({ page: "2", osoba: "Abelard-Giza" });
+  assert.equal(messyPage.page, 2);
+  assert.equal(messyPage.redirectHref, "/trasy?osoba=abelard-giza&page=2");
+});
+
 test("filters keep upcoming rows and honor comedian, city, range, and availability", () => {
   const events = [
     tour(),
@@ -159,6 +186,8 @@ test("filters keep upcoming rows and honor comedian, city, range, and availabili
   assert.deepEqual(facets.cities, ["Kraków", "Łódź", "Warszawa"]);
   assert.equal(facetRedirect({ ...openFilters, osoba: "nikt" }, facets), "/trasy");
   assert.equal(facetRedirect({ ...openFilters, portal: "eventim" }, facets), "/trasy");
+  assert.equal(facetRedirect({ ...openFilters, osoba: "nikt" }, facets, 3), "/trasy?page=3");
+  assert.equal(facetRedirect({ ...openFilters, osoba: "abelard-giza" }, facets, 2), null);
   assert.deepEqual(facets.portals, ["eBilet", "Going", "Kupbilecik"].map((label) => {
     if (label === "eBilet") return "ebilet";
     if (label === "Going") return "going";
