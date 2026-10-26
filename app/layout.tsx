@@ -38,6 +38,8 @@ export default async function RootLayout({
   ]);
   const footerPeople = peopleByActivity(people, itemCounts, 8);
 
+  // Desktop nav stays at nine links: from lg they already fill the bar (UX-11).
+  // Trasy is linked from the home hero and the footer instead.
   const navLinks = [
     { href: "/", label: "Start" },
     { href: "/standup", label: "Standup" },
@@ -141,6 +143,11 @@ export default async function RootLayout({
                     </Link>
                   </li>
                 ))}
+                <li>
+                  <Link href="/trasy" className="text-sm hover:text-white transition-colors" style={{ color: "var(--paper-dim)" }}>
+                    Trasy
+                  </Link>
+                </li>
               </ul>
             </div>
 
