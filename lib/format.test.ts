@@ -55,8 +55,14 @@ test("timeAgo uses one compact card style and Polish month abbreviations", () =>
   assert.equal(timeAgo(iso(2026, 10, 19, 15, 0), now), "6d");
   assert.equal(timeAgo(iso(2026, 10, 18, 15, 0), now), "18 pa\u017a");
   assert.equal(timeAgo(iso(2026, 1, 3, 15, 0), now), "3 sty");
-  assert.equal(timeAgo(iso(2024, 10, 12, 15, 0), now), "12 pa\u017a");
+  assert.equal(timeAgo(iso(2024, 10, 12, 15, 0), now), "12 pa\u017a 2024");
+  assert.equal(timeAgo(iso(2025, 12, 20, 15, 0), now), "20 gru 2025");
   assert.equal(timeAgo(iso(2026, 12, 1, 15, 0), now), "1 gru");
+  assert.equal(timeAgo(iso(2027, 3, 2, 15, 0), now), "2 mar 2027");
+
+  const newYear = new Date(2026, 0, 10, 15, 0, 0).getTime();
+  assert.equal(timeAgo(iso(2025, 12, 20, 15, 0), newYear), "20 gru 2025");
+  assert.equal(timeAgo(iso(2026, 1, 2, 15, 0), newYear), "2 sty");
 });
 
 test("card meta color clears AA on dark backgrounds", () => {
