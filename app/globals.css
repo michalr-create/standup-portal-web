@@ -144,6 +144,15 @@ a.pager-btn:hover {
 .vcard:hover {
   transform: translateY(-3px);
 }
+.vcard:has(button:disabled) {
+  cursor: default;
+}
+.vcard:has(button:disabled):hover {
+  transform: none;
+}
+.vcard:has(button:disabled):hover img {
+  transform: none;
+}
 
 /* Play overlay */
 .play-overlay {
