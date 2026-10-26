@@ -212,6 +212,13 @@ a.pager-btn:hover {
   transform: translateY(-3px);
   background: #EEE7D8;
 }
+/* At least two lines at 20px / leading-tight (1.25), so short titles
+   match two-line names and the episode row stays on one grid line. */
+.fcard-title {
+  min-height: 2.5em;
+  font-size: 20px;
+  line-height: 1.25;
+}
 
 /*
   Phone video playback.

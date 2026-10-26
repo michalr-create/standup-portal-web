@@ -16,11 +16,13 @@ function ShowCard({ show, itemCount }: { show: Show; itemCount: number }) {
       <div className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg" style={{ background: "var(--ink)", color: "var(--paper)" }}>
         {show.name.charAt(0)}
       </div>
-      <h4 className="font-black m-0 leading-tight" style={{ fontSize: "20px", letterSpacing: "-.01em", color: "var(--ink)" }}>
-        {show.name}
-      </h4>
+      <div className="fcard-title">
+        <h4 className="font-black m-0 leading-tight" style={{ fontSize: "20px", letterSpacing: "-.01em", color: "var(--ink)" }}>
+          {show.name}
+        </h4>
+      </div>
       {show.description && (
-        <p className="m-0 leading-relaxed line-clamp-3" style={{ fontSize: "13.5px", color: "#4a453c" }}>
+        <p className="m-0 leading-relaxed line-clamp-2" style={{ fontSize: "13.5px", color: "#4a453c" }}>
           {show.description}
         </p>
       )}
@@ -37,12 +39,14 @@ function ShowCard({ show, itemCount }: { show: Show; itemCount: number }) {
 export default async function FormatyPage() {
   const shows = await getAllShows();
 
-  const showsWithCounts = await Promise.all(
-    shows.map(async (show) => {
-      const items = await getItemsByShowSlug(show.slug, 999);
-      return { show, itemCount: items.length };
-    })
-  );
+  const showsWithCounts = (
+    await Promise.all(
+      shows.map(async (show) => {
+        const items = await getItemsByShowSlug(show.slug, 999);
+        return { show, itemCount: items.length };
+      })
+    )
+  ).filter(({ itemCount }) => itemCount > 0);
 
   return (
     <div className="band band-light">
