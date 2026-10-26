@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { toTourEvent, type TourEvent } from "@/lib/events";
 import { SEARCH_CANDIDATE_LIMIT, SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
 import { supabase } from "@/lib/supabase";
 
@@ -1036,4 +1037,30 @@ export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: 
   });
 
   return results;
+}
+
+const UPCOMING_EVENT_COLUMNS =
+  "id, person_id, title, starts_at, city, venue, venue_address, price_from, currency, status, ticket_url, ticket_provider, external_id, people!inner(name, slug, photo_url), event_ticket_links(ticket_url, ticket_provider, external_id, is_primary)";
+
+// Nadchodzące trasy widoczne dla anon (RLS: on_sale / sold_out, starts_at >= now()).
+export async function getUpcomingEvents(now = new Date()): Promise<{ events: TourEvent[]; ok: boolean }> {
+  const { data, error } = await supabase
+    .from("events")
+    .select(UPCOMING_EVENT_COLUMNS)
+    .gte("starts_at", now.toISOString())
+    .in("status", ["on_sale", "sold_out"])
+    .order("starts_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(500);
+
+  if (error || !data) {
+    console.error("Błąd pobierania tras:", error);
+    return { events: [], ok: false };
+  }
+
+  const events = data
+    .map((row) => toTourEvent(row as Parameters<typeof toTourEvent>[0]))
+    .filter((event): event is TourEvent => event !== null);
+
+  return { events, ok: true };
 }

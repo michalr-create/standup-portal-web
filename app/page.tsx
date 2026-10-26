@@ -129,13 +129,20 @@ export default async function HomePage() {
               {" Codziennie przegl\u0105damy YouTube i strony komik\u00f3w, \u017ceby zebra\u0107 to, co naprawd\u0119 warto obejrze\u0107."}
             </span>
           </p>
-          <div className="mt-5 md:mt-7">
+          <div className="mt-5 flex flex-wrap items-center gap-3 md:mt-7">
             <Link
               href={noweHref}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2.5 text-sm font-black text-[var(--ink)] transition-colors hover:bg-[var(--coral-hi)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--paper)]"
             >
               Zobacz nowe
               <span aria-hidden="true">{"\u2192"}</span>
+            </Link>
+            <Link
+              href="/trasy"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black transition-colors hover:bg-[var(--ink-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+              style={{ color: "var(--paper)", border: "1px solid var(--line-2)" }}
+            >
+              Trasy i bilety
             </Link>
           </div>
         </div>
