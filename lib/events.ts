@@ -476,6 +476,74 @@ export function eventFacets(events: readonly EventFacetSource[]): EventFacets {
   };
 }
 
+const TOP_CITY_LIMIT = 10;
+
+// Largest tour cities, in chip order. A name is included only when facets.cities has it.
+const TOP_CITY_RANK = [
+  "Warszawa",
+  "Kraków",
+  "Wrocław",
+  "Gdańsk",
+  "Poznań",
+  "Łódź",
+  "Szczecin",
+  "Bydgoszcz",
+  "Lublin",
+  "Białystok",
+  "Katowice",
+  "Gdynia",
+  "Częstochowa",
+  "Radom",
+  "Toruń",
+  "Kielce",
+  "Rzeszów",
+  "Gliwice",
+  "Olsztyn",
+  "Bielsko-Biała",
+  "Zielona Góra",
+  "Opole",
+  "Gorzów Wielkopolski",
+  "Elbląg",
+  "Płock",
+  "Włocławek",
+  "Tarnów",
+  "Koszalin",
+] as const;
+
+export function topFacetCities(cities: readonly string[]): string[] {
+  const present = new Set(cities);
+  const chips: string[] = [];
+  for (const city of TOP_CITY_RANK) {
+    if (!present.has(city)) continue;
+    chips.push(city);
+    if (chips.length === TOP_CITY_LIMIT) break;
+  }
+  return chips;
+}
+
+function foldPl(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase("pl")
+    .replace(/ł/g, "l")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+}
+
+export function peopleSelectOptions(
+  people: readonly { slug: string; name: string }[],
+  query: string,
+  selectedSlug = "",
+): { slug: string; name: string }[] {
+  const needle = foldPl(query);
+  const matched = needle
+    ? people.filter((person) => foldPl(person.name).includes(needle))
+    : [...people];
+  if (!selectedSlug || matched.some((person) => person.slug === selectedSlug)) return matched;
+  const selected = people.find((person) => person.slug === selectedSlug);
+  return selected ? [selected, ...matched] : matched;
+}
+
 export function facetRedirect(filters: TrasyFilters, facets: EventFacets, page = 1): string | null {
   const next: TrasyFilters = { ...filters };
   let changed = false;

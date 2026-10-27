@@ -1,15 +1,19 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   BILETY_OPTIONS,
   hasActiveTrasyFilters,
+  peopleSelectOptions,
   providerLabel,
+  topFacetCities,
   trasyHref,
   type EventFacets,
   type TrasyFilters,
 } from "@/lib/events";
+
+const PERSON_LIST_FILTER_AFTER = 40;
 
 const controlStyle = (active: boolean): CSSProperties => ({
   color: "var(--paper)",
@@ -17,6 +21,8 @@ const controlStyle = (active: boolean): CSSProperties => ({
   background: active ? "rgba(232, 89, 74, .22)" : "rgba(239, 232, 220, .10)",
   colorScheme: "dark",
 });
+
+const labelStyle: CSSProperties = { color: "var(--paper-mute)", letterSpacing: ".14em" };
 
 function Field({
   label,
@@ -27,10 +33,7 @@ function Field({
 }) {
   return (
     <label className="flex min-w-0 flex-col gap-1.5">
-      <span
-        className="mono text-xs uppercase"
-        style={{ color: "var(--paper-mute)", letterSpacing: ".14em" }}
-      >
+      <span className="mono text-xs uppercase" style={labelStyle}>
         {label}
       </span>
       {children}
@@ -49,6 +52,14 @@ export default function TrasyFilters({
 }) {
   const router = useRouter();
   const active = hasActiveTrasyFilters(filters);
+  const [personQuery, setPersonQuery] = useState("");
+  const showPersonFilter = facets.people.length > PERSON_LIST_FILTER_AFTER;
+  const people = peopleSelectOptions(
+    facets.people,
+    showPersonFilter ? personQuery : "",
+    filters.osoba,
+  );
+  const cityChips = topFacetCities(facets.cities);
 
   const go = (next: Partial<TrasyFilters>) => {
     router.push(trasyHref({ ...filters, ...next }), { scroll: false });
@@ -57,21 +68,38 @@ export default function TrasyFilters({
   return (
     <div role="search" aria-label="Filtruj trasy" className="mb-8 flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <Field label="Standuper">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label htmlFor="trasy-osoba" className="mono text-xs uppercase" style={labelStyle}>
+            Standuper
+          </label>
+          {showPersonFilter && (
+            <input
+              type="search"
+              value={personQuery}
+              onChange={(event) => setPersonQuery(event.target.value)}
+              placeholder="Filtruj listę"
+              aria-label="Filtruj listę"
+              autoComplete="off"
+              spellCheck={false}
+              className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold placeholder:text-[var(--paper-mute)]"
+              style={controlStyle(personQuery.trim().length > 0)}
+            />
+          )}
           <select
+            id="trasy-osoba"
             className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold"
             style={controlStyle(Boolean(filters.osoba))}
             value={filters.osoba}
             onChange={(event) => go({ osoba: event.target.value })}
           >
             <option value="">Wszyscy</option>
-            {facets.people.map((person) => (
+            {people.map((person) => (
               <option key={person.slug} value={person.slug}>
                 {person.name}
               </option>
             ))}
           </select>
-        </Field>
+        </div>
         <Field label="Miasto">
           <select
             className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold"
@@ -123,6 +151,29 @@ export default function TrasyFilters({
           </select>
         </Field>
       </div>
+
+      {cityChips.length > 0 && (
+        <div
+          className="flex max-w-full flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Popularne miasta"
+        >
+          {cityChips.map((city) => {
+            const pressed = filters.miasto === city;
+            return (
+              <button
+                key={city}
+                type="button"
+                className={pressed ? "chip active min-h-10 max-w-full" : "chip min-h-10 max-w-full"}
+                aria-pressed={pressed}
+                onClick={() => go({ miasto: pressed ? "" : city })}
+              >
+                {city}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {BILETY_OPTIONS.map((option) => {

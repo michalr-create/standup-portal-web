@@ -9,8 +9,10 @@ import {
   formatPrice,
   groupEventsByMonth,
   parseTrasySearchParams,
+  peopleSelectOptions,
   providerLabel,
   terminLabel,
+  topFacetCities,
   toTourEvent,
   trasyHref,
   warsawDayBounds,
@@ -194,6 +196,63 @@ test("filters keep upcoming rows and honor comedian, city, range, and availabili
     return "kupbilecik";
   }));
   assert.equal(facetRedirect(openFilters, facets), null);
+});
+
+test("top city chips are the largest cities that actually appear in facets", () => {
+  const ranked = [
+    "Warszawa",
+    "Kraków",
+    "Wrocław",
+    "Gdańsk",
+    "Poznań",
+    "Łódź",
+    "Szczecin",
+    "Bydgoszcz",
+    "Lublin",
+    "Białystok",
+    "Katowice",
+  ];
+  const facets = ["Hel", "Sopot", ...ranked.slice().reverse(), "Zakopane"];
+  const chips = topFacetCities(facets);
+  assert.equal(chips.length, 10);
+  assert.deepEqual(chips, ranked.slice(0, 10));
+  for (const city of chips) assert.equal(facets.includes(city), true);
+  assert.equal(chips.includes("Hel"), false);
+  assert.equal(chips.includes("Katowice"), false);
+  assert.equal(chips.includes("Zakopane"), false);
+  assert.deepEqual(topFacetCities(["Hel", "Sopot", "Zakopane"]), []);
+  assert.deepEqual(topFacetCities(["Łódź", "Kraków"]), ["Kraków", "Łódź"]);
+  assert.equal(topFacetCities(["Warszawa"]).includes("Kraków"), false);
+
+  assert.equal(trasyHref({ miasto: chips[0] }), "/trasy?miasto=Warszawa");
+  assert.equal(trasyHref({ miasto: "" }), "/trasy");
+  const parsed = parseTrasySearchParams({ miasto: "Kraków" });
+  assert.equal(parsed.redirectHref, null);
+  assert.equal(parsed.filters.miasto, "Kraków");
+  assert.equal(trasyHref({ ...parsed.filters }), "/trasy?miasto=Krak%C3%B3w");
+});
+
+test("long standuper lists can be narrowed without dropping the current choice", () => {
+  const people = Array.from({ length: 45 }, (_, index) => ({
+    slug: `osoba-${index}`,
+    name: index === 7 ? "Łukasz Łowicki" : `Standuper ${String(index).padStart(2, "0")}`,
+  }));
+  assert.equal(people.length > 40, true);
+  assert.equal(peopleSelectOptions(people, "").length, 45);
+  assert.equal(peopleSelectOptions(people, "   ").length, 45);
+  assert.deepEqual(
+    peopleSelectOptions(people, "lukasz").map((person) => person.slug),
+    ["osoba-7"],
+  );
+  assert.deepEqual(
+    peopleSelectOptions(people, "lowicki", "osoba-1").map((person) => person.slug),
+    ["osoba-1", "osoba-7"],
+  );
+  assert.deepEqual(
+    peopleSelectOptions(people, "lukasz", "osoba-7").map((person) => person.slug),
+    ["osoba-7"],
+  );
+  assert.deepEqual(peopleSelectOptions(people, "brak", "nikt"), []);
 });
 
 test("rows normalize prices and drop events that are not publicly listed", () => {
