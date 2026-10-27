@@ -37,7 +37,7 @@ export function cardActionKind(isPaid: boolean, url: string | null): CardActionK
 
 /** A runtime on a paid thumb reads as "play this video". Paid cards are a shop. */
 export function showThumbDuration(isPaid: boolean, seconds: number | null): boolean {
-  return !isPaid && seconds != null;
+  return !isPaid && seconds != null && Number.isFinite(seconds) && seconds >= 0;
 }
 
 /**

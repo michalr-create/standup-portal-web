@@ -5,12 +5,12 @@ import {
   getItemsByTagSlug,
   getLatestPerShow,
 } from "@/lib/data";
-import type { Show } from "@/lib/data";
+import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { selectHomeFormats } from "@/lib/home-shows";
 import ScrollRow from "./components/ScrollRow";
 import HomeVideoGrid from "./components/HomeVideoGrid";
 import FavoritesSection from "./components/FavoritesSection";
-import HeartButton from "./components/HeartButton";
+import FormatCard from "./components/FormatCard";
 
 export const revalidate = 120;
 
@@ -41,12 +41,6 @@ function SectionHead({ title, sub, linkHref, linkText }: { title: string; sub?: 
   );
 }
 
-function odcinekLabel(n: number): string {
-  if (n === 1) return "odcinek";
-  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "odcinki";
-  return "odcink\u00f3w";
-}
-
 function nowyLabel(n: number): string {
   if (n === 1) return "nowy";
   if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "nowe";
@@ -59,46 +53,10 @@ function pozycjaLabel(n: number): string {
   return "pozycji";
 }
 
-function ShowBlock({ show, totalCount, latestDate }: { show: Show; totalCount: number; latestDate: string | null }) {
-  const latestLabel = latestDate
-    ? new Date(latestDate).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" })
-    : null;
-
-  return (
-    <Link href={"/format/" + show.slug} className="fcard group">
-      <div className="flex items-start justify-between gap-2">
-        <div className="w-12 h-12 rounded-xl grid place-items-center font-black mono text-lg shrink-0" style={{ background: "var(--ink)", color: "var(--paper)" }}>
-          {show.name.charAt(0)}
-        </div>
-        <HeartButton type="show" slug={show.slug} size={16} inactiveColor="rgba(11,11,11,.3)" />
-      </div>
-      <h4 className="font-black m-0 leading-tight" style={{ fontSize: "20px", letterSpacing: "-.01em", color: "var(--ink)" }}>
-        {show.name}
-      </h4>
-      {show.description && (
-        <p className="m-0 leading-relaxed line-clamp-2" style={{ fontSize: "13.5px", color: "#4a453c" }}>
-          {show.description}
-        </p>
-      )}
-      <div className="mt-auto mono text-xs uppercase flex justify-between items-center" style={{ color: "#7a7466", letterSpacing: ".14em" }}>
-        <span>{totalCount} {odcinekLabel(totalCount)}</span>
-        <span className="w-7 h-7 rounded-full grid place-items-center text-sm" style={{ background: "var(--ink)", color: "var(--paper)" }}>
-          {"\u2192"}
-        </span>
-      </div>
-      {latestLabel && (
-        <div className="mono text-xs" style={{ color: "#9a9080", letterSpacing: ".08em", marginTop: "-6px" }}>
-          ostatni: {latestLabel}
-        </div>
-      )}
-    </Link>
-  );
-}
-
 export default async function HomePage() {
   const [recentItems, featuredItems, specjalItems, showSections] = await Promise.all([
     getRecentItems(7, 3, 30),
-    getFeaturedItems(8),
+    getFeaturedItems(HOME_FEATURED_LIMIT),
     getItemsByTagSlug("special", 10),
     getLatestPerShow(3),
   ]);
@@ -188,24 +146,39 @@ export default async function HomePage() {
 
       {/* FORMATY */}
       {activeShows.length > 0 && (
-        <section className="band band-light">
+        <section className="band">
           <div className="max-w-6xl mx-auto">
-            <div className="flex items-end justify-between mb-8 gap-6 flex-wrap">
-              <div className="flex items-baseline gap-4 flex-wrap">
-                <h2 className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em", color: "var(--ink)" }}>
-                  Formaty<span className="dot-accent">.</span>
-                </h2>
-                <span className="mono text-xs uppercase" style={{ color: "#555", letterSpacing: ".16em" }}>
-                  {"Aktywne \u00b7 " + activeShows.length}
-                </span>
-              </div>
-              <Link href="/formaty" className="mono text-xs uppercase pb-0.5 transition-colors hover:text-black" style={{ color: "#333", letterSpacing: ".14em", borderBottom: "1px solid rgba(11,11,11,.15)" }}>
-                {"Wszystkie formaty \u2192"}
-              </Link>
+            <SectionHead
+              title="Formaty"
+              sub={"Aktywne \u00b7 " + activeShows.length}
+              linkHref="/formaty"
+              linkText={"Wszystkie formaty \u2192"}
+            />
+            <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide md:hidden">
+              {activeShows.map(({ show, totalCount, latestDate, items }) => (
+                <div key={show.id} className="w-72 sm:w-80 shrink-0 snap-start">
+                  <FormatCard
+                    name={show.name}
+                    slug={show.slug}
+                    thumbnailUrl={items[0]?.thumbnail_url ?? null}
+                    durationSeconds={items[0]?.duration_seconds ?? null}
+                    totalCount={totalCount}
+                    latestDate={latestDate}
+                  />
+                </div>
+              ))}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {activeShows.map(({ show, totalCount, latestDate }) => (
-                <ShowBlock key={show.id} show={show} totalCount={totalCount} latestDate={latestDate} />
+            <div className="hidden md:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {activeShows.map(({ show, totalCount, latestDate, items }) => (
+                <FormatCard
+                  key={show.id}
+                  name={show.name}
+                  slug={show.slug}
+                  thumbnailUrl={items[0]?.thumbnail_url ?? null}
+                  durationSeconds={items[0]?.duration_seconds ?? null}
+                  totalCount={totalCount}
+                  latestDate={latestDate}
+                />
               ))}
             </div>
           </div>

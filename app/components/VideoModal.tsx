@@ -34,6 +34,7 @@ import {
   type SleepOptionId,
   type YtSnapshot,
 } from "@/lib/sleep-timer";
+import { bindVideoHistory } from "@/lib/video-history";
 
 type Props = {
   item: Item;
@@ -337,6 +338,8 @@ function PlayerTools({
 }
 
 export default function VideoModal({ item, videoId, onClose }: Props) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const phoneEmbedRef = useRef(false);
@@ -410,6 +413,22 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     setStopped(true);
     sendHalt(kind);
   };
+
+  useEffect(() => {
+    return bindVideoHistory(
+      {
+        history: window.history,
+        href: window.location.href,
+        listen(listener) {
+          const onPop = () => listener();
+          window.addEventListener("popstate", onPop);
+          return () => window.removeEventListener("popstate", onPop);
+        },
+      },
+      videoId,
+      () => onCloseRef.current(),
+    );
+  }, [videoId]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

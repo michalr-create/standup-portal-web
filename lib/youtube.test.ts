@@ -42,7 +42,11 @@ test("paid thumbs do not show a video runtime", () => {
   assert.equal(showThumbDuration(true, 6120), false);
   assert.equal(showThumbDuration(true, null), false);
   assert.equal(showThumbDuration(false, 6120), true);
+  assert.equal(showThumbDuration(false, 0), true);
   assert.equal(showThumbDuration(false, null), false);
+  assert.equal(showThumbDuration(false, Number.NaN), false);
+  assert.equal(showThumbDuration(false, Number.POSITIVE_INFINITY), false);
+  assert.equal(showThumbDuration(false, -5), false);
 });
 
 test("paid badge copy is readable Polish", () => {
