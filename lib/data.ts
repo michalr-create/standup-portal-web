@@ -3,6 +3,7 @@ import {
   eventFacets,
   FAVORITE_UPCOMING_LIMIT,
   favoritePersonSlugs,
+  PROFILE_TOUR_LIMIT,
   hasActiveTrasyFilters,
   LISTED_EVENT_STATUSES,
   pickFavoriteUpcomingEvents,
@@ -1300,4 +1301,39 @@ export async function getUpcomingEventsForPersonSlugs(
     ticket_url: paidExternalUrl(event.ticket_url) ?? "",
     person: { name: event.person.name, slug: event.person.slug },
   }));
+}
+
+// Najbliższe terminy jednego standupera (profil). Filtr po person_id i limit
+// zanim PostgREST zwróci wiersze — nie korzysta z listingu /trasy, który
+// dociąga facety całego katalogu.
+export async function getUpcomingEventsForPerson(
+  personId: number,
+  now = new Date(),
+): Promise<TourEvent[]> {
+  if (!Number.isInteger(personId) || personId <= 0) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from("events")
+      .select(UPCOMING_EVENT_COLUMNS)
+      .eq("person_id", personId)
+      .gte("starts_at", now.toISOString())
+      .in("status", [...LISTED_EVENT_STATUSES])
+      .order("starts_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(PROFILE_TOUR_LIMIT);
+
+    if (error || !data) {
+      console.error("Błąd pobierania trasy profilu:", error);
+      return [];
+    }
+
+    return (data as unknown as EventRow[]).flatMap((row) => {
+      const event = toTourEvent(row);
+      return event ? [event] : [];
+    });
+  } catch (error) {
+    console.error("Błąd pobierania trasy profilu:", error);
+    return [];
+  }
 }
