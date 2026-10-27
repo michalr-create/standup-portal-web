@@ -719,6 +719,22 @@ export function providerLabel(provider: TicketProvider): string {
   return PROVIDER_LABELS[provider];
 }
 
+/**
+ * Same-tab profile for a tour card. Empty and non-canonical slugs return null
+ * so the name stays plain text instead of a dead link.
+ * Profile sections have no stable ids, so the path has no hash.
+ */
+export function standuperProfileHref(slug: string | null | undefined): string | null {
+  const trimmed = slug?.trim() ?? "";
+  if (!SLUG.test(trimmed)) return null;
+  return `/standuper/${trimmed}`;
+}
+
+/** Secondary cue from a tour card to that profile. */
+export function profileWatchLabel(hasTicketLink: boolean): string {
+  return hasTicketLink ? "Obejrzyj przed biletem" : "Filmy artysty";
+}
+
 export function terminLabel(count: number): string {
   if (count === 1) return "termin";
   const mod10 = count % 10;
