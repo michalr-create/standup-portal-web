@@ -12,7 +12,7 @@ export default function ThumbDuration({
 
   return (
     <div
-      className="absolute bottom-2.5 right-2.5 mono px-2 py-1 rounded-md"
+      className="absolute bottom-2.5 right-2.5 z-10 pointer-events-none mono px-2 py-1 rounded-md"
       style={{ background: "rgba(11,11,11,.8)", color: "var(--paper)", fontSize: "11px" }}
     >
       {formatDuration(seconds)}

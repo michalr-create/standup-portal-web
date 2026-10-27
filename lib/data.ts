@@ -24,6 +24,7 @@ import {
 } from "@/lib/home-nowe";
 import { SEARCH_CANDIDATE_LIMIT, SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
 import { supabase } from "@/lib/supabase";
+import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { paidExternalUrl } from "@/lib/youtube";
 
 export type Item = {
@@ -632,18 +633,25 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
 // =================================================================
 // QUERY: polecane (is_featured = true)
 // =================================================================
-export async function getFeaturedItems(limit = 6): Promise<Item[]> {
+export async function getFeaturedItems(limit = HOME_FEATURED_LIMIT): Promise<Item[]> {
+  const capped = Math.min(
+    HOME_FEATURED_LIMIT,
+    Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : HOME_FEATURED_LIMIT,
+  );
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, featured_at")
     .eq("status", "approved")
     .eq("is_featured", true)
     .is("merged_into_id", null)
+    .order("featured_at", { ascending: false, nullsFirst: false })
     .order("published_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false })
+    .limit(capped);
 
   if (error || !data) return [];
-  return hydrateItems(data);
+  const rows = data.map(({ featured_at: _featuredAt, ...item }) => item);
+  return hydrateItems(rows);
 }
 
 // =================================================================

@@ -1,5 +1,6 @@
 "use server";
 
+import { featuredIdsToClear, HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { getAdminSupabase } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
@@ -373,10 +374,42 @@ export async function toggleFeatured(itemId: number, isFeatured: boolean) {
   await requireAuth();
   const sb = getAdminSupabase();
 
-  await sb
-    .from("content_items")
-    .update({ is_featured: isFeatured })
-    .eq("id", itemId);
+  if (!isFeatured) {
+    await sb
+      .from("content_items")
+      .update({ is_featured: false, featured_at: null })
+      .eq("id", itemId);
+  } else {
+    const featuredAt = new Date().toISOString();
+    const { data: existing } = await sb
+      .from("content_items")
+      .select("id, featured_at, published_at")
+      .eq("status", "approved")
+      .eq("is_featured", true)
+      .is("merged_into_id", null);
+
+    const dropIds = featuredIdsToClear(
+      (existing ?? []).map((row) => ({
+        id: row.id,
+        featuredAt: row.featured_at,
+        publishedAt: row.published_at,
+      })),
+      { id: itemId, featuredAt, publishedAt: null },
+      HOME_FEATURED_LIMIT,
+    );
+
+    await sb
+      .from("content_items")
+      .update({ is_featured: true, featured_at: featuredAt })
+      .eq("id", itemId);
+
+    if (dropIds.length > 0) {
+      await sb
+        .from("content_items")
+        .update({ is_featured: false, featured_at: null })
+        .in("id", dropIds);
+    }
+  }
 
   revalidatePath("/admin");
   revalidatePath("/");
