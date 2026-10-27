@@ -1,6 +1,10 @@
 export const LISTED_EVENT_STATUSES = ["on_sale", "sold_out"] as const;
 export type ListedEventStatus = (typeof LISTED_EVENT_STATUSES)[number];
 
+/** Nearest dates across all favorited people, not per person. */
+export const FAVORITE_UPCOMING_LIMIT = 12;
+export const FAVORITE_PERSON_SLUG_CAP = 100;
+
 export const TICKET_PROVIDERS = [
   "kupbilecik",
   "going",
@@ -85,6 +89,16 @@ export type TourEvent = {
   ticket_provider: TicketProvider;
   links: TicketLink[];
   person: TourPerson;
+};
+
+/** Row shown on /ulubione. Only people the browser already stored as favorites. */
+export type FavoriteUpcomingEvent = {
+  id: number;
+  starts_at: string;
+  city: string;
+  status: ListedEventStatus;
+  ticket_url: string;
+  person: { name: string; slug: string };
 };
 
 type PeopleEmbed = {
@@ -435,6 +449,63 @@ export function upcomingBounds(filters: TrasyFilters, now: Date): {
   const statuses: ListedEventStatus[] =
     filters.bilety === "dostepne" ? ["on_sale"] : filters.bilety === "wyprzedane" ? ["sold_out"] : ["on_sale", "sold_out"];
   return { start, end, statuses };
+}
+
+export function favoritePersonSlugs(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of raw) {
+    if (typeof value !== "string") continue;
+    const slug = value.trim().toLowerCase();
+    if (slug.length > 80 || !SLUG.test(slug) || seen.has(slug)) continue;
+    seen.add(slug);
+    out.push(slug);
+    if (out.length >= FAVORITE_PERSON_SLUG_CAP) break;
+  }
+  return out;
+}
+
+function favoriteResultLimit(limit: number | undefined): number {
+  if (limit == null || !Number.isFinite(limit)) return FAVORITE_UPCOMING_LIMIT;
+  return Math.min(FAVORITE_UPCOMING_LIMIT, Math.max(0, Math.floor(limit)));
+}
+
+export function eventsForFavoritePeople<T extends FavoriteUpcomingEvent>(
+  events: readonly T[],
+  slugs: readonly string[],
+  now = new Date(),
+  limit?: number,
+): T[] {
+  const allowed = new Set(favoritePersonSlugs(slugs));
+  if (allowed.size === 0) return [];
+  const cutoff = now.getTime();
+  const seen = new Set<number>();
+  const matched: T[] = [];
+  for (const event of events) {
+    const slug = event?.person?.slug;
+    if (event == null || typeof event.id !== "number" || typeof slug !== "string") continue;
+    if (!allowed.has(slug) || seen.has(event.id)) continue;
+    if (event.status !== "on_sale" && event.status !== "sold_out") continue;
+    const time = new Date(event.starts_at).getTime();
+    if (Number.isNaN(time) || time < cutoff) continue;
+    seen.add(event.id);
+    matched.push(event);
+  }
+  matched.sort((a, b) => {
+    const delta = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    return delta !== 0 ? delta : a.id - b.id;
+  });
+  return matched.slice(0, favoriteResultLimit(limit));
+}
+
+export function pickFavoriteUpcomingEvents(
+  events: readonly TourEvent[],
+  slugs: readonly string[],
+  now = new Date(),
+  limit?: number,
+): TourEvent[] {
+  return eventsForFavoritePeople(events, slugs, now, limit);
 }
 
 export function filterUpcomingEvents(

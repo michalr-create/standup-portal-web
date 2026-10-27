@@ -3,13 +3,18 @@ import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   eventFacets,
+  eventsForFavoritePeople,
+  FAVORITE_PERSON_SLUG_CAP,
+  FAVORITE_UPCOMING_LIMIT,
   facetRedirect,
+  favoritePersonSlugs,
   filterUpcomingEvents,
   formatEventWhen,
   formatPrice,
   groupEventsByMonth,
   parseTrasySearchParams,
   peopleSelectOptions,
+  pickFavoriteUpcomingEvents,
   providerLabel,
   terminLabel,
   topFacetCities,
@@ -392,4 +397,68 @@ test("ticket link migration adds portals and a public read of extra links", () =
   assert.doesNotMatch(sql, /for delete/);
   assert.match(sql, /revoke all on table public\.event_ticket_links from anon, authenticated/);
   assert.match(sql, /grant select on table public\.event_ticket_links to anon, authenticated/);
+});
+
+test("favorite tours are the nearest listed dates of the given people only", () => {
+  assert.ok(FAVORITE_UPCOMING_LIMIT >= 8 && FAVORITE_UPCOMING_LIMIT <= 12);
+
+  const adam = { name: "Adam Van Bendler", slug: "adam-van-bendler", photo_url: null };
+  const daniel = { name: "Daniel Midas", slug: "daniel-midas", photo_url: null };
+  const outsider = { name: "Kuba Wu", slug: "kuba-wu", photo_url: null };
+  const events = [
+    tour({ id: 1, starts_at: "2026-11-20T18:00:00.000Z", person: adam }),
+    tour({ id: 2, starts_at: "2026-11-12T18:00:00.000Z", person: daniel }),
+    tour({ id: 3, starts_at: "2026-11-02T18:00:00.000Z", person: outsider }),
+    tour({ id: 4, starts_at: "2026-10-01T18:00:00.000Z", person: adam }),
+    tour({ id: 5, starts_at: "2026-11-12T18:00:00.000Z", status: "sold_out", person: adam }),
+    tour({ id: 5, starts_at: "2026-11-13T18:00:00.000Z", person: daniel }),
+    tour({ id: 6, starts_at: "2026-11-01T12:00:00.000Z", person: adam }),
+    { ...tour({ id: 7, person: adam }), status: "cancelled" } as TourEvent,
+  ];
+
+  const picked = pickFavoriteUpcomingEvents(
+    events,
+    [" Adam-Van-Bendler ", "daniel-midas", "not a slug"],
+    NOW,
+  );
+  assert.deepEqual(picked.map((event) => event.id), [6, 2, 5, 1]);
+  assert.ok(picked.every((event) => event.person.slug !== "kuba-wu"));
+
+  const capped = pickFavoriteUpcomingEvents(
+    Array.from({ length: 15 }, (_, index) => tour({
+      id: index + 1,
+      starts_at: new Date(Date.UTC(2026, 10, 2 + index, 18)).toISOString(),
+      person: index % 2 === 0 ? adam : daniel,
+    })),
+    ["adam-van-bendler", "daniel-midas"],
+    NOW,
+  );
+  assert.equal(capped.length, FAVORITE_UPCOMING_LIMIT);
+  assert.deepEqual(capped.map((event) => event.id), Array.from({ length: FAVORITE_UPCOMING_LIMIT }, (_, index) => index + 1));
+  assert.deepEqual(pickFavoriteUpcomingEvents(events, [], NOW), []);
+});
+
+test("favorite slug lists ignore junk and stay capped", () => {
+  assert.deepEqual(
+    favoritePersonSlugs([" Adam-Van-Bendler ", "adam-van-bendler", "nope!", 3, ""]),
+    ["adam-van-bendler"],
+  );
+  assert.deepEqual(favoritePersonSlugs("adam-van-bendler"), []);
+  assert.equal(
+    favoritePersonSlugs(Array.from({ length: FAVORITE_PERSON_SLUG_CAP + 20 }, (_, index) => `osoba-${index}`)).length,
+    FAVORITE_PERSON_SLUG_CAP,
+  );
+});
+
+test("the favorites screen drops events for people who are not favorited", () => {
+  const rows = [
+    { id: 1, starts_at: "2026-11-20T18:00:00.000Z", city: "Toruń", status: "on_sale" as const, ticket_url: "https://example.com/a", person: { name: "Adam", slug: "adam-van-bendler" } },
+    { id: 2, starts_at: "2026-11-12T18:00:00.000Z", city: "Kalisz", status: "sold_out" as const, ticket_url: "https://example.com/d", person: { name: "Daniel", slug: "daniel-midas" } },
+    { id: 3, starts_at: "2026-11-02T18:00:00.000Z", city: "Bydgoszcz", status: "on_sale" as const, ticket_url: "https://example.com/k", person: { name: "Kuba", slug: "kuba-wu" } },
+  ];
+  assert.deepEqual(
+    eventsForFavoritePeople(rows, ["adam-van-bendler"], NOW).map((event) => event.person.slug),
+    ["adam-van-bendler"],
+  );
+  assert.deepEqual(eventsForFavoritePeople(rows, [], NOW), []);
 });
