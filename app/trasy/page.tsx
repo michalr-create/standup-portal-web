@@ -2,27 +2,20 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import EventCard from "./EventCard";
 import TrasyFilters from "./TrasyFilters";
 import Pager from "@/app/components/Pager";
 import { getTrasyListing } from "@/lib/data";
 import {
   facetRedirect,
-  formatEventWhen,
-  formatRelativeWhen,
-  formatPrice,
   groupEventsByMonth,
   hasActiveTrasyFilters,
   parseTrasySearchParams,
-  providerLabel,
-  statusLabel,
   terminLabel,
   trasyHref,
   warsawToday,
-  type TicketLink,
-  type TourEvent,
   type TrasySearch,
 } from "@/lib/events";
-import { paidExternalUrl } from "@/lib/youtube";
 
 export const metadata: Metadata = {
   title: "Trasy — parska.",
@@ -58,170 +51,6 @@ function SectionHead({ title, sub }: { title: string; sub?: string }) {
         )}
       </div>
     </div>
-  );
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0))
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function ExternalIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="shrink-0"
-    >
-      <path d="M7 17 17 7" />
-      <path d="M8 7h9v9" />
-    </svg>
-  );
-}
-
-function PortalBadge({ link, href }: { link: TicketLink; href: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-black transition-colors hover:bg-[rgba(232,89,74,.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
-      style={{ color: "var(--coral)", border: "1px solid var(--coral)" }}
-    >
-      {providerLabel(link.ticket_provider)}
-      <ExternalIcon />
-      <span className="sr-only">, otwiera się w nowej karcie</span>
-    </a>
-  );
-}
-
-function EventCard({ event, now }: { event: TourEvent; now: Date }) {
-  const photo = paidExternalUrl(event.person.photo_url);
-  const price = formatPrice(event.price_from, event.currency);
-  const onSale = event.status === "on_sale";
-  const relative = formatRelativeWhen(event.starts_at, now);
-  const portals = event.links.flatMap((link) => {
-    const href = paidExternalUrl(link.ticket_url);
-    return href ? [{ link, href }] : [];
-  });
-  const primaryHref = portals.find((item) => item.link.is_primary)?.href ?? portals[0]?.href ?? null;
-  const cardStyle = { border: "1px solid var(--line)", background: "var(--ink-2)" };
-  const linkClass =
-    "block rounded-t-[18px] p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)] sm:p-5";
-
-  const details = (
-    <>
-      <div className="flex items-start gap-3 sm:gap-4">
-        <div
-          className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-black"
-          style={{ background: "linear-gradient(135deg, var(--coral), #F2A65A)", color: "var(--ink)" }}
-        >
-          {photo ? (
-            <img src={photo} alt="" className="h-full w-full object-cover" />
-          ) : (
-            initials(event.person.name)
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <p
-                className="mono m-0 text-xs uppercase"
-                style={{ color: "var(--paper-meta)", letterSpacing: ".06em" }}
-              >
-                {formatEventWhen(event.starts_at)}
-              </p>
-              {relative && (
-                <span
-                  className="mono shrink-0 rounded-full px-2 py-0.5 text-xs"
-                  style={{
-                    color: "var(--paper-mute)",
-                    background: "var(--ink-4)",
-                    letterSpacing: ".04em",
-                  }}
-                >
-                  {relative}
-                </span>
-              )}
-            </div>
-            <span
-              className="mono shrink-0 rounded-full px-2.5 py-1 text-xs font-bold uppercase"
-              style={
-                onSale
-                  ? { background: "var(--coral)", color: "var(--ink)", letterSpacing: ".06em" }
-                  : {
-                      background: "var(--ink-4)",
-                      color: "var(--paper-dim)",
-                      border: "1px solid var(--line-2)",
-                      letterSpacing: ".06em",
-                    }
-              }
-            >
-              {statusLabel(event.status)}
-            </span>
-          </div>
-          <h3 className="m-0 mt-1 font-black leading-tight" style={{ fontSize: "20px", letterSpacing: "-.02em" }}>
-            {event.person.name}
-          </h3>
-          {event.title && (
-            <p className="m-0 mt-1 line-clamp-2" style={{ color: "var(--paper-dim)" }}>
-              {event.title}
-            </p>
-          )}
-          <p className="m-0 mt-2">
-            {event.city}
-            <span style={{ color: "var(--paper-meta)" }}> · </span>
-            {event.venue}
-          </p>
-          {event.venue_address && (
-            <p className="m-0 mt-1 text-sm" style={{ color: "var(--paper-mute)" }}>
-              {event.venue_address}
-            </p>
-          )}
-          {price && (
-            <p className="mono m-0 mt-3 text-xs uppercase" style={{ color: "var(--paper-dim)", letterSpacing: ".06em" }}>
-              {price}
-            </p>
-          )}
-        </div>
-      </div>
-      {primaryHref && <span className="sr-only">Bilety, otwiera się w nowej karcie</span>}
-    </>
-  );
-
-  return (
-    <article className="rounded-[18px] transition-transform hover:-translate-y-0.5" style={cardStyle}>
-      {primaryHref ? (
-        <a href={primaryHref} target="_blank" rel="noopener noreferrer" className={linkClass}>
-          {details}
-        </a>
-      ) : (
-        <div className="p-4 sm:p-5">{details}</div>
-      )}
-      <div className="flex flex-wrap items-center gap-2 px-4 pb-4 sm:px-5 sm:pb-5">
-        {portals.length > 0 ? (
-          portals.map((item) => (
-            <PortalBadge key={`${item.link.ticket_provider}:${item.link.external_id}`} link={item.link} href={item.href} />
-          ))
-        ) : (
-          <span className="text-sm" style={{ color: "var(--paper-mute)" }}>
-            Link do biletów niedostępny
-          </span>
-        )}
-      </div>
-    </article>
   );
 }
 
@@ -303,7 +132,7 @@ export default async function TrasyPage({ searchParams }: Props) {
             </span>
           </div>
           <p className="m-0 max-w-2xl text-[15px] md:text-[17px]" style={{ color: "var(--paper-dim)" }}>
-            Nadchodzące występy stand-upowe. Karta i plakietka portalu otwierają sprzedaż biletów w nowej karcie.
+            Nadchodzące występy stand-upowe. Imię i zdjęcie prowadzą do profilu artysty, a bilety i plakietki portali otwierają się w nowej karcie.
           </p>
         </header>
 

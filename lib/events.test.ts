@@ -17,7 +17,9 @@ import {
   parseTrasySearchParams,
   peopleSelectOptions,
   pickFavoriteUpcomingEvents,
+  profileWatchLabel,
   providerLabel,
+  standuperProfileHref,
   terminLabel,
   topFacetCities,
   toTourEvent,
@@ -501,4 +503,19 @@ test("the favorites screen drops events for people who are not favorited", () =>
     ["adam-van-bendler"],
   );
   assert.deepEqual(eventsForFavoritePeople(rows, [], NOW), []);
+});
+
+test("tour card profile link stays on parska and skips a missing slug", () => {
+  assert.equal(standuperProfileHref("adam-van-bendler"), "/standuper/adam-van-bendler");
+  assert.equal(standuperProfileHref("  abelard-giza  "), "/standuper/abelard-giza");
+  assert.equal(standuperProfileHref("adam-van-bendler")?.includes("#"), false);
+  assert.equal(standuperProfileHref(""), null);
+  assert.equal(standuperProfileHref("   "), null);
+  assert.equal(standuperProfileHref(null), null);
+  assert.equal(standuperProfileHref(undefined), null);
+  assert.equal(standuperProfileHref("Adam Van"), null);
+  assert.equal(standuperProfileHref("../admin"), null);
+  assert.equal(standuperProfileHref("adam-van-bendler#special"), null);
+  assert.equal(profileWatchLabel(true), "Obejrzyj przed biletem");
+  assert.equal(profileWatchLabel(false), "Filmy artysty");
 });
