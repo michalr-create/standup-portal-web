@@ -47,7 +47,7 @@ function TicketCta({ event }: { event: TourEvent }) {
     >
       {label}
       <ExternalIcon />
-      <span className="sr-only">, otwiera si{"\u0119"} w nowej karcie</span>
+      <span className="sr-only">{", otwiera si\u0119 w nowej karcie"}</span>
     </a>
   );
 }
