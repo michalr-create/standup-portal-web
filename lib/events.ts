@@ -5,6 +5,9 @@ export type ListedEventStatus = (typeof LISTED_EVENT_STATUSES)[number];
 export const FAVORITE_UPCOMING_LIMIT = 12;
 export const FAVORITE_PERSON_SLUG_CAP = 100;
 
+/** Nearest upcoming dates on a standuper profile. The rest live on /trasy. */
+export const PROFILE_TOUR_LIMIT = 8;
+
 export const TICKET_PROVIDERS = [
   "kupbilecik",
   "going",

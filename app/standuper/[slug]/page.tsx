@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson } from "@/lib/data";
+import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson, getUpcomingEventsForPerson } from "@/lib/data";
 import type { Item, Show } from "@/lib/data";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
 import HeartButton from "@/app/components/HeartButton";
 import { materialLabel, profileCountLabel, sortByDateDesc } from "@/lib/standuper-profile";
 import { notFound } from "next/navigation";
+import ProfileTour from "./ProfileTour";
 
 export const revalidate = 120;
 
@@ -104,9 +105,11 @@ export default async function StanduperPage({ params }: Props) {
   const person = await getPersonBySlug(slug);
   if (!person) notFound();
 
-  const [items, defaultShows] = await Promise.all([
+  const now = new Date();
+  const [items, defaultShows, tourEvents] = await Promise.all([
     getItemsByPersonSlug(slug, 999),
     getDefaultShowsForPerson(person.id),
+    getUpcomingEventsForPerson(person.id, now),
   ]);
 
   const defaultShowIds = new Set(defaultShows.map((d) => d.show.id));
@@ -146,6 +149,8 @@ export default async function StanduperPage({ params }: Props) {
             </p>
           )}
         </header>
+
+        <ProfileTour slug={person.slug} events={tourEvents} now={now} />
 
         {videoCount === 0 && formatCount === 0 && (
           <div className="text-center py-20">
