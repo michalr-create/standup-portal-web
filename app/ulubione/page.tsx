@@ -11,15 +11,32 @@ import type { Item } from "@/lib/data";
 import ContentCardAction from "@/app/components/ContentCardAction";
 import PaidBadge from "@/app/components/PaidBadge";
 import ThumbDuration from "@/app/components/ThumbDuration";
+import FavoriteTours from "./FavoriteTours";
+import { eventsForFavoritePeople, type FavoriteUpcomingEvent } from "@/lib/events";
 
 const PERSON_KEY = "parska_fav_persons";
 const SHOW_KEY = "parska_fav_shows";
 
 type FavDetail = { slug: string; name: string };
-type ApiResponse = { items: Item[]; people: FavDetail[]; shows: FavDetail[] };
+type ApiResponse = {
+  items: Item[];
+  people: FavDetail[];
+  shows: FavDetail[];
+  upcoming_events: FavoriteUpcomingEvent[];
+};
+
+function readSlugs(key: string): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((slug): slug is string => typeof slug === "string");
+  } catch {
+    return [];
+  }
+}
 
 export default function UlubionePage() {
-  const [data, setData] = useState<ApiResponse>({ items: [], people: [], shows: [] });
+  const [data, setData] = useState<ApiResponse>({ items: [], people: [], shows: [], upcoming_events: [] });
   const [personSlugs, setPersonSlugs] = useState<string[]>([]);
   const [showSlugs, setShowSlugs] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +57,8 @@ export default function UlubionePage() {
   };
 
   useEffect(() => {
-    const ps: string[] = JSON.parse(localStorage.getItem(PERSON_KEY) || "[]");
-    const ss: string[] = JSON.parse(localStorage.getItem(SHOW_KEY) || "[]");
+    const ps = readSlugs(PERSON_KEY);
+    const ss = readSlugs(SHOW_KEY);
     setPersonSlugs(ps);
     setShowSlugs(ss);
 
@@ -57,11 +74,20 @@ export default function UlubionePage() {
       body: JSON.stringify({ person_slugs: ps, show_slugs: ss }),
     })
       .then((r) => r.json())
-      .then((d: ApiResponse) => { setData(d); setLoading(false); })
+      .then((d: ApiResponse) => {
+        setData({
+          items: d?.items ?? [],
+          people: d?.people ?? [],
+          shows: d?.shows ?? [],
+          upcoming_events: Array.isArray(d?.upcoming_events) ? d.upcoming_events : [],
+        });
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [refreshKey]);
 
   const hasAny = personSlugs.length > 0 || showSlugs.length > 0;
+  const upcomingEvents = eventsForFavoritePeople(data.upcoming_events, personSlugs);
 
   return (
     <>
@@ -132,6 +158,10 @@ export default function UlubionePage() {
                   ))}
                 </div>
               </section>
+            )}
+
+            {personSlugs.length > 0 && (
+              <FavoriteTours loading={loading} events={upcomingEvents} />
             )}
 
             {/* Obserwowane formaty */}

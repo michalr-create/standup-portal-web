@@ -1,13 +1,18 @@
 import { cache } from "react";
 import {
   eventFacets,
+  FAVORITE_UPCOMING_LIMIT,
+  favoritePersonSlugs,
   hasActiveTrasyFilters,
+  LISTED_EVENT_STATUSES,
+  pickFavoriteUpcomingEvents,
   toTourEvent,
   TICKET_PROVIDERS,
   upcomingBounds,
   type EventFacetSource,
   type EventFacets,
   type EventRow,
+  type FavoriteUpcomingEvent,
   type TicketProvider,
   type TourEvent,
   type TrasyFilters,
@@ -18,6 +23,7 @@ import {
 } from "@/lib/home-nowe";
 import { SEARCH_CANDIDATE_LIMIT, SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
 import { supabase } from "@/lib/supabase";
+import { paidExternalUrl } from "@/lib/youtube";
 
 export type Item = {
   id: number;
@@ -1253,4 +1259,45 @@ export async function getTrasyListing(
     facets,
     ok: true,
   };
+}
+
+// Najbliższe terminy osób z localStorage (parska_fav_persons).
+// Anon client: RLS already hides cancelled, unknown, and past rows.
+// The query repeats that filter, then pickFavoriteUpcomingEvents drops
+// any person who was not in the slug list the browser sent.
+export async function getUpcomingEventsForPersonSlugs(
+  slugs: readonly string[],
+  now = new Date(),
+): Promise<FavoriteUpcomingEvent[]> {
+  const allowed = favoritePersonSlugs(slugs);
+  if (allowed.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("events")
+    .select(UPCOMING_EVENT_COLUMNS)
+    .gte("starts_at", now.toISOString())
+    .in("status", [...LISTED_EVENT_STATUSES])
+    .in("people.slug", allowed)
+    .order("starts_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(FAVORITE_UPCOMING_LIMIT);
+
+  if (error || !data) {
+    console.error("Błąd pobierania tras ulubionych:", error);
+    return [];
+  }
+
+  const events = (data as unknown as EventRow[]).flatMap((row) => {
+    const event = toTourEvent(row);
+    return event ? [event] : [];
+  });
+
+  return pickFavoriteUpcomingEvents(events, allowed, now).map((event) => ({
+    id: event.id,
+    starts_at: event.starts_at,
+    city: event.city,
+    status: event.status,
+    ticket_url: paidExternalUrl(event.ticket_url) ?? "",
+    person: { name: event.person.name, slug: event.person.slug },
+  }));
 }

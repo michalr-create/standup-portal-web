@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { favoritePersonSlugs } from "@/lib/events";
+import { getUpcomingEventsForPersonSlugs } from "@/lib/data";
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
 
 export async function POST(req: NextRequest) {
-  const { person_slugs = [], show_slugs = [] }: { person_slugs: string[]; show_slugs: string[] } =
-    await req.json();
+  const body: { person_slugs?: unknown; show_slugs?: unknown } = await req.json();
+  const personSlugs = favoritePersonSlugs(body?.person_slugs);
+  const showSlugs = stringList(body?.show_slugs);
+  const upcomingPromise = getUpcomingEventsForPersonSlugs(personSlugs).catch((error) => {
+    console.error("Błąd pobierania tras ulubionych:", error);
+    return [];
+  });
 
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,11 +27,11 @@ export async function POST(req: NextRequest) {
   const itemIdSet = new Set<number>();
 
   // ── Person slugs → tag IDs → content_item_ids ──────────────────────────
-  if (person_slugs.length > 0) {
+  if (personSlugs.length > 0) {
     const { data: people } = await sb
       .from("people")
       .select("id, name, slug")
-      .in("slug", person_slugs);
+      .in("slug", personSlugs);
 
     if (people?.length) {
       peopleDetails.push(...people.map((p) => ({ slug: p.slug, name: p.name })));
@@ -45,11 +57,11 @@ export async function POST(req: NextRequest) {
 
   // ── Show slugs → show IDs ──────────────────────────────────────────────
   let showIds: number[] = [];
-  if (show_slugs.length > 0) {
+  if (showSlugs.length > 0) {
     const { data: shows } = await sb
       .from("shows")
       .select("id, name, slug")
-      .in("slug", show_slugs);
+      .in("slug", showSlugs);
 
     if (shows?.length) {
       showDetails.push(...shows.map((s) => ({ slug: s.slug, name: s.name })));
@@ -58,7 +70,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (itemIdSet.size === 0 && showIds.length === 0) {
-    return NextResponse.json({ items: [], people: peopleDetails, shows: showDetails });
+    return NextResponse.json({
+      items: [],
+      people: peopleDetails,
+      shows: showDetails,
+      upcoming_events: await upcomingPromise,
+    });
   }
 
   // ── Look up Shorts category ID ─────────────────────────────────────────
@@ -140,5 +157,10 @@ export async function POST(req: NextRequest) {
     tags: [],
   }));
 
-  return NextResponse.json({ items, people: peopleDetails, shows: showDetails });
+  return NextResponse.json({
+    items,
+    people: peopleDetails,
+    shows: showDetails,
+    upcoming_events: await upcomingPromise,
+  });
 }
