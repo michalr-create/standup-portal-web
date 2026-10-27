@@ -539,6 +539,29 @@ export function formatEventWhen(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** Inclusive cap: "za 60 dni" still shows; later dates stay absolute-only. */
+export const RELATIVE_WHEN_MAX_DAYS = 60;
+
+function warsawCalendarDayOffset(instant: Date, from: Date): number {
+  const eventDay = warsawToday(instant);
+  const today = warsawToday(from);
+  const [eventYear, eventMonth, eventDate] = eventDay.split("-").map(Number);
+  const [todayYear, todayMonth, todayDate] = today.split("-").map(Number);
+  const eventUtc = Date.UTC(eventYear, eventMonth - 1, eventDate);
+  const todayUtc = Date.UTC(todayYear, todayMonth - 1, todayDate);
+  return Math.round((eventUtc - todayUtc) / 86_400_000);
+}
+
+export function formatRelativeWhen(iso: string, now = new Date()): string | null {
+  const starts = new Date(iso);
+  if (Number.isNaN(starts.getTime())) return null;
+  const days = warsawCalendarDayOffset(starts, now);
+  if (!Number.isFinite(days) || days < 0 || days > RELATIVE_WHEN_MAX_DAYS) return null;
+  if (days === 0) return "dziś";
+  if (days === 1) return "jutro";
+  return `za ${days} dni`;
+}
+
 export function formatPrice(price: number | null, currency: string): string | null {
   if (price == null) return null;
   const formatted = new Intl.NumberFormat("pl-PL", {

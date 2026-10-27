@@ -6,7 +6,9 @@ import {
   facetRedirect,
   filterUpcomingEvents,
   formatEventWhen,
+  formatRelativeWhen,
   formatPrice,
+  RELATIVE_WHEN_MAX_DAYS,
   groupEventsByMonth,
   parseTrasySearchParams,
   providerLabel,
@@ -244,6 +246,44 @@ test("rows normalize prices and drop events that are not publicly listed", () =>
   assert.equal(toTourEvent({ ...row, status: "unknown", people: null }), null);
   assert.equal(providerLabel("bilety24"), "Bilety24");
   assert.equal(providerLabel("other"), "Inny portal");
+});
+
+test("relative cue counts Warsaw calendar days, not elapsed hours", () => {
+  const afternoon = new Date("2026-11-12T14:00:00.000Z");
+
+  assert.equal(formatRelativeWhen("2026-11-12T21:30:00.000Z", afternoon), "dziś");
+  assert.equal(formatRelativeWhen("2026-11-12T08:00:00.000Z", afternoon), "dziś");
+  assert.equal(formatRelativeWhen("2026-11-13T18:00:00.000Z", afternoon), "jutro");
+  assert.equal(formatRelativeWhen("2026-11-14T18:00:00.000Z", afternoon), "za 2 dni");
+  assert.equal(formatRelativeWhen("2027-01-11T18:00:00.000Z", afternoon), `za ${RELATIVE_WHEN_MAX_DAYS} dni`);
+  assert.equal(formatRelativeWhen("2027-01-12T18:00:00.000Z", afternoon), null);
+  assert.equal(formatRelativeWhen("2026-11-11T20:00:00.000Z", afternoon), null);
+  assert.equal(formatRelativeWhen("not-a-date", afternoon), null);
+
+  const beforeWinterMidnight = new Date("2026-11-12T22:30:00.000Z");
+  const afterWinterMidnight = "2026-11-12T23:30:00.000Z";
+  assert.equal(formatRelativeWhen(afterWinterMidnight, beforeWinterMidnight), "jutro");
+  assert.equal(formatRelativeWhen(afterWinterMidnight, new Date("2026-11-12T23:05:00.000Z")), "dziś");
+
+  const beforeSummerMidnight = new Date("2026-07-12T21:30:00.000Z");
+  const afterSummerMidnight = "2026-07-12T22:30:00.000Z";
+  assert.equal(formatRelativeWhen(afterSummerMidnight, beforeSummerMidnight), "jutro");
+  assert.equal(formatRelativeWhen(afterSummerMidnight, new Date("2026-07-12T22:05:00.000Z")), "dziś");
+
+  const beforeDstMidnight = new Date("2026-03-29T21:30:00.000Z");
+  assert.equal(formatRelativeWhen("2026-03-29T22:30:00.000Z", beforeDstMidnight), "jutro");
+
+  const rendered = [
+    formatRelativeWhen("2026-11-12T21:30:00.000Z", afternoon),
+    formatRelativeWhen("2026-11-13T18:00:00.000Z", afternoon),
+    formatRelativeWhen("2026-11-14T18:00:00.000Z", afternoon),
+    formatRelativeWhen("2026-11-11T20:00:00.000Z", afternoon),
+    formatRelativeWhen(afterWinterMidnight, beforeWinterMidnight),
+  ];
+  for (const label of rendered) {
+    assert.notEqual(label, "za 0 dni");
+    assert.equal(label == null || !label.startsWith("za -"), true);
+  }
 });
 
 test("dates, prices, and month groups use Warsaw time and Polish copy", () => {

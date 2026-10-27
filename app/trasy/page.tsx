@@ -8,6 +8,7 @@ import { getTrasyListing } from "@/lib/data";
 import {
   facetRedirect,
   formatEventWhen,
+  formatRelativeWhen,
   formatPrice,
   groupEventsByMonth,
   hasActiveTrasyFilters,
@@ -106,10 +107,11 @@ function PortalBadge({ link, href }: { link: TicketLink; href: string }) {
   );
 }
 
-function EventCard({ event }: { event: TourEvent }) {
+function EventCard({ event, now }: { event: TourEvent; now: Date }) {
   const photo = paidExternalUrl(event.person.photo_url);
   const price = formatPrice(event.price_from, event.currency);
   const onSale = event.status === "on_sale";
+  const relative = formatRelativeWhen(event.starts_at, now);
   const portals = event.links.flatMap((link) => {
     const href = paidExternalUrl(link.ticket_url);
     return href ? [{ link, href }] : [];
@@ -134,12 +136,26 @@ function EventCard({ event }: { event: TourEvent }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <p
-              className="mono m-0 text-xs uppercase"
-              style={{ color: "var(--paper-meta)", letterSpacing: ".06em" }}
-            >
-              {formatEventWhen(event.starts_at)}
-            </p>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <p
+                className="mono m-0 text-xs uppercase"
+                style={{ color: "var(--paper-meta)", letterSpacing: ".06em" }}
+              >
+                {formatEventWhen(event.starts_at)}
+              </p>
+              {relative && (
+                <span
+                  className="mono shrink-0 rounded-full px-2 py-0.5 text-xs"
+                  style={{
+                    color: "var(--paper-mute)",
+                    background: "var(--ink-4)",
+                    letterSpacing: ".04em",
+                  }}
+                >
+                  {relative}
+                </span>
+              )}
+            </div>
             <span
               className="mono shrink-0 rounded-full px-2.5 py-1 text-xs font-bold uppercase"
               style={
@@ -325,7 +341,7 @@ export default async function TrasyPage({ searchParams }: Props) {
                 <SectionHead title={group.label} sub={`${group.events.length} ${terminLabel(group.events.length)}`} />
                 <div className="flex flex-col gap-3">
                   {group.events.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard key={event.id} event={event} now={now} />
                   ))}
                 </div>
               </section>
