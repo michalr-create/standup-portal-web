@@ -12,16 +12,25 @@ test("favorites API adds upcoming events for the slugs it already receives", () 
   const data = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
   const start = data.indexOf("export async function getUpcomingEventsForPersonSlugs");
   assert.ok(start > 0);
-  const fn = data.slice(start);
+  const next = data.indexOf("\nexport async function ", start + 10);
+  const fn = data.slice(start, next === -1 ? undefined : next);
+  const helperStart = data.indexOf("const BILLED_EVENT_STAMPS");
+  assert.ok(helperStart > 0 && helperStart < start);
+  const helper = data.slice(helperStart, start);
+
   assert.match(fn, /favoritePersonSlugs/);
-  assert.match(fn, /\.gte\("starts_at", now\.toISOString\(\)\)/);
-  assert.match(fn, /\.in\("status", \[\.\.\.LISTED_EVENT_STATUSES\]\)/);
-  assert.match(fn, /\.in\("people\.slug", allowed\)/);
+  assert.match(fn, /listedRowsForPersonMatch\(now, FAVORITE_UPCOMING_SCAN_LIMIT, \{ slugs: allowed \}\)/);
   assert.match(fn, /pickFavoriteUpcomingEvents/);
   assert.match(fn, /withCoPerformers/);
-  assert.match(fn, /\.limit\(FAVORITE_UPCOMING_SCAN_LIMIT\)/);
   assert.match(fn, /people: roster\.map/);
+  assert.match(helper, /\.gte\("starts_at", now\.toISOString\(\)\)/);
+  assert.match(helper, /\.in\("status", \[\.\.\.LISTED_EVENT_STATUSES\]\)/);
+  assert.match(helper, /\.in\("people\.slug", slugs\)/);
+  assert.match(helper, /\.in\("event_people\.person_id", personIds\)/);
+  assert.match(helper, /event_people!inner\(person_id\)/);
+  assert.match(helper, /\.limit\(limit\)/);
   assert.doesNotMatch(fn, /SERVICE/);
+  assert.doesNotMatch(helper, /SERVICE/);
   assert.match(data, /from "@\/lib\/supabase"/);
 });
 

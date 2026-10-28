@@ -7,22 +7,29 @@ test("profile tour preview stays inside the 5–8 nearest dates", () => {
   assert.ok(PROFILE_TOUR_LIMIT >= 5 && PROFILE_TOUR_LIMIT <= 8);
 });
 
-test("profile query filters one person and does not scan the tour catalog", () => {
+test("profile query matches event_people or the legacy person and does not scan the tour catalog", () => {
   const data = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
   const start = data.indexOf("export async function getUpcomingEventsForPerson(");
   assert.ok(start > 0);
   const next = data.indexOf("\nexport async function ", start + 10);
   const fn = data.slice(start, next === -1 ? undefined : next);
+  const helperStart = data.indexOf("const BILLED_EVENT_STAMPS");
+  assert.ok(helperStart > 0 && helperStart < start);
+  const helper = data.slice(helperStart, start);
 
-  assert.match(fn, /\.eq\("person_id", personId\)/);
-  assert.match(fn, /\.gte\("starts_at", now\.toISOString\(\)\)/);
-  assert.match(fn, /\.in\("status", \[\.\.\.LISTED_EVENT_STATUSES\]\)/);
-  assert.match(fn, /\.order\("starts_at", \{ ascending: true \}\)/);
-  assert.match(fn, /\.order\("id", \{ ascending: true \}\)/);
-  assert.match(fn, /\.limit\(PROFILE_TOUR_LIMIT\)/);
+  assert.match(fn, /listedRowsForPersonMatch\(now, PROFILE_TOUR_LIMIT, \{ personId \}\)/);
   assert.match(fn, /withCoPerformers/);
+  assert.match(helper, /\.eq\("person_id", personId\)/);
+  assert.match(helper, /\.eq\("event_people\.person_id", personId\)/);
+  assert.match(helper, /event_people!inner\(person_id\)/);
+  assert.match(helper, /\.gte\("starts_at", now\.toISOString\(\)\)/);
+  assert.match(helper, /\.in\("status", \[\.\.\.LISTED_EVENT_STATUSES\]\)/);
+  assert.match(helper, /\.order\("starts_at", \{ ascending: true \}\)/);
+  assert.match(helper, /\.order\("id", \{ ascending: true \}\)/);
+  assert.match(helper, /\.limit\(limit\)/);
   assert.doesNotMatch(fn, /getTrasyListing|listUpcomingFacets|FACET_/);
   assert.doesNotMatch(fn, /SERVICE/);
+  assert.doesNotMatch(helper, /SERVICE/);
   assert.match(data, /from "@\/lib\/supabase"/);
 });
 

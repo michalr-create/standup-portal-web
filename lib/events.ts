@@ -109,6 +109,8 @@ export type TourEvent = {
   /** Raw `events.ticket_url`, before the visible storefront is chosen. */
   source_ticket_url?: string;
   links: TicketLink[];
+  /** Poster from `events.image_url`. Null when every merged copy is empty. */
+  image_url?: string | null;
   /** First linked comedian. `people` is the full bill. */
   person: TourPerson;
   people: TourPerson[];
@@ -131,6 +133,11 @@ type PeopleEmbed = {
   photo_url: string | null;
 };
 
+export type EventPersonEmbed = {
+  person_id?: number | null;
+  people?: PeopleEmbed | PeopleEmbed[] | null;
+};
+
 export type EventRow = {
   id: number;
   person_id: number;
@@ -145,8 +152,13 @@ export type EventRow = {
   ticket_url: string;
   ticket_provider: string;
   external_id?: string | null;
+  /** Poster. Empty on most rows; merge keeps the first non-empty copy. */
+  image_url?: string | null;
   event_ticket_links?: LinkEmbed | LinkEmbed[] | null;
+  /** Legacy headliner (`events.person_id`). */
   people: PeopleEmbed | PeopleEmbed[] | null;
+  /** Full bill. Empty means the row has not been linked and `people` is used. */
+  event_people?: EventPersonEmbed | EventPersonEmbed[] | null;
 };
 
 type LinkEmbed = {
@@ -411,22 +423,72 @@ function ticketLinksFromRow(row: EventRow): TicketLink[] {
   return links;
 }
 
+function toTourPerson(person: PeopleEmbed | null): TourPerson | null {
+  if (!person) return null;
+  const name = person.name?.trim() || "";
+  const slug = person.slug?.trim() || "";
+  if (!name && !slug) return null;
+  return {
+    name: name || "Standuper",
+    slug,
+    photo_url: person.photo_url?.trim() || null,
+  };
+}
+
+function personKey(person: TourPerson, personId: number | null): string {
+  if (person.slug) return `slug:${person.slug}`;
+  if (personId != null) return `id:${personId}`;
+  return `name:${person.name}`;
+}
+
+/**
+ * Comedians billed on one `events` row. `event_people` is the bill; the
+ * legacy `events.person_id` embed is used only when that junction is empty.
+ * The legacy headliner stays first when they are on the bill.
+ */
+export function peopleFromEventRow(row: {
+  person_id?: number | null;
+  people?: PeopleEmbed | PeopleEmbed[] | null;
+  event_people?: EventPersonEmbed | EventPersonEmbed[] | null;
+}): TourPerson[] {
+  const billed: { personId: number | null; person: TourPerson }[] = [];
+  const seen = new Set<string>();
+  for (const link of many(row.event_people)) {
+    const person = toTourPerson(one(link.people));
+    if (!person) continue;
+    const personId = typeof link.person_id === "number" ? link.person_id : null;
+    const key = personKey(person, personId);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    billed.push({ personId, person });
+  }
+  if (billed.length === 0) {
+    const person = toTourPerson(one(row.people));
+    return person ? [person] : [];
+  }
+  const primaryId = typeof row.person_id === "number" ? row.person_id : null;
+  billed.sort((a, b) => {
+    const rank = (personId: number | null) => (personId != null && personId === primaryId ? 0 : 1);
+    const byPrimary = rank(a.personId) - rank(b.personId);
+    if (byPrimary !== 0) return byPrimary;
+    const aId = a.personId ?? Number.MAX_SAFE_INTEGER;
+    const bId = b.personId ?? Number.MAX_SAFE_INTEGER;
+    if (aId !== bId) return aId - bId;
+    return a.person.name.localeCompare(b.person.name, "pl");
+  });
+  return billed.map((item) => item.person);
+}
+
 export function toTourEvent(row: EventRow): TourEvent | null {
   const status = listedStatus(row.status);
-  const person = one(row.people);
+  const roster = peopleFromEventRow(row);
+  const person = roster[0];
   const starts = new Date(row.starts_at);
   if (!status || !person || Number.isNaN(starts.getTime())) return null;
   const links = ticketLinksFromRow(row);
   const primary = links.find((link) => link.is_primary) ?? links[0];
   if (!primary) return null;
-  const name = person.name?.trim() || "Standuper";
-  const slug = person.slug?.trim() || "";
   const title = row.title?.trim() || null;
-  const tourPerson: TourPerson = {
-    name,
-    slug,
-    photo_url: person.photo_url?.trim() || null,
-  };
   return {
     id: row.id,
     person_id: row.person_id,
@@ -442,8 +504,9 @@ export function toTourEvent(row: EventRow): TourEvent | null {
     ticket_provider: primary.ticket_provider,
     source_ticket_url: row.ticket_url?.trim() || primary.ticket_url,
     links,
-    person: tourPerson,
-    people: [tourPerson],
+    image_url: row.image_url?.trim() || null,
+    person,
+    people: roster,
   };
 }
 
@@ -518,6 +581,14 @@ function unionTicketLinks(events: readonly TourEvent[]): TicketLink[] {
   return links;
 }
 
+function preferredImage(events: readonly { image_url?: string | null }[]): string | null {
+  for (const event of events) {
+    const image = event.image_url?.trim();
+    if (image) return image;
+  }
+  return null;
+}
+
 function mergeOccurrence(group: readonly TourEvent[]): TourEvent {
   const ordered = [...group].sort((a, b) => a.id - b.id);
   const base = ordered[0];
@@ -548,19 +619,21 @@ function mergeOccurrence(group: readonly TourEvent[]): TourEvent {
     ticket_provider: primary?.ticket_provider ?? base.ticket_provider,
     source_ticket_url: base.source_ticket_url ?? base.ticket_url,
     links: links.length > 0 ? links : base.links,
+    image_url: preferredImage(ordered),
     person: roster[0],
     people: roster,
   };
 }
 
 /**
- * One card per real show. The worker still writes one `events` row per matched
- * person (`external_id` like `2418520:1` and `2418520:2`); there is no
- * `event_people` table yet, so duplicates are collapsed here. The worker may
- * keep writing those rows until its companion change lands.
+ * One card per real show. People come from `event_people` when that bill is
+ * present. Duplicate `events` rows for the same night (`external_id` like
+ * `2418520:1` and `2418520:2`) stay until the worker companion change lands,
+ * so those rows are still collapsed here.
  *
  * Key: normalized ticket URL (query and hash stripped) + start time. Rows with
  * no URL fall back to city + venue + start time. The kept id is the smallest.
+ * A non-null image_url wins over an empty one.
  */
 export function mergeTourEvents(events: readonly TourEvent[]): TourEvent[] {
   const groups = new Map<string, TourEvent[]>();

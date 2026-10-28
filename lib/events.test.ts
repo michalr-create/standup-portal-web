@@ -470,6 +470,7 @@ test("joint shows with the same ticket url collapse to one card", () => {
     status: "on_sale",
     ticket_url: `${going}?utm=newsletter`,
     external_id: "2418520:1",
+    image_url: null,
     people: paczes,
   });
   const lotekRow = toTourEvent({
@@ -482,6 +483,7 @@ test("joint shows with the same ticket url collapse to one card", () => {
     status: "on_sale",
     ticket_url: `${going}#mapa`,
     external_id: "2418520:2",
+    image_url: " https://cdn.example/plakat.jpg ",
     people: lotek,
     event_ticket_links: [
       {
@@ -522,6 +524,25 @@ test("joint shows with the same ticket url collapse to one card", () => {
   assert.equal(joint.links.some((link) => link.ticket_provider === "kupbilecik"), true);
   assert.equal(joint.links.some((link) => link.ticket_provider === "bilety24"), false);
   assert.equal(joint.ticket_provider, "going");
+  assert.equal(joint.image_url, "https://cdn.example/plakat.jpg");
+
+  const posterOnFirst = mergeTourEvents([
+    tour({
+      id: 11,
+      ...shared,
+      person: paczes,
+      ticket_url: "https://goingapp.pl/wydarzenie/poster",
+      image_url: "https://cdn.example/keep.jpg",
+    }),
+    tour({
+      id: 12,
+      ...shared,
+      person: lotek,
+      ticket_url: "https://goingapp.pl/wydarzenie/poster",
+      image_url: null,
+    }),
+  ]);
+  assert.equal(posterOnFirst[0]?.image_url, "https://cdn.example/keep.jpg");
 
   const again = mergeTourEvents([
     tour({
@@ -610,6 +631,70 @@ test("joint shows with the same ticket url collapse to one card", () => {
   assert.equal(next.events[0]?.people.length, 2);
 });
 
+test("one events row with two event_people is a joint show for either comedian", () => {
+  const when = "2026-11-18T17:00:00.000Z";
+  const paczes = { name: "Rafał Pacześ", slug: "rafal-paczes", photo_url: null };
+  const lotek = { name: "Łukasz Lotek Lodkowski", slug: "lotek", photo_url: "https://cdn.example/lotek.jpg" };
+  const row: EventRow = {
+    id: 50,
+    person_id: 1,
+    title: "Pacześ x Lotek Tour 2 - Puławy",
+    starts_at: when,
+    city: "Puławy",
+    venue: "Dom Chemika",
+    venue_address: null,
+    price_from: 90,
+    currency: "PLN",
+    status: "on_sale",
+    ticket_url: "https://goingapp.pl/wydarzenie/paczes-x-lotek/pulawy",
+    ticket_provider: "going",
+    external_id: "2418520",
+    image_url: null,
+    people: { name: "Ktoś inny", slug: "ktos-inny", photo_url: null },
+    event_people: [
+      { person_id: 2, people: lotek },
+      { person_id: 1, people: paczes },
+      { person_id: 1, people: { ...paczes, photo_url: " https://cdn.example/ignored.jpg " } },
+    ],
+  };
+  const event = toTourEvent(row);
+  assert.ok(event);
+  assert.equal(event.person.slug, "rafal-paczes");
+  assert.deepEqual(event.people.map((person) => person.slug), ["rafal-paczes", "lotek"]);
+  assert.equal(event.people[1]?.photo_url, "https://cdn.example/lotek.jpg");
+  assert.equal(event.people.some((person) => person.slug === "ktos-inny"), false);
+
+  const merged = mergeTourEvents([event]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0]?.id, 50);
+  assert.deepEqual(merged[0]?.people.map((person) => person.slug), ["rafal-paczes", "lotek"]);
+
+  assert.deepEqual(
+    filterUpcomingEvents(merged, { ...openFilters, osoba: "lotek" }, NOW).map((item) => item.id),
+    [50],
+  );
+  assert.deepEqual(
+    filterUpcomingEvents(merged, { ...openFilters, osoba: "rafal-paczes" }, NOW).map((item) => item.id),
+    [50],
+  );
+  assert.deepEqual(
+    filterUpcomingEvents(merged, { ...openFilters, osoba: "ktos-inny" }, NOW),
+    [],
+  );
+
+  const facets = eventFacets(merged);
+  assert.deepEqual(facets.people.map((person) => person.slug), ["lotek", "rafal-paczes"]);
+
+  const picked = pickFavoriteUpcomingEvents(merged, ["lotek"], NOW);
+  assert.deepEqual(picked.map((item) => item.id), [50]);
+  assert.deepEqual(picked[0]?.people.map((person) => person.slug), ["rafal-paczes", "lotek"]);
+
+  const fallback = toTourEvent({ ...row, event_people: [] });
+  assert.deepEqual(fallback?.people.map((person) => person.slug), ["ktos-inny"]);
+  const missingJunction = toTourEvent({ ...row, event_people: undefined });
+  assert.deepEqual(missingJunction?.people.map((person) => person.slug), ["ktos-inny"]);
+});
+
 test("trasy listing pages merged shows and still loads both comedians", () => {
   const data = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
   const events = readFileSync(new URL("./events.ts", import.meta.url), "utf8");
@@ -623,8 +708,13 @@ test("trasy listing pages merged shows and still loads both comedians", () => {
   assert.doesNotMatch(fn, /\.range\(/);
   assert.match(data, /mergeTourEvents/);
   assert.match(data, /withCoPerformers/);
+  assert.match(data, /people!events_person_id_fkey/);
+  assert.match(data, /event_people\(person_id, people\(name, slug, photo_url\)\)/);
+  assert.match(data, /listedRowsForPersonMatch/);
+  assert.match(fn, /eventPeople\(event\)/);
   assert.match(events, /event_people/);
   assert.match(events, /companion change/);
+  assert.match(events, /image_url/);
 });
 
 test("relative cue counts Warsaw calendar days, not elapsed hours", () => {
