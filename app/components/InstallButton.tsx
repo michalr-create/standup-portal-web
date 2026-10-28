@@ -131,18 +131,52 @@ function ShareIcon() {
   );
 }
 
+const IOS_INSTALL_DISMISSED_KEY = "parska_ios_install_dismissed";
+
+function readIosInstallDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(IOS_INSTALL_DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function InstallBand() {
   const { mode, canInstall } = useInstall();
+  // null until storage is read, so a dismissed hint never paints.
+  const [iosDismissed, setIosDismissed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setIosDismissed(readIosInstallDismissed());
+  }, []);
+
+  const dismissIosHint = () => {
+    try {
+      window.localStorage.setItem(IOS_INSTALL_DISMISSED_KEY, "1");
+    } catch {
+      // Storage can be blocked; still hide the hint for this visit.
+    }
+    setIosDismissed(true);
+  };
 
   if (mode === "ios") {
+    if (iosDismissed !== false) return null;
     return (
-      <p
-        className="flex items-center gap-2 m-0 px-4 xl:px-10 pb-3 lg:pb-4 min-w-0 max-w-full mono text-xs leading-snug"
+      <div
+        className="flex items-center gap-2 m-0 pl-4 pr-1 xl:pl-10 xl:pr-6 pb-1 min-w-0 max-w-full mono text-xs leading-snug"
         style={{ color: "var(--paper-mute)" }}
       >
         <ShareIcon />
-        <span className="min-w-0">Udostępnij → Ekran początkowy</span>
-      </p>
+        <span className="min-w-0 flex-1">Udostępnij → Ekran początkowy</span>
+        <button
+          type="button"
+          onClick={dismissIosHint}
+          aria-label="Zamknij podpowiedź instalacji"
+          className="inline-flex h-11 w-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-0 text-xl leading-none cursor-pointer transition-colors hover:bg-[var(--ink-3)] hover:text-[var(--paper)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+        >
+          <span aria-hidden="true">{"\u00d7"}</span>
+        </button>
+      </div>
     );
   }
 
