@@ -777,6 +777,17 @@ test("dates, prices, and month groups use Warsaw time and Polish copy", () => {
   assert.match(groups[0].label.toLowerCase(), /listopad/);
 });
 
+test("events image_url migration adds a nullable poster column without failing if it exists", () => {
+  const files = readdirSync(new URL("../supabase/migrations/", import.meta.url)).filter((name) =>
+    name.endsWith("_events_image_url.sql"),
+  );
+  assert.equal(files.length, 1);
+  const sql = readFileSync(new URL(`../supabase/migrations/${files[0]}`, import.meta.url), "utf8").toLowerCase();
+  assert.match(sql, /alter table public\.events/);
+  assert.match(sql, /add column if not exists image_url text/);
+  assert.doesNotMatch(sql, /image_url text not null/);
+});
+
 test("events migration exposes a public read of upcoming listings and no public writes", () => {
   const files = readdirSync(new URL("../supabase/migrations/", import.meta.url)).filter((name) =>
     name.endsWith("_create_events.sql"),

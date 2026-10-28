@@ -73,6 +73,7 @@ function tour(overrides: Partial<TourEvent> = {}): TourEvent {
     ticket_url: "https://kupbilecik.pl/adam",
     ticket_provider: "kupbilecik",
     links: [],
+    image_url: null,
     person: { name: "Adam Van Bendler", slug: "adam-van-bendler", photo_url: "https://cdn.example/adam.jpg" },
     people: [],
     ...overrides,
@@ -114,6 +115,18 @@ function attr(attrs: string, name: string): string | null {
   return match?.[1] ?? null;
 }
 
+function assertPosterSlot(html: string, status: string) {
+  assert.match(html, /aspect-\[4\/3\]/);
+  assert.match(html, /rounded-t-\[18px\]/);
+  assert.match(html, /aspect-ratio:4 \/ 3/);
+  const posterAt = html.indexOf("aspect-[4/3]");
+  const statusAt = html.indexOf(status);
+  const dateAt = html.indexOf("19:00");
+  assert.ok(posterAt !== -1 && statusAt !== -1 && dateAt !== -1);
+  assert.ok(posterAt < statusAt && statusAt < dateAt, "status pill sits on the poster, above the date");
+  assert.match(html, /absolute right-3 top-3/);
+}
+
 function assertNoNestedAnchors(html: string) {
   const tags = html.match(/<\/?a\b[^>]*>/gi) ?? [];
   let depth = 0;
@@ -129,21 +142,26 @@ function assertNoNestedAnchors(html: string) {
   assert.equal(depth, 0);
 }
 
-test("event card sends the name and avatar to the profile and tickets to a new tab", () => {
+test("event card sends the name to the profile and tickets to a new tab", () => {
   const html = renderToStaticMarkup(React.createElement(EventCard, { event: tour(), now: NOW }));
   assertNoNestedAnchors(html);
   const links = anchors(html);
 
   const profile = links.filter((link) => attr(link.attrs, "href") === "/standuper/adam-van-bendler");
-  assert.equal(profile.length, 3);
+  assert.equal(profile.length, 2);
   for (const link of profile) {
     assert.equal(attr(link.attrs, "target"), null);
   }
   assert.ok(profile.some((link) => link.text === "Adam Van Bendler"));
-  assert.ok(profile.some((link) => attr(link.attrs, "aria-label") === "Profil: Adam Van Bendler"));
+  assert.equal(profile.some((link) => attr(link.attrs, "aria-label") === "Profil: Adam Van Bendler"), false);
   assert.ok(profile.some((link) => link.text === "Obejrzyj przed biletem"));
   assert.match(html, /jutro/);
   assert.match(html, /19:00/);
+  assertPosterSlot(html, "W sprzedaży");
+  assert.equal((html.match(/<img\b/g) ?? []).length, 0);
+  assert.doesNotMatch(html, /cdn\.example\/adam\.jpg/);
+  assert.doesNotMatch(html, /h-12 w-12/);
+  assert.doesNotMatch(html, /aria-label="Profil:/);
 
   const external = links.filter((link) => attr(link.attrs, "target") === "_blank");
   assert.equal(external.length, 2);
@@ -161,8 +179,6 @@ test("event card sends the name and avatar to the profile and tickets to a new t
   assert.match(attr(going.attrs, "style") ?? "", /border:1px solid var\(--coral\)/);
   assert.equal(external.some((link) => link.text.startsWith("Bilety")), false);
   assert.doesNotMatch(html, /Bilety24/);
-  assert.equal((html.match(/<img\b/g) ?? []).length, 1);
-  assert.match(html, /src="https:\/\/cdn\.example\/adam\.jpg"/);
   for (const link of links) {
     assert.equal(attr(link.attrs, "href")?.includes("#"), false);
   }
@@ -179,6 +195,7 @@ test("joint show is one card with both comedians and the same ticket buttons", (
         city: "Puławy",
         person: paczes,
         people: [paczes, lotek],
+        image_url: "https://cdn.example/joint.jpg",
         ticket_url: "https://goingapp.pl/wydarzenie/paczes-x-lotek-tour-2/pulawy-listopad-2026",
         ticket_provider: "going",
         links: [
@@ -204,10 +221,9 @@ test("joint show is one card with both comedians and the same ticket buttons", (
   const links = anchors(html);
   assert.ok(links.some((link) => link.text === "Rafał Pacześ" && attr(link.attrs, "href") === "/standuper/rafal-paczes"));
   assert.ok(links.some((link) => link.text === "Łukasz Lotek Lodkowski" && attr(link.attrs, "href") === "/standuper/lotek"));
-  assert.ok(links.some((link) => attr(link.attrs, "aria-label") === "Profil: Rafał Pacześ"));
-  assert.ok(links.some((link) => attr(link.attrs, "aria-label") === "Profil: Łukasz Lotek Lodkowski"));
-  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 2);
-  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 2);
+  assert.equal(links.some((link) => (attr(link.attrs, "aria-label") ?? "").startsWith("Profil:")), false);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 1);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 1);
   const external = links.filter((link) => attr(link.attrs, "target") === "_blank");
   assert.deepEqual(
     external.map((link) => link.text.replace(/, otwiera się w nowej karcie/, "").trim()),
@@ -216,8 +232,16 @@ test("joint show is one card with both comedians and the same ticket buttons", (
   assert.match(attr(external[0]?.attrs ?? "", "style") ?? "", /background:var\(--coral\)/);
   assert.doesNotMatch(html, /Bilety24/);
   assert.doesNotMatch(html, /Obejrzyj przed biletem/);
-  assert.equal((html.match(/<img\b/g) ?? []).length, 1);
-  assert.match(html, /ŁL/);
+  assert.doesNotMatch(html, /ŁL/);
+  assert.doesNotMatch(html, /h-12 w-12/);
+  assert.doesNotMatch(html, /cdn\.example\/rafal\.jpg/);
+  assertPosterSlot(html, "W sprzedaży");
+  const images = html.match(/<img\b[^>]*>/g) ?? [];
+  assert.equal(images.length, 1);
+  assert.match(images[0] ?? "", /src="https:\/\/cdn\.example\/joint\.jpg"/);
+  assert.match(images[0] ?? "", /\balt=""/);
+  assert.match(images[0] ?? "", /object-cover/);
+  assert.match(images[0] ?? "", /w-full/);
 });
 
 test("event card without a slug has no profile link", () => {
@@ -328,4 +352,74 @@ test("event card without a ticket link still points at the films", () => {
   assert.equal(links.filter((link) => attr(link.attrs, "target") === "_blank").length, 0);
   assert.ok(links.some((link) => link.text === "Filmy artysty" && attr(link.attrs, "href") === "/standuper/adam-van-bendler"));
   assert.match(html, /Link do biletów niedostępny/);
+});
+
+test("event card puts a 4:3 poster on top and keeps the name as a link", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({ image_url: " https://cdn.example/wentyl.jpg " }),
+      now: NOW,
+    }),
+  );
+  assertNoNestedAnchors(html);
+  assertPosterSlot(html, "W sprzedaży");
+  const images = html.match(/<img\b[^>]*>/g) ?? [];
+  assert.equal(images.length, 1);
+  assert.match(images[0] ?? "", /src="https:\/\/cdn\.example\/wentyl\.jpg"/);
+  assert.match(images[0] ?? "", /\balt=""/);
+  assert.match(images[0] ?? "", /object-cover/);
+  assert.match(images[0] ?? "", /inset-0/);
+  assert.doesNotMatch(html, /cdn\.example\/adam\.jpg/);
+  assert.doesNotMatch(html, /h-12 w-12/);
+  assert.doesNotMatch(html, /aria-label="Profil:/);
+  assert.doesNotMatch(html, /linear-gradient/);
+  const links = anchors(html);
+  assert.ok(links.some((link) => link.text === "Adam Van Bendler" && attr(link.attrs, "href") === "/standuper/adam-van-bendler"));
+  assert.ok(links.some((link) => link.text === "Obejrzyj przed biletem"));
+});
+
+test("event card without a poster uses the same 4:3 slot for the name and city", () => {
+  const paczes = { name: "Rafał Pacześ", slug: "rafal-paczes", photo_url: "https://cdn.example/rafal.jpg" };
+  const lotek = { name: "Łukasz Lotek Lodkowski", slug: "lotek", photo_url: null };
+  const html = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({
+        image_url: "   ",
+        city: "Puławy",
+        person: paczes,
+        people: [paczes, lotek],
+        status: "sold_out",
+      }),
+      now: NOW,
+    }),
+  );
+  assert.equal((html.match(/<img\b/g) ?? []).length, 0);
+  assert.doesNotMatch(html, /cdn\.example\/rafal\.jpg/);
+  assert.doesNotMatch(html, /h-12 w-12/);
+  assert.doesNotMatch(html, />RP</);
+  assert.doesNotMatch(html, />ŁL</);
+  assertPosterSlot(html, "Wyprzedane");
+  const fallback = html.match(/<div\b[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/div>/);
+  assert.ok(fallback);
+  assert.match(fallback[0] ?? "", /Rafał Pacześ/);
+  assert.match(fallback[0] ?? "", /Łukasz Lotek Lodkowski/);
+  assert.match(fallback[0] ?? "", /Puławy/);
+  assert.match(fallback[0] ?? "", /linear-gradient/);
+  const links = anchors(html);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 1);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 1);
+  assert.doesNotMatch(html, /Obejrzyj przed biletem/);
+});
+
+test("event card ignores a poster url that is not http", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({ image_url: "javascript:alert(1)" }),
+      now: NOW,
+    }),
+  );
+  assert.equal((html.match(/<img\b/g) ?? []).length, 0);
+  assert.match(html, /aria-hidden="true"/);
+  assert.match(html, /Adam Van Bendler/);
+  assert.doesNotMatch(html, /javascript:alert/);
 });
