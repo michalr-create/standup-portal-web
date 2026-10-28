@@ -1,7 +1,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllShows, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
+import { getShowsWithLatestEpisode, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
+import { DRAWER_FORMAT_LIMIT, FOOTER_FORMAT_LIMIT, footerShows } from "@/lib/home-shows";
 import { peopleByActivity } from "@/lib/standuperzy-directory";
 import MobileDrawer from "./components/MobileDrawer";
 import InstallButton, { InstallBand, InstallProvider } from "./components/InstallButton";
@@ -31,12 +32,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [shows, people, itemCounts] = await Promise.all([
-    getAllShows(),
+  const [showActivity, people, itemCounts] = await Promise.all([
+    getShowsWithLatestEpisode(),
     getAllPeople(),
     getApprovedItemCountsByPersonId(),
   ]);
   const footerPeople = peopleByActivity(people, itemCounts, 8);
+  const drawerShows = footerShows(showActivity, DRAWER_FORMAT_LIMIT);
+  const footerFormatShows = footerShows(showActivity, FOOTER_FORMAT_LIMIT);
 
   // Desktop nav stays at nine links: from lg they already fill the bar (UX-11).
   // Trasy is linked from the home hero and the footer instead.
@@ -103,7 +106,7 @@ export default async function RootLayout({
               <InstallButton />
               <MobileDrawer
                 navLinks={navLinks}
-                shows={shows.slice(0, 8).map(({ id, name, slug }) => ({ id, name, slug }))}
+                shows={drawerShows.map(({ id, name, slug }) => ({ id, name, slug }))}
               />
             </div>
             <InstallBand />
@@ -176,7 +179,7 @@ export default async function RootLayout({
                 Formaty
               </h5>
               <ul className="space-y-2">
-                {shows.slice(0, 6).map((s) => (
+                {footerFormatShows.map((s) => (
                   <li key={s.slug}>
                     <Link href={"/format/" + s.slug} className="text-sm hover:text-white transition-colors" style={{ color: "var(--paper-dim)" }}>
                       {s.name}

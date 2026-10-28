@@ -2,6 +2,12 @@
 export const HOME_FORMAT_LIMIT = 8;
 export const HOME_FORMAT_ACTIVE_MONTHS = 12;
 
+/** Stopka, kolumna Formaty. */
+export const FOOTER_FORMAT_LIMIT = 6;
+
+/** Menu mobilne, lista Formaty. */
+export const DRAWER_FORMAT_LIMIT = 8;
+
 export function selectHomeFormats<T extends { latestDate: string | null }>(
   sections: readonly T[],
   options?: {
@@ -30,4 +36,23 @@ export function selectHomeFormats<T extends { latestDate: string | null }>(
         new Date(a.latestDate as string).getTime(),
     )
     .slice(0, Math.max(0, limit));
+}
+
+/**
+ * Stopka i menu mobilne: to samo okno aktywności co sekcja Formaty na stronie głównej.
+ * Bez daty odcinka format nie wchodzi na listę.
+ */
+export function footerShows<T extends { latestDate: string | null }>(
+  sections: readonly T[],
+  limit: number = FOOTER_FORMAT_LIMIT,
+  options?: {
+    now?: Date;
+    months?: number;
+  },
+): T[] {
+  return selectHomeFormats(sections, {
+    now: options?.now,
+    months: options?.months,
+    limit,
+  });
 }
