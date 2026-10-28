@@ -20,6 +20,7 @@ test("profile query filters one person and does not scan the tour catalog", () =
   assert.match(fn, /\.order\("starts_at", \{ ascending: true \}\)/);
   assert.match(fn, /\.order\("id", \{ ascending: true \}\)/);
   assert.match(fn, /\.limit\(PROFILE_TOUR_LIMIT\)/);
+  assert.match(fn, /withCoPerformers/);
   assert.doesNotMatch(fn, /getTrasyListing|listUpcomingFacets|FACET_/);
   assert.doesNotMatch(fn, /SERVICE/);
   assert.match(data, /from "@\/lib\/supabase"/);
@@ -51,5 +52,8 @@ test("standuper profile lists nearest dates above the film sections", () => {
   assert.match(section, /target="_blank"/);
   assert.match(section, /rel="noopener noreferrer"/);
   assert.match(section, /Bilety/);
+  assert.match(section, /eventPeople\(event\)/);
+  assert.match(section, /roster\.length > 1/);
+  assert.match(section, /comedian\.name/);
   assert.doesNotMatch(section, /event\.person|person\.name/);
 });

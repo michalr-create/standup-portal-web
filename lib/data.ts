@@ -1,11 +1,15 @@
 import { cache } from "react";
 import {
   eventFacets,
-  FAVORITE_UPCOMING_LIMIT,
+  eventPeople,
+  FAVORITE_UPCOMING_SCAN_LIMIT,
   favoritePersonSlugs,
   PROFILE_TOUR_LIMIT,
   hasActiveTrasyFilters,
   LISTED_EVENT_STATUSES,
+  mergeTourEvents,
+  occurrenceKey,
+  pageMergedEvents,
   pickFavoriteUpcomingEvents,
   toTourEvent,
   upcomingBounds,
@@ -1198,50 +1202,64 @@ function rowToFacetSource(row: FacetRow): EventFacetSource | null {
   };
 }
 
-async function countUpcoming(filters: TrasyFilters, now: Date): Promise<number | null> {
-  const { count, error } = await applyUpcomingFilters(
-    supabase.from("events").select(UPCOMING_EVENT_COLUMNS, { count: "exact", head: true }),
-    filters,
-    now,
-  );
-  if (error) {
-    console.error("Błąd pobierania tras:", error);
-    return null;
-  }
-  return count ?? 0;
-}
-
-async function pageUpcomingEvents(
-  filters: TrasyFilters,
-  now: Date,
-  limit: number,
-  offset: number,
-): Promise<{ events: TourEvent[]; total: number } | null> {
-  const { data, error, count } = await applyUpcomingFilters(
-    supabase.from("events").select(UPCOMING_EVENT_COLUMNS, { count: "exact" }),
-    filters,
-    now,
-  )
-    .order("starts_at", { ascending: true })
-    .order("id", { ascending: true })
-    .range(offset, offset + limit - 1);
-
-  if (error?.code === "PGRST103") {
-    const total = await countUpcoming(filters, now);
-    if (total == null) return null;
-    return { events: [], total };
-  }
-  if (error || !data || count == null) {
-    console.error("Błąd pobierania tras:", error);
-    return null;
-  }
-
-  const events = (data as unknown as EventRow[]).flatMap((row) => {
+function rowsToTourEvents(rows: EventRow[]): TourEvent[] {
+  return rows.flatMap((row) => {
     const event = toTourEvent(row);
     return event ? [event] : [];
   });
+}
 
-  return { events, total: count };
+// Loads every row matching the SQL filters, then collapses joint bills.
+// Paging happens after the merge so PAGE_SIZE counts shows, not person-rows,
+// and a pair cannot be split across two pages.
+async function scanUpcomingEvents(filters: TrasyFilters, now: Date): Promise<TourEvent[] | null> {
+  const collected: TourEvent[] = [];
+  for (let page = 0; page < FACET_SCAN_CAP; page += 1) {
+    const offset = page * FACET_PAGE;
+    const { data, error } = await applyUpcomingFilters(
+      supabase.from("events").select(UPCOMING_EVENT_COLUMNS),
+      filters,
+      now,
+    )
+      .order("starts_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + FACET_PAGE - 1);
+    if (error || !data) {
+      console.error("Błąd pobierania tras:", error);
+      return null;
+    }
+    const rows = data as unknown as EventRow[];
+    collected.push(...rowsToTourEvents(rows));
+    if (rows.length < FACET_PAGE) return mergeTourEvents(collected);
+  }
+  console.error("Błąd pobierania tras: za dużo terminów do filtrów");
+  return null;
+}
+
+async function withCoPerformers(seeds: TourEvent[], now: Date): Promise<TourEvent[]> {
+  if (seeds.length === 0) return [];
+  const urls = new Set<string>();
+  for (const event of seeds) {
+    const raw = event.source_ticket_url?.trim() || event.ticket_url.trim();
+    if (raw) urls.add(raw);
+  }
+  if (urls.size === 0) return mergeTourEvents(seeds);
+
+  const { data, error } = await supabase
+    .from("events")
+    .select(UPCOMING_EVENT_COLUMNS)
+    .in("ticket_url", [...urls])
+    .gte("starts_at", now.toISOString())
+    .in("status", [...LISTED_EVENT_STATUSES]);
+
+  if (error || !data) {
+    console.error("Błąd pobierania wspólnych występów:", error);
+    return mergeTourEvents(seeds);
+  }
+
+  const related = rowsToTourEvents(data as unknown as EventRow[]);
+  const keys = new Set(seeds.map((event) => occurrenceKey(event)));
+  return mergeTourEvents([...seeds, ...related]).filter((event) => keys.has(occurrenceKey(event)));
 }
 
 async function listUpcomingFacets(now: Date): Promise<EventFacets | null> {
@@ -1273,33 +1291,39 @@ async function listUpcomingFacets(now: Date): Promise<EventFacets | null> {
 }
 
 // Nadchodzące trasy (RLS: on_sale / sold_out, starts_at >= now()).
-// Filtry są w zapytaniu, zanim zadziała range — wcześniejszy limit 500
-// najbliższych dat ucinał późniejsze terminy po wybraniu standupera albo miasta.
+// City, date, and status stay in the query. The person filter runs after the
+// merge: a joint bill must still list every comedian when only one of them
+// was selected. Totals count merged shows (see pageMergedEvents).
 export async function getTrasyListing(
   filters: TrasyFilters,
   page: number,
   pageSize: number,
   now = new Date(),
 ): Promise<TrasyListing> {
-  const size = Number.isFinite(pageSize) ? Math.min(100, Math.max(1, Math.floor(pageSize))) : 24;
-  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-  const offset = (safePage - 1) * size;
   const openFilters: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" };
+  const sqlFilters: TrasyFilters = { ...filters, osoba: "" };
+  const catalogSameScan = !hasActiveTrasyFilters(sqlFilters);
 
-  const [pageResult, facets, catalogTotal] = await Promise.all([
-    pageUpcomingEvents(filters, now, size, offset),
+  const [scanned, facets, catalogScanned] = await Promise.all([
+    scanUpcomingEvents(sqlFilters, now),
     listUpcomingFacets(now),
-    hasActiveTrasyFilters(filters) ? countUpcoming(openFilters, now) : Promise.resolve(undefined),
+    hasActiveTrasyFilters(filters) && !catalogSameScan ? scanUpcomingEvents(openFilters, now) : Promise.resolve(undefined),
   ]);
 
-  if (!pageResult || !facets || (hasActiveTrasyFilters(filters) && catalogTotal == null)) {
+  if (!scanned || !facets || (hasActiveTrasyFilters(filters) && !catalogSameScan && catalogScanned == null)) {
     return { events: [], total: 0, catalogTotal: 0, facets: EMPTY_FACETS, ok: false };
   }
 
+  const merged = filters.osoba
+    ? scanned.filter((event) => eventPeople(event).some((person) => person.slug === filters.osoba))
+    : scanned;
+  const listing = pageMergedEvents(merged, page, pageSize);
+  const catalogTotal = catalogSameScan ? scanned.length : catalogScanned!.length;
+
   return {
-    events: pageResult.events,
-    total: pageResult.total,
-    catalogTotal: catalogTotal ?? pageResult.total,
+    events: listing.events,
+    total: listing.total,
+    catalogTotal,
     facets,
     ok: true,
   };
@@ -1309,6 +1333,7 @@ export async function getTrasyListing(
 // Anon client: RLS already hides cancelled, unknown, and past rows.
 // The query repeats that filter, then pickFavoriteUpcomingEvents drops
 // any person who was not in the slug list the browser sent.
+// withCoPerformers adds the other names on a joint bill before that filter.
 export async function getUpcomingEventsForPersonSlugs(
   slugs: readonly string[],
   now = new Date(),
@@ -1324,26 +1349,32 @@ export async function getUpcomingEventsForPersonSlugs(
     .in("people.slug", allowed)
     .order("starts_at", { ascending: true })
     .order("id", { ascending: true })
-    .limit(FAVORITE_UPCOMING_LIMIT);
+    .limit(FAVORITE_UPCOMING_SCAN_LIMIT);
 
   if (error || !data) {
     console.error("Błąd pobierania tras ulubionych:", error);
     return [];
   }
 
-  const events = (data as unknown as EventRow[]).flatMap((row) => {
+  const seeds = (data as unknown as EventRow[]).flatMap((row) => {
     const event = toTourEvent(row);
     return event ? [event] : [];
   });
+  const events = await withCoPerformers(seeds, now);
 
-  return pickFavoriteUpcomingEvents(events, allowed, now).map((event) => ({
-    id: event.id,
-    starts_at: event.starts_at,
-    city: event.city,
-    status: event.status,
-    ticket_url: paidExternalUrl(event.ticket_url) ?? "",
-    person: { name: event.person.name, slug: event.person.slug },
-  }));
+  return pickFavoriteUpcomingEvents(events, allowed, now).map((event) => {
+    const roster = eventPeople(event);
+    const lead = roster.find((person) => allowed.includes(person.slug)) ?? event.person;
+    return {
+      id: event.id,
+      starts_at: event.starts_at,
+      city: event.city,
+      status: event.status,
+      ticket_url: paidExternalUrl(event.ticket_url) ?? "",
+      person: { name: lead.name, slug: lead.slug },
+      people: roster.map((person) => ({ name: person.name, slug: person.slug })),
+    };
+  });
 }
 
 // Najbliższe terminy jednego standupera (profil). Filtr po person_id i limit
@@ -1371,10 +1402,11 @@ export async function getUpcomingEventsForPerson(
       return [];
     }
 
-    return (data as unknown as EventRow[]).flatMap((row) => {
+    const seeds = (data as unknown as EventRow[]).flatMap((row) => {
       const event = toTourEvent(row);
       return event ? [event] : [];
     });
+    return withCoPerformers(seeds, now);
   } catch (error) {
     console.error("Błąd pobierania trasy profilu:", error);
     return [];
