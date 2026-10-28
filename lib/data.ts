@@ -7,15 +7,12 @@ import {
   hasActiveTrasyFilters,
   LISTED_EVENT_STATUSES,
   pickFavoriteUpcomingEvents,
-  isVisibleTicketProvider,
   toTourEvent,
-  TICKET_PROVIDERS,
   upcomingBounds,
   type EventFacetSource,
   type EventFacets,
   type EventRow,
   type FavoriteUpcomingEvent,
-  type TicketProvider,
   type TourEvent,
   type TrasyFilters,
 } from "@/lib/events";
@@ -1161,7 +1158,7 @@ export type TrasyListing = {
   ok: boolean;
 };
 
-const EMPTY_FACETS: EventFacets = { people: [], cities: [], portals: [] };
+const EMPTY_FACETS: EventFacets = { people: [], cities: [] };
 
 type UpcomingFilterQuery = {
   gte: (column: string, value: string) => UpcomingFilterQuery;
@@ -1170,11 +1167,6 @@ type UpcomingFilterQuery = {
   eq: (column: string, value: string) => UpcomingFilterQuery;
 };
 
-function upcomingSelect(filters: TrasyFilters): string {
-  if (!filters.portal) return UPCOMING_EVENT_COLUMNS;
-  return `${UPCOMING_EVENT_COLUMNS}, portal_match:event_ticket_links!inner(ticket_provider)`;
-}
-
 function applyUpcomingFilters<Q>(query: Q, filters: TrasyFilters, now: Date): Q {
   const bounds = upcomingBounds(filters, now);
   let next = query as unknown as UpcomingFilterQuery;
@@ -1182,19 +1174,12 @@ function applyUpcomingFilters<Q>(query: Q, filters: TrasyFilters, now: Date): Q 
   if (bounds.end) next = next.lt("starts_at", bounds.end.toISOString());
   if (filters.miasto) next = next.eq("city", filters.miasto);
   if (filters.osoba) next = next.eq("people.slug", filters.osoba);
-  if (filters.portal) next = next.eq("portal_match.ticket_provider", filters.portal);
   return next as unknown as Q;
-}
-
-function isTicketProvider(value: string): value is TicketProvider {
-  return (TICKET_PROVIDERS as readonly string[]).includes(value);
 }
 
 type FacetRow = {
   city: string | null;
-  ticket_provider: string | null;
   people: { name: string | null; slug: string | null } | { name: string | null; slug: string | null }[] | null;
-  event_ticket_links: { ticket_provider: string | null } | { ticket_provider: string | null }[] | null;
 };
 
 function firstEmbed<T>(value: T | T[] | null | undefined): T | null {
@@ -1202,33 +1187,20 @@ function firstEmbed<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-function listEmbed<T>(value: T | T[] | null | undefined): T[] {
-  if (value == null) return [];
-  return Array.isArray(value) ? value : [value];
-}
-
 function rowToFacetSource(row: FacetRow): EventFacetSource | null {
   const person = firstEmbed(row.people);
   const slug = person?.slug?.trim() ?? "";
   const name = person?.name?.trim() ?? "";
   if (!slug || !name) return null;
-  const providers = new Set<TicketProvider>();
-  const add = (value: string | null | undefined) => {
-    const trimmed = value?.trim().toLowerCase() ?? "";
-    if (isTicketProvider(trimmed) && isVisibleTicketProvider(trimmed)) providers.add(trimmed);
-  };
-  add(row.ticket_provider);
-  for (const link of listEmbed(row.event_ticket_links)) add(link.ticket_provider);
   return {
     city: row.city?.trim() ?? "",
     person: { slug, name },
-    links: [...providers].map((ticket_provider) => ({ ticket_provider })),
   };
 }
 
 async function countUpcoming(filters: TrasyFilters, now: Date): Promise<number | null> {
   const { count, error } = await applyUpcomingFilters(
-    supabase.from("events").select(upcomingSelect(filters), { count: "exact", head: true }),
+    supabase.from("events").select(UPCOMING_EVENT_COLUMNS, { count: "exact", head: true }),
     filters,
     now,
   );
@@ -1246,7 +1218,7 @@ async function pageUpcomingEvents(
   offset: number,
 ): Promise<{ events: TourEvent[]; total: number } | null> {
   const { data, error, count } = await applyUpcomingFilters(
-    supabase.from("events").select(upcomingSelect(filters), { count: "exact" }),
+    supabase.from("events").select(UPCOMING_EVENT_COLUMNS, { count: "exact" }),
     filters,
     now,
   )
@@ -1264,9 +1236,8 @@ async function pageUpcomingEvents(
     return null;
   }
 
-  const events = (data as unknown as Array<EventRow & { portal_match?: unknown }>).flatMap((row) => {
-    const { portal_match: _portalMatch, ...eventRow } = row;
-    const event = toTourEvent(eventRow);
+  const events = (data as unknown as EventRow[]).flatMap((row) => {
+    const event = toTourEvent(row);
     return event ? [event] : [];
   });
 
@@ -1280,8 +1251,8 @@ async function listUpcomingFacets(now: Date): Promise<EventFacets | null> {
     const { data, error } = await applyUpcomingFilters(
       supabase
         .from("events")
-        .select("city, ticket_provider, people!inner(name, slug), event_ticket_links(ticket_provider)"),
-      { osoba: "", miasto: "", od: "", doDnia: "", bilety: "", portal: "" },
+        .select("city, people!inner(name, slug)"),
+      { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" },
       now,
     )
       .order("id", { ascending: true })
@@ -1313,7 +1284,7 @@ export async function getTrasyListing(
   const size = Number.isFinite(pageSize) ? Math.min(100, Math.max(1, Math.floor(pageSize))) : 24;
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
   const offset = (safePage - 1) * size;
-  const openFilters: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "", portal: "" };
+  const openFilters: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" };
 
   const [pageResult, facets, catalogTotal] = await Promise.all([
     pageUpcomingEvents(filters, now, size, offset),
