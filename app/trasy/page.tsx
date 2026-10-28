@@ -132,7 +132,7 @@ export default async function TrasyPage({ searchParams }: Props) {
             </span>
           </div>
           <p className="m-0 max-w-2xl text-[15px] md:text-[17px]" style={{ color: "var(--paper-dim)" }}>
-            Nadchodzące występy stand-upowe. Imię i zdjęcie prowadzą do profilu artysty, a bilety i plakietki portali otwierają się w nowej karcie.
+            Nadchodzące występy stand-upowe. Imię prowadzi do profilu artysty, a bilety i plakietki portali otwierają się w nowej karcie.
           </p>
         </header>
 
