@@ -504,6 +504,69 @@ export async function getAllShows(): Promise<Show[]> {
   }));
 }
 
+export type ShowLatestEpisode = {
+  id: number;
+  name: string;
+  slug: string;
+  latestDate: string | null;
+};
+
+type ShowLatestEpisodeRow = {
+  id: number;
+  name: string;
+  slug: string;
+  content_items: { published_at: string | null }[] | { published_at: string | null } | null;
+};
+
+function firstPublishedAt(items: ShowLatestEpisodeRow["content_items"]): string | null {
+  const list = Array.isArray(items) ? items : items ? [items] : [];
+  const published = list[0]?.published_at;
+  return published || null;
+}
+
+// Aktywne formaty z datą ostatniego zatwierdzonego odcinka (bez shortów).
+// Nazwy zostają A–Z; stopka i menu sortują po latestDate w footerShows.
+export const getShowsWithLatestEpisode = cache(async (): Promise<ShowLatestEpisode[]> => {
+  const { data: shortsCat } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", "shorts")
+    .maybeSingle();
+
+  let query = supabase
+    .from("shows")
+    .select("id, name, slug, content_items(published_at)")
+    .eq("is_active", true)
+    .eq("content_items.status", "approved")
+    .neq("content_items.content_type", "short")
+    .is("content_items.merged_into_id", null)
+    .order("name");
+
+  if (shortsCat?.id != null) {
+    query = query.neq("content_items.category_id", shortsCat.id);
+  }
+
+  const { data, error } = await query
+    .order("published_at", {
+      referencedTable: "content_items",
+      ascending: false,
+      nullsFirst: false,
+    })
+    .limit(1, { referencedTable: "content_items" });
+
+  if (error) {
+    console.error("Blad dat formatow:", error);
+    return [];
+  }
+
+  return ((data ?? []) as ShowLatestEpisodeRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    latestDate: firstPublishedAt(row.content_items),
+  }));
+});
+
 // =================================================================
 // QUERY: shows w danej kategorii
 // =================================================================
