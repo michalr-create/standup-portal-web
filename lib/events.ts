@@ -34,7 +34,7 @@ export const PROVIDER_LABELS: Record<TicketProvider, string> = {
 /**
  * Bilety24 only redirects to Kupbilecik. It stays in the provider enum because
  * older `event_ticket_links` rows still use it, but it is not a storefront:
- * cards, facets, and the portal filter leave it out.
+ * tour cards leave it out.
  */
 const AGGREGATOR_PROVIDERS = new Set<TicketProvider>(["bilety24"]);
 
@@ -56,7 +56,6 @@ export type TrasyFilters = {
   od: string;
   doDnia: string;
   bilety: BiletyFilter;
-  portal: TicketProvider | "";
 };
 
 export type TrasySearch = {
@@ -71,7 +70,6 @@ export type TrasySearch = {
 
 export type EventFacetSource = {
   city: string;
-  links: { ticket_provider: TicketProvider }[];
   person: { slug: string; name: string };
 };
 
@@ -149,7 +147,6 @@ type LinkEmbed = {
 export type EventFacets = {
   people: { slug: string; name: string }[];
   cities: string[];
-  portals: TicketProvider[];
 };
 
 export type MonthGroup = {
@@ -226,14 +223,12 @@ export function trasyHref(filters: Partial<TrasyFilters> & { page?: number } = {
   const od = filters.od?.trim() ?? "";
   const doDnia = filters.doDnia?.trim() ?? "";
   const bilety = filters.bilety ?? "";
-  const portal = filters.portal ?? "";
   const page = filters.page ?? 1;
   if (osoba) params.set("osoba", osoba);
   if (miasto) params.set("miasto", miasto);
   if (od) params.set("od", od);
   if (doDnia) params.set("do", doDnia);
   if (bilety) params.set("bilety", bilety);
-  if (portal) params.set("portal", portal);
   if (Number.isFinite(page) && page > 1) params.set("page", String(Math.floor(page)));
   const qs = params.toString();
   return qs ? `/trasy?${qs}` : "/trasy";
@@ -255,7 +250,7 @@ export function parseTrasySearchParams(raw: TrasySearch): {
   const od = canonicalizeDate(first(raw.od));
   const doDnia = canonicalizeDate(first(raw.do));
   const bilety = canonicalizeBilety(first(raw.bilety));
-  const portal = canonicalizePortal(first(raw.portal));
+  const dropPortal = raw.portal != null;
 
   let doValue = doDnia.value;
   let doChanged = doDnia.changed;
@@ -270,7 +265,6 @@ export function parseTrasySearchParams(raw: TrasySearch): {
     od: od.value,
     doDnia: doValue,
     bilety: bilety.value,
-    portal: portal.value,
   };
 
   const pageRaw = first(raw.page);
@@ -279,7 +273,7 @@ export function parseTrasySearchParams(raw: TrasySearch): {
   const page = parsedPage != null && parsedPage > 1 ? parsedPage : 1;
 
   const changed =
-    osoba.changed || miasto.changed || od.changed || doChanged || bilety.changed || portal.changed || pageNeedsRedirect;
+    osoba.changed || miasto.changed || od.changed || doChanged || bilety.changed || dropPortal || pageNeedsRedirect;
   return {
     filters,
     page,
@@ -288,7 +282,7 @@ export function parseTrasySearchParams(raw: TrasySearch): {
 }
 
 export function hasActiveTrasyFilters(filters: TrasyFilters): boolean {
-  return Boolean(filters.osoba || filters.miasto || filters.od || filters.doDnia || filters.bilety || filters.portal);
+  return Boolean(filters.osoba || filters.miasto || filters.od || filters.doDnia || filters.bilety);
 }
 
 function warsawWallClockAsUtc(instant: Date): number {
@@ -354,17 +348,6 @@ function parsePrice(value: number | string | null): number | null {
 function listedStatus(status: string): ListedEventStatus | null {
   if (status === "on_sale" || status === "sold_out") return status;
   return null;
-}
-
-function canonicalizePortal(raw: string | undefined): { value: TicketProvider | ""; changed: boolean } {
-  if (raw == null || raw === "") return { value: "", changed: false };
-  const trimmed = raw.trim().toLowerCase();
-  if ((TICKET_PROVIDERS as readonly string[]).includes(trimmed)) {
-    const provider = trimmed as TicketProvider;
-    if (!isVisibleTicketProvider(provider)) return { value: "", changed: true };
-    return { value: provider, changed: trimmed !== raw };
-  }
-  return { value: "", changed: true };
 }
 
 function ticketProvider(provider: string | null | undefined): TicketProvider | null {
@@ -540,13 +523,6 @@ export function filterUpcomingEvents(
     if (filters.osoba && event.person.slug !== filters.osoba) return false;
     if (filters.miasto && event.city !== filters.miasto) return false;
     if (!statuses.has(event.status)) return false;
-    if (
-      filters.portal &&
-      (!isVisibleTicketProvider(filters.portal) ||
-        !event.links.some((link) => link.ticket_provider === filters.portal))
-    ) {
-      return false;
-    }
     return true;
   });
 }
@@ -554,20 +530,15 @@ export function filterUpcomingEvents(
 export function eventFacets(events: readonly EventFacetSource[]): EventFacets {
   const people = new Map<string, string>();
   const cities = new Set<string>();
-  const portals = new Set<TicketProvider>();
   for (const event of events) {
     if (event.person.slug) people.set(event.person.slug, event.person.name);
     if (event.city) cities.add(event.city);
-    for (const link of event.links) {
-      if (isVisibleTicketProvider(link.ticket_provider)) portals.add(link.ticket_provider);
-    }
   }
   return {
     people: [...people.entries()]
       .map(([slug, name]) => ({ slug, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "pl")),
     cities: [...cities].sort((a, b) => a.localeCompare(b, "pl")),
-    portals: [...portals].sort((a, b) => PROVIDER_LABELS[a].localeCompare(PROVIDER_LABELS[b], "pl")),
   };
 }
 
@@ -648,10 +619,6 @@ export function facetRedirect(filters: TrasyFilters, facets: EventFacets, page =
   }
   if (next.miasto && !facets.cities.includes(next.miasto)) {
     next.miasto = "";
-    changed = true;
-  }
-  if (next.portal && !facets.portals.includes(next.portal)) {
-    next.portal = "";
     changed = true;
   }
   return changed ? trasyHref({ ...next, page }) : null;
