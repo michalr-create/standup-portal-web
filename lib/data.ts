@@ -4,6 +4,7 @@ import {
   eventPeople,
   FAVORITE_UPCOMING_SCAN_LIMIT,
   favoritePersonSlugs,
+  peopleFromEventRow,
   PROFILE_TOUR_LIMIT,
   hasActiveTrasyFilters,
   LISTED_EVENT_STATUSES,
@@ -1149,8 +1150,14 @@ export async function getLatestPerShow(limit = 3): Promise<{ show: Show; items: 
   return results;
 }
 
+// `people!events_person_id_fkey` is the legacy headliner. `event_people` is the
+// full bill. PostgREST sees both as relationships to `people`, so an
+// unqualified `people` embed is ambiguous.
 const UPCOMING_EVENT_COLUMNS =
-  "id, person_id, title, starts_at, city, venue, venue_address, price_from, currency, status, ticket_url, ticket_provider, external_id, people!inner(name, slug, photo_url), event_ticket_links(ticket_url, ticket_provider, external_id, is_primary)";
+  "id, person_id, title, starts_at, city, venue, venue_address, price_from, currency, status, ticket_url, ticket_provider, external_id, image_url, people!events_person_id_fkey!inner(name, slug, photo_url), event_people(person_id, people(name, slug, photo_url)), event_ticket_links(ticket_url, ticket_provider, external_id, is_primary)";
+
+const BILLED_EVENT_STAMPS =
+  "id, starts_at, event_people!inner(person_id)";
 
 const FACET_SCAN_CAP = 50;
 
@@ -1182,24 +1189,47 @@ function applyUpcomingFilters<Q>(query: Q, filters: TrasyFilters, now: Date): Q 
 }
 
 type FacetRow = {
+  person_id?: number | null;
   city: string | null;
-  people: { name: string | null; slug: string | null } | { name: string | null; slug: string | null }[] | null;
+  people: EventRow["people"];
+  event_people?: EventRow["event_people"];
 };
 
-function firstEmbed<T>(value: T | T[] | null | undefined): T | null {
-  if (value == null) return null;
-  return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
 function rowToFacetSource(row: FacetRow): EventFacetSource | null {
-  const person = firstEmbed(row.people);
-  const slug = person?.slug?.trim() ?? "";
-  const name = person?.name?.trim() ?? "";
-  if (!slug || !name) return null;
+  const roster = peopleFromEventRow(row).filter((person) => person.slug && person.name);
+  const person = roster[0];
+  if (!person) return null;
   return {
     city: row.city?.trim() ?? "",
-    person: { slug, name },
+    person: { slug: person.slug, name: person.name },
+    people: roster.map((billed) => ({ slug: billed.slug, name: billed.name })),
   };
+}
+
+type EventStamp = { id: number; starts_at: string };
+
+function soonestById<T extends EventStamp>(rows: readonly T[], limit: number): T[] {
+  const byId = new Map<number, T>();
+  for (const row of rows) {
+    if (typeof row.id !== "number" || byId.has(row.id)) continue;
+    byId.set(row.id, row);
+  }
+  return [...byId.values()]
+    .sort((a, b) => {
+      const delta = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+      return delta !== 0 ? delta : a.id - b.id;
+    })
+    .slice(0, Math.max(0, limit));
+}
+
+async function eventRowsByIds(ids: readonly number[]): Promise<EventRow[] | null> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("events").select(UPCOMING_EVENT_COLUMNS).in("id", ids);
+  if (error || !data) {
+    console.error("Błąd pobierania tras:", error);
+    return null;
+  }
+  return data as unknown as EventRow[];
 }
 
 function rowsToTourEvents(rows: EventRow[]): TourEvent[] {
@@ -1269,7 +1299,9 @@ async function listUpcomingFacets(now: Date): Promise<EventFacets | null> {
     const { data, error } = await applyUpcomingFilters(
       supabase
         .from("events")
-        .select("city, people!inner(name, slug)"),
+        .select(
+          "person_id, city, people!events_person_id_fkey!inner(name, slug), event_people(person_id, people(name, slug))",
+        ),
       { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" },
       now,
     )
@@ -1329,11 +1361,101 @@ export async function getTrasyListing(
   };
 }
 
+function positiveIds(values: readonly unknown[]): number[] {
+  const ids: number[] = [];
+  const seen = new Set<number>();
+  for (const value of values) {
+    const id = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+    if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+function listedEventQuery(columns: string, now: Date, limit: number) {
+  return supabase
+    .from("events")
+    .select(columns)
+    .gte("starts_at", now.toISOString())
+    .in("status", [...LISTED_EVENT_STATUSES])
+    .order("starts_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(limit);
+}
+
+async function assembleListedRows(
+  primaryRows: readonly EventRow[],
+  billedStamps: readonly EventStamp[],
+  limit: number,
+): Promise<EventRow[]> {
+  const wanted = soonestById([...primaryRows, ...billedStamps], limit);
+  const have = new Map(primaryRows.map((row) => [row.id, row]));
+  const missing = wanted.map((row) => row.id).filter((id) => !have.has(id));
+  const extras = await eventRowsByIds(missing);
+  const fullById = new Map(have);
+  if (extras) {
+    for (const row of extras) fullById.set(row.id, row);
+  }
+  return wanted.flatMap((row) => {
+    const full = fullById.get(row.id);
+    return full ? [full] : [];
+  });
+}
+
+// Rows whose legacy person_id matches, plus rows where any event_people
+// person matches. The second query only asks for ids so the !inner embed
+// filter cannot strip co-headliners off the bill; full rows are loaded after.
+async function listedRowsForPersonMatch(
+  now: Date,
+  limit: number,
+  match: { personId: number } | { slugs: readonly string[] },
+): Promise<EventRow[] | null> {
+  const stampLimit = Math.max(0, limit);
+  if ("personId" in match) {
+    const personId = match.personId;
+    const [primaryRes, billedRes] = await Promise.all([
+      listedEventQuery(UPCOMING_EVENT_COLUMNS, now, stampLimit).eq("person_id", personId),
+      listedEventQuery(BILLED_EVENT_STAMPS, now, stampLimit).eq("event_people.person_id", personId),
+    ]);
+    if (primaryRes.error && billedRes.error) {
+      console.error("Błąd pobierania tras:", primaryRes.error);
+      return null;
+    }
+    if (primaryRes.error) console.error("Błąd pobierania tras:", primaryRes.error);
+    if (billedRes.error) console.error("Błąd pobierania tras:", billedRes.error);
+    const primaryRows = (primaryRes.data ?? []) as unknown as EventRow[];
+    const billedStamps = (billedRes.data ?? []) as unknown as EventStamp[];
+    return assembleListedRows(primaryRows, billedStamps, stampLimit);
+  }
+
+  const slugs = [...match.slugs];
+  const [primaryRes, peopleRes] = await Promise.all([
+    listedEventQuery(UPCOMING_EVENT_COLUMNS, now, stampLimit).in("people.slug", slugs),
+    supabase.from("people").select("id").in("slug", slugs),
+  ]);
+  if (peopleRes.error) console.error("Błąd pobierania tras:", peopleRes.error);
+  const personIds = positiveIds((peopleRes.data ?? []).map((person) => person.id));
+  const billedRes = personIds.length
+    ? await listedEventQuery(BILLED_EVENT_STAMPS, now, stampLimit).in("event_people.person_id", personIds)
+    : { data: [] as EventStamp[], error: null };
+  if (primaryRes.error && billedRes.error) {
+    console.error("Błąd pobierania tras:", primaryRes.error);
+    return null;
+  }
+  if (primaryRes.error) console.error("Błąd pobierania tras:", primaryRes.error);
+  if (billedRes.error) console.error("Błąd pobierania tras:", billedRes.error);
+  const primaryRows = (primaryRes.data ?? []) as unknown as EventRow[];
+  const billedStamps = (billedRes.data ?? []) as unknown as EventStamp[];
+  return assembleListedRows(primaryRows, billedStamps, stampLimit);
+}
+
 // Najbliższe terminy osób z localStorage (parska_fav_persons).
 // Anon client: RLS already hides cancelled, unknown, and past rows.
-// The query repeats that filter, then pickFavoriteUpcomingEvents drops
-// any person who was not in the slug list the browser sent.
-// withCoPerformers adds the other names on a joint bill before that filter.
+// A show matches when any billed person is favorited (event_people, or the
+// legacy person_id when the junction is empty). pickFavoriteUpcomingEvents
+// drops anyone the browser did not send. withCoPerformers still joins
+// duplicate ticket rows so both names survive until those rows are collapsed.
 export async function getUpcomingEventsForPersonSlugs(
   slugs: readonly string[],
   now = new Date(),
@@ -1341,25 +1463,13 @@ export async function getUpcomingEventsForPersonSlugs(
   const allowed = favoritePersonSlugs(slugs);
   if (allowed.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from("events")
-    .select(UPCOMING_EVENT_COLUMNS)
-    .gte("starts_at", now.toISOString())
-    .in("status", [...LISTED_EVENT_STATUSES])
-    .in("people.slug", allowed)
-    .order("starts_at", { ascending: true })
-    .order("id", { ascending: true })
-    .limit(FAVORITE_UPCOMING_SCAN_LIMIT);
-
-  if (error || !data) {
-    console.error("Błąd pobierania tras ulubionych:", error);
+  const rows = await listedRowsForPersonMatch(now, FAVORITE_UPCOMING_SCAN_LIMIT, { slugs: allowed });
+  if (!rows) {
+    console.error("Błąd pobierania tras ulubionych");
     return [];
   }
 
-  const seeds = (data as unknown as EventRow[]).flatMap((row) => {
-    const event = toTourEvent(row);
-    return event ? [event] : [];
-  });
+  const seeds = rowsToTourEvents(rows);
   const events = await withCoPerformers(seeds, now);
 
   return pickFavoriteUpcomingEvents(events, allowed, now).map((event) => {
@@ -1377,9 +1487,9 @@ export async function getUpcomingEventsForPersonSlugs(
   });
 }
 
-// Najbliższe terminy jednego standupera (profil). Filtr po person_id i limit
-// zanim PostgREST zwróci wiersze — nie korzysta z listingu /trasy, który
-// dociąga facety całego katalogu.
+// Najbliższe terminy jednego standupera (profil). Dopasowanie po person_id
+// albo event_people, z limitem zanim PostgREST zwróci pełne wiersze — nie
+// korzysta z listingu /trasy, który dociąga facety całego katalogu.
 export async function getUpcomingEventsForPerson(
   personId: number,
   now = new Date(),
@@ -1387,26 +1497,12 @@ export async function getUpcomingEventsForPerson(
   if (!Number.isInteger(personId) || personId <= 0) return [];
 
   try {
-    const { data, error } = await supabase
-      .from("events")
-      .select(UPCOMING_EVENT_COLUMNS)
-      .eq("person_id", personId)
-      .gte("starts_at", now.toISOString())
-      .in("status", [...LISTED_EVENT_STATUSES])
-      .order("starts_at", { ascending: true })
-      .order("id", { ascending: true })
-      .limit(PROFILE_TOUR_LIMIT);
-
-    if (error || !data) {
-      console.error("Błąd pobierania trasy profilu:", error);
+    const rows = await listedRowsForPersonMatch(now, PROFILE_TOUR_LIMIT, { personId });
+    if (!rows) {
+      console.error("Błąd pobierania trasy profilu");
       return [];
     }
-
-    const seeds = (data as unknown as EventRow[]).flatMap((row) => {
-      const event = toTourEvent(row);
-      return event ? [event] : [];
-    });
-    return withCoPerformers(seeds, now);
+    return withCoPerformers(rowsToTourEvents(rows), now);
   } catch (error) {
     console.error("Błąd pobierania trasy profilu:", error);
     return [];
