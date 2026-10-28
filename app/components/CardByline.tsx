@@ -12,7 +12,10 @@ const rowClass = [
 
 const peopleClass = "card-byline-people block min-w-0";
 
-const nameClass = "align-middle hover:text-white transition-colors";
+const nameClass = [
+  "align-middle rounded-sm transition-colors hover:text-white",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]",
+].join(" ");
 
 const dateGroupClass = "inline-flex shrink-0 items-center gap-x-1.5";
 
@@ -60,6 +63,10 @@ export default function CardByline({
               )}
             </span>
           ))
+        ) : item.showSlug && item.showName ? (
+          <Link href={"/format/" + item.showSlug} className={nameClass}>
+            {item.showName}
+          </Link>
         ) : (
           item.showName || ""
         )}

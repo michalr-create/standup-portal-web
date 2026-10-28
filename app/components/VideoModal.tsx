@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import type { Item } from "@/lib/data";
 import {
   OPEN_YOUTUBE_LABEL,
@@ -41,6 +42,13 @@ type Props = {
   videoId: string;
   onClose: () => void;
 };
+
+const playerPersonClass = "video-modal-person rounded-sm transition-colors hover:text-white";
+
+function closePlayerIfSamePage(event: ReactMouseEvent<HTMLAnchorElement>, href: string, onClose: () => void) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+  if (window.location.pathname === href) onClose();
+}
 
 const YT_FRAME_ID = "parska-yt";
 const YT_TARGET = "https://www.youtube.com";
@@ -650,9 +658,8 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     };
   }, []);
 
-  const label = item.people.length > 0
-    ? item.people.map((p) => p.name).join(" \u00b7 ")
-    : item.showName || "";
+  const hasPeople = item.people.length > 0;
+  const fallbackLabel = hasPeople ? "" : item.showName || "";
 
   const enterCover = async () => {
     setCover(true);
@@ -842,11 +849,31 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
               >
                 {item.title}
               </h3>
-              {label && (
+              {hasPeople || fallbackLabel ? (
                 <p className="mt-1" style={{ fontSize: "13px", color: "var(--paper-dim)" }}>
-                  {label}
+                  {hasPeople
+                    ? item.people.map((person, index) => {
+                        const href = "/standuper/" + person.slug;
+                        return (
+                          <span key={person.slug + "-" + index}>
+                            {index > 0 ? " \u00b7 " : null}
+                            {person.slug ? (
+                              <Link
+                                href={href}
+                                className={playerPersonClass}
+                                onClick={(event) => closePlayerIfSamePage(event, href, onClose)}
+                              >
+                                {person.name}
+                              </Link>
+                            ) : (
+                              person.name
+                            )}
+                          </span>
+                        );
+                      })
+                    : fallbackLabel}
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div className="video-modal-actions">

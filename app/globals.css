@@ -574,6 +574,7 @@ a.pager-btn:hover {
   background: var(--paper);
   color: var(--ink);
 }
+.video-modal-person:focus-visible,
 .video-modal-timer-btn:focus-visible,
 .video-modal-timer-option:focus-visible,
 .video-modal-why:focus-visible,
