@@ -144,14 +144,21 @@ test("event card sends the name and avatar to the profile and tickets to a new t
   assert.match(html, /19:00/);
 
   const external = links.filter((link) => attr(link.attrs, "target") === "_blank");
-  assert.equal(external.length, 3);
+  assert.equal(external.length, 2);
   for (const link of external) {
     assert.match(link.text, /otwiera się w nowej karcie/);
     assert.match(attr(link.attrs, "rel") ?? "", /noopener/);
   }
-  assert.ok(external.some((link) => link.text.startsWith("Bilety")));
-  assert.ok(external.some((link) => link.text.startsWith("Kupbilecik")));
-  assert.ok(external.some((link) => link.text.startsWith("Going")));
+  const kupbilecik = external.find((link) => link.text.startsWith("Kupbilecik"));
+  const going = external.find((link) => link.text.startsWith("Going"));
+  assert.ok(kupbilecik);
+  assert.equal(attr(kupbilecik.attrs, "href"), "https://kupbilecik.pl/adam");
+  assert.match(attr(kupbilecik.attrs, "style") ?? "", /background:var\(--coral\)/);
+  assert.ok(going);
+  assert.equal(attr(going.attrs, "href"), "https://goingapp.pl/adam");
+  assert.match(attr(going.attrs, "style") ?? "", /border:1px solid var\(--coral\)/);
+  assert.equal(external.some((link) => link.text.startsWith("Bilety")), false);
+  assert.doesNotMatch(html, /Bilety24/);
   assert.equal((html.match(/<img\b/g) ?? []).length, 1);
   assert.match(html, /src="https:\/\/cdn\.example\/adam\.jpg"/);
   for (const link of links) {
@@ -171,8 +178,78 @@ test("event card without a slug has no profile link", () => {
   assert.match(html, /<h3[^>]*>Bez sluga<\/h3>/);
   assert.doesNotMatch(html, /Obejrzyj przed biletem|Filmy artysty/);
   const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
-  assert.ok(external.some((link) => link.text.startsWith("Bilety")));
+  assert.equal(external.length, 2);
   assert.ok(external.some((link) => link.text.startsWith("Kupbilecik")));
+  assert.ok(external.some((link) => link.text.startsWith("Going")));
+  assert.equal(external.some((link) => link.text.startsWith("Bilety")), false);
+});
+
+test("event card shows one Kupbilecik button when that is the only seller", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({
+        links: [
+          {
+            ticket_url: "https://kupbilecik.pl/adam",
+            ticket_provider: "kupbilecik",
+            external_id: "kb-1",
+            is_primary: true,
+          },
+        ],
+      }),
+      now: NOW,
+    }),
+  );
+  const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
+  assert.equal(external.length, 1);
+  assert.equal(external[0]?.text.startsWith("Kupbilecik"), true);
+  assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+  assert.doesNotMatch(html, /Link do biletów niedostępny/);
+  assert.doesNotMatch(html, /Bilety24/);
+});
+
+test("event card hides Bilety24 and does not repeat the primary provider", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({
+        links: [
+          {
+            ticket_url: "https://kupbilecik.pl/adam",
+            ticket_provider: "kupbilecik",
+            external_id: "kb-1",
+            is_primary: true,
+          },
+          {
+            ticket_url: "https://kupbilecik.pl/other",
+            ticket_provider: "kupbilecik",
+            external_id: "kb-2",
+            is_primary: false,
+          },
+          {
+            ticket_url: "https://bilety24.pl/adam",
+            ticket_provider: "bilety24",
+            external_id: "b24-1",
+            is_primary: false,
+          },
+          {
+            ticket_url: "https://goingapp.pl/adam",
+            ticket_provider: "going",
+            external_id: "go-1",
+            is_primary: false,
+          },
+        ],
+      }),
+      now: NOW,
+    }),
+  );
+  const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
+  assert.deepEqual(
+    external.map((link) => link.text.replace(/, otwiera się w nowej karcie/, "").trim()),
+    ["Kupbilecik", "Going"],
+  );
+  assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+  assert.equal(attr(external[1]?.attrs ?? "", "href"), "https://goingapp.pl/adam");
+  assert.doesNotMatch(html, /Bilety24/);
 });
 
 test("event card without a ticket link still points at the films", () => {

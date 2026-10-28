@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   eventFacets,
   eventsForFavoritePeople,
+  isVisibleTicketProvider,
   FAVORITE_PERSON_SLUG_CAP,
   FAVORITE_UPCOMING_LIMIT,
   facetRedirect,
@@ -24,6 +25,7 @@ import {
   topFacetCities,
   toTourEvent,
   trasyHref,
+  visibleTicketLinks,
   warsawDayBounds,
   type EventRow,
   type TourEvent,
@@ -104,6 +106,9 @@ test("search params stay canonical", () => {
   assert.equal(kept.filters.miasto, "Łódź");
   assert.equal(kept.filters.portal, "biletomat");
   assert.equal(parseTrasySearchParams({ portal: "shop" }).redirectHref, "/trasy");
+  const aggregator = parseTrasySearchParams({ portal: "bilety24", miasto: "Kraków" });
+  assert.equal(aggregator.filters.portal, "");
+  assert.equal(aggregator.redirectHref, "/trasy?miasto=Krak%C3%B3w");
 });
 
 test("page query stays with the active filters and omits the first page", () => {
@@ -163,6 +168,12 @@ test("filters keep upcoming rows and honor comedian, city, range, and availabili
           external_id: "ebilet-4",
           is_primary: false,
         },
+        {
+          ticket_url: "https://bilety24.pl/4",
+          ticket_provider: "bilety24",
+          external_id: "b24-4",
+          is_primary: false,
+        },
       ],
     }),
   ];
@@ -192,6 +203,10 @@ test("filters keep upcoming rows and honor comedian, city, range, and availabili
     filterUpcomingEvents(events, { ...openFilters, portal: "going" }, NOW).map((event) => event.id),
     [2],
   );
+  assert.deepEqual(
+    filterUpcomingEvents(events, { ...openFilters, portal: "bilety24" }, NOW).map((event) => event.id),
+    [],
+  );
 
   const facets = eventFacets(filterUpcomingEvents(events, openFilters, NOW));
   assert.deepEqual(facets.cities, ["Kraków", "Łódź", "Warszawa"]);
@@ -205,6 +220,11 @@ test("filters keep upcoming rows and honor comedian, city, range, and availabili
     return "kupbilecik";
   }));
   assert.equal(facetRedirect(openFilters, facets), null);
+  assert.equal(facets.portals.includes("bilety24"), false);
+  assert.equal(
+    facetRedirect({ ...openFilters, portal: "bilety24" }, facets),
+    "/trasy",
+  );
 });
 
 test("top city chips are the largest cities that actually appear in facets", () => {
@@ -299,6 +319,12 @@ test("rows normalize prices and drop events that are not publicly listed", () =>
         external_id: "go-1",
         is_primary: true,
       },
+      {
+        ticket_url: "https://bilety24.pl/x",
+        ticket_provider: "bilety24",
+        external_id: "b24-1",
+        is_primary: false,
+      },
     ],
   };
   const event = toTourEvent(row);
@@ -308,10 +334,98 @@ test("rows normalize prices and drop events that are not publicly listed", () =>
   assert.equal(event?.person.photo_url, "https://cdn.example/a.jpg");
   assert.deepEqual(event?.links.map((link) => link.ticket_provider), ["kupbilecik", "going", "ebilet"]);
   assert.equal(event?.links.filter((link) => link.ticket_url === "https://kupbilecik.pl/x").length, 1);
+  assert.equal(event?.links.some((link) => link.ticket_provider === "bilety24"), false);
   assert.equal(toTourEvent({ ...row, status: "cancelled" }), null);
   assert.equal(toTourEvent({ ...row, status: "unknown", people: null }), null);
+  const aggregatorOnly = toTourEvent({
+    ...row,
+    ticket_provider: "bilety24",
+    ticket_url: "https://bilety24.pl/only",
+    external_id: "b24-only",
+    event_ticket_links: [
+      {
+        ticket_url: "https://bilety24.pl/only",
+        ticket_provider: "bilety24",
+        external_id: "b24-only",
+        is_primary: true,
+      },
+    ],
+  });
+  assert.equal(aggregatorOnly, null);
+  const redirectedPrimary = toTourEvent({
+    ...row,
+    ticket_provider: "bilety24",
+    ticket_url: "https://bilety24.pl/redir",
+    external_id: "b24-redir",
+    event_ticket_links: [
+      {
+        ticket_url: "https://kupbilecik.pl/real",
+        ticket_provider: "kupbilecik",
+        external_id: "kb-real",
+        is_primary: false,
+      },
+    ],
+  });
+  assert.equal(redirectedPrimary?.ticket_provider, "kupbilecik");
+  assert.deepEqual(redirectedPrimary?.links.map((link) => link.ticket_provider), ["kupbilecik"]);
   assert.equal(providerLabel("bilety24"), "Bilety24");
+  assert.equal(isVisibleTicketProvider("bilety24"), false);
+  assert.equal(isVisibleTicketProvider("kupbilecik"), true);
   assert.equal(providerLabel("other"), "Inny portal");
+});
+
+test("ticket buttons keep the primary storefront and real sellers", () => {
+  const hrefFor = (url: string) => (url.startsWith("https://") ? url : null);
+  const link = (
+    provider: TourEvent["ticket_provider"],
+    url: string,
+    primary = false,
+  ) => ({
+    ticket_url: url,
+    ticket_provider: provider,
+    external_id: url,
+    is_primary: primary,
+  });
+
+  const withGoing = visibleTicketLinks(
+    [
+      link("kupbilecik", "https://kupbilecik.pl/a", true),
+      link("going", "https://goingapp.pl/a"),
+      link("bilety24", "https://bilety24.pl/a"),
+    ],
+    hrefFor,
+  );
+  assert.equal(withGoing.primary?.link.ticket_provider, "kupbilecik");
+  assert.equal(withGoing.primary?.href, "https://kupbilecik.pl/a");
+  assert.deepEqual(withGoing.secondary.map((item) => item.link.ticket_provider), ["going"]);
+
+  const onlyPrimary = visibleTicketLinks([link("kupbilecik", "https://kupbilecik.pl/a", true)], hrefFor);
+  assert.equal(onlyPrimary.primary?.link.ticket_provider, "kupbilecik");
+  assert.deepEqual(onlyPrimary.secondary, []);
+
+  const aggregatorBadge = visibleTicketLinks(
+    [
+      link("kupbilecik", "https://kupbilecik.pl/a", true),
+      link("bilety24", "https://bilety24.pl/a"),
+    ],
+    hrefFor,
+  );
+  assert.equal(aggregatorBadge.primary?.link.ticket_provider, "kupbilecik");
+  assert.deepEqual(aggregatorBadge.secondary, []);
+
+  const duplicateProvider = visibleTicketLinks(
+    [
+      link("kupbilecik", "https://kupbilecik.pl/a", true),
+      link("kupbilecik", "https://kupbilecik.pl/other"),
+      link("ebilet", "https://ebilet.pl/a"),
+    ],
+    hrefFor,
+  );
+  assert.deepEqual(duplicateProvider.secondary.map((item) => item.link.ticket_provider), ["ebilet"]);
+
+  const unsafe = visibleTicketLinks([link("kupbilecik", "javascript:alert(1)", true)], hrefFor);
+  assert.equal(unsafe.primary, null);
+  assert.deepEqual(unsafe.secondary, []);
 });
 
 test("relative cue counts Warsaw calendar days, not elapsed hours", () => {

@@ -7,6 +7,7 @@ import {
   providerLabel,
   standuperProfileHref,
   statusLabel,
+  visibleTicketLinks,
   type TicketLink,
   type TourEvent,
 } from "@/lib/events";
@@ -61,7 +62,7 @@ function PortalBadge({ link, href }: { link: TicketLink; href: string }) {
   );
 }
 
-function TicketCta({ href }: { href: string }) {
+function TicketCta({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
@@ -70,7 +71,7 @@ function TicketCta({ href }: { href: string }) {
       className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-black transition-colors hover:bg-[var(--coral-hi)] ${focusRing}`}
       style={{ background: "var(--coral)", color: "var(--ink)" }}
     >
-      Bilety
+      {label}
       <ExternalIcon />
       <span className="sr-only">, otwiera się w nowej karcie</span>
     </a>
@@ -101,11 +102,8 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
   const onSale = event.status === "on_sale";
   const relative = formatRelativeWhen(event.starts_at, now);
   const profileHref = standuperProfileHref(event.person.slug);
-  const portals = event.links.flatMap((link) => {
-    const href = paidExternalUrl(link.ticket_url);
-    return href ? [{ link, href }] : [];
-  });
-  const primaryHref = portals.find((item) => item.link.is_primary)?.href ?? portals[0]?.href ?? null;
+  const { primary, secondary } = visibleTicketLinks(event.links, paidExternalUrl);
+  const primaryHref = primary?.href ?? null;
   const cardStyle = { border: "1px solid var(--line)", background: "var(--ink-2)" };
 
   return (
@@ -193,12 +191,11 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-4 sm:px-5 sm:pb-5">
-        {primaryHref && <TicketCta href={primaryHref} />}
-        {portals.length > 0 ? (
-          portals.map((item) => (
-            <PortalBadge key={`${item.link.ticket_provider}:${item.link.external_id}`} link={item.link} href={item.href} />
-          ))
-        ) : (
+        {primary && <TicketCta href={primary.href} label={providerLabel(primary.link.ticket_provider)} />}
+        {secondary.map((item) => (
+          <PortalBadge key={`${item.link.ticket_provider}:${item.link.external_id}`} link={item.link} href={item.href} />
+        ))}
+        {!primary && (
           <span className="text-sm" style={{ color: "var(--paper-mute)" }}>
             Link do biletów niedostępny
           </span>
