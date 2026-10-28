@@ -63,7 +63,7 @@ function tour(overrides: Partial<TourEvent> = {}): TourEvent {
   return event;
 }
 
-const openFilters: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "", portal: "" };
+const openFilters: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" };
 
 test("warsaw day bounds follow CET and CEST", () => {
   const winter = warsawDayBounds("2026-11-12");
@@ -79,8 +79,8 @@ test("warsaw day bounds follow CET and CEST", () => {
 test("search params stay canonical", () => {
   assert.equal(trasyHref(), "/trasy");
   assert.equal(
-    trasyHref({ osoba: "abelard-giza", miasto: "Kraków", od: "2026-11-12", doDnia: "2026-11-20", bilety: "dostepne", portal: "ebilet" }),
-    "/trasy?osoba=abelard-giza&miasto=Krak%C3%B3w&od=2026-11-12&do=2026-11-20&bilety=dostepne&portal=ebilet",
+    trasyHref({ osoba: "abelard-giza", miasto: "Kraków", od: "2026-11-12", doDnia: "2026-11-20", bilety: "dostepne" }),
+    "/trasy?osoba=abelard-giza&miasto=Krak%C3%B3w&od=2026-11-12&do=2026-11-20&bilety=dostepne",
   );
 
   const messy = parseTrasySearchParams({
@@ -101,22 +101,23 @@ test("search params stay canonical", () => {
   );
 
   const kept = parseTrasySearchParams({ bilety: "wyprzedane", miasto: "Łódź", portal: "Biletomat" });
-  assert.equal(kept.redirectHref, "/trasy?miasto=%C5%81%C3%B3d%C5%BA&bilety=wyprzedane&portal=biletomat");
+  assert.equal(kept.redirectHref, "/trasy?miasto=%C5%81%C3%B3d%C5%BA&bilety=wyprzedane");
   assert.equal(kept.filters.bilety, "wyprzedane");
   assert.equal(kept.filters.miasto, "Łódź");
-  assert.equal(kept.filters.portal, "biletomat");
+  assert.equal(kept.redirectHref?.includes("portal"), false);
   assert.equal(parseTrasySearchParams({ portal: "shop" }).redirectHref, "/trasy");
+  assert.equal(parseTrasySearchParams({ portal: "" }).redirectHref, "/trasy");
   const aggregator = parseTrasySearchParams({ portal: "bilety24", miasto: "Kraków" });
-  assert.equal(aggregator.filters.portal, "");
   assert.equal(aggregator.redirectHref, "/trasy?miasto=Krak%C3%B3w");
+  assert.equal(aggregator.redirectHref?.includes("portal"), false);
 });
 
 test("page query stays with the active filters and omits the first page", () => {
   assert.equal(trasyHref({ osoba: "abelard-giza", page: 1 }), "/trasy?osoba=abelard-giza");
   assert.equal(trasyHref({ osoba: "abelard-giza", page: 2 }), "/trasy?osoba=abelard-giza&page=2");
   assert.equal(
-    trasyHref({ miasto: "Kraków", bilety: "dostepne", portal: "ebilet", page: 4 }),
-    "/trasy?miasto=Krak%C3%B3w&bilety=dostepne&portal=ebilet&page=4",
+    trasyHref({ miasto: "Kraków", bilety: "dostepne", page: 4 }),
+    "/trasy?miasto=Krak%C3%B3w&bilety=dostepne&page=4",
   );
 
   const explicitFirst = parseTrasySearchParams({ page: "1", miasto: "Kraków" });
@@ -131,7 +132,7 @@ test("page query stays with the active filters and omits the first page", () => 
 
   const bad = parseTrasySearchParams({ page: "0", portal: "ebilet" });
   assert.equal(bad.page, 1);
-  assert.equal(bad.redirectHref, "/trasy?portal=ebilet");
+  assert.equal(bad.redirectHref, "/trasy");
 
   const messyPage = parseTrasySearchParams({ page: "2", osoba: "Abelard-Giza" });
   assert.equal(messyPage.page, 2);
@@ -168,12 +169,6 @@ test("filters keep upcoming rows and honor comedian, city, range, and availabili
           external_id: "ebilet-4",
           is_primary: false,
         },
-        {
-          ticket_url: "https://bilety24.pl/4",
-          ticket_provider: "bilety24",
-          external_id: "b24-4",
-          is_primary: false,
-        },
       ],
     }),
   ];
@@ -196,35 +191,54 @@ test("filters keep upcoming rows and honor comedian, city, range, and availabili
     [1],
   );
   assert.deepEqual(
-    filterUpcomingEvents(events, { ...openFilters, portal: "ebilet" }, NOW).map((event) => event.id),
+    filterUpcomingEvents(events, { ...openFilters, miasto: "Łódź" }, NOW).map((event) => event.id),
     [4],
-  );
-  assert.deepEqual(
-    filterUpcomingEvents(events, { ...openFilters, portal: "going" }, NOW).map((event) => event.id),
-    [2],
-  );
-  assert.deepEqual(
-    filterUpcomingEvents(events, { ...openFilters, portal: "bilety24" }, NOW).map((event) => event.id),
-    [],
   );
 
   const facets = eventFacets(filterUpcomingEvents(events, openFilters, NOW));
   assert.deepEqual(facets.cities, ["Kraków", "Łódź", "Warszawa"]);
+  assert.deepEqual(
+    facets.people.map((person) => person.slug),
+    ["abelard-giza", "inny"],
+  );
   assert.equal(facetRedirect({ ...openFilters, osoba: "nikt" }, facets), "/trasy");
-  assert.equal(facetRedirect({ ...openFilters, portal: "eventim" }, facets), "/trasy");
+  assert.equal(facetRedirect({ ...openFilters, miasto: "Gdańsk" }, facets), "/trasy");
   assert.equal(facetRedirect({ ...openFilters, osoba: "nikt" }, facets, 3), "/trasy?page=3");
   assert.equal(facetRedirect({ ...openFilters, osoba: "abelard-giza" }, facets, 2), null);
-  assert.deepEqual(facets.portals, ["eBilet", "Going", "Kupbilecik"].map((label) => {
-    if (label === "eBilet") return "ebilet";
-    if (label === "Going") return "going";
-    return "kupbilecik";
-  }));
   assert.equal(facetRedirect(openFilters, facets), null);
-  assert.equal(facets.portals.includes("bilety24"), false);
+  assert.equal("portals" in facets, false);
+});
+
+test("a ticket portal query is dropped and does not filter the listing", () => {
+  const filtersUi = readFileSync(new URL("../app/trasy/TrasyFilters.tsx", import.meta.url), "utf8");
+  const listing = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
+  assert.match(filtersUi, /Standuper/);
+  assert.match(filtersUi, /label="Miasto"/);
+  assert.match(filtersUi, /label="Od"/);
+  assert.match(filtersUi, /label="Do"/);
+  assert.doesNotMatch(filtersUi, /Portal|filters\.portal|facets\.portals|providerLabel/);
+  assert.doesNotMatch(listing, /portal_match|filters\.portal/);
+
+  const parsed = parseTrasySearchParams({
+    portal: "ebilet",
+    osoba: "abelard-giza",
+    miasto: "Kraków",
+    od: "2026-11-12",
+    do: "2026-11-20",
+    bilety: "dostepne",
+    page: "2",
+  });
+  assert.equal(parsed.filters.osoba, "abelard-giza");
+  assert.equal(parsed.filters.miasto, "Kraków");
+  assert.equal(parsed.filters.od, "2026-11-12");
+  assert.equal(parsed.filters.doDnia, "2026-11-20");
+  assert.equal(parsed.filters.bilety, "dostepne");
+  assert.equal(parsed.page, 2);
   assert.equal(
-    facetRedirect({ ...openFilters, portal: "bilety24" }, facets),
-    "/trasy",
+    parsed.redirectHref,
+    "/trasy?osoba=abelard-giza&miasto=Krak%C3%B3w&od=2026-11-12&do=2026-11-20&bilety=dostepne&page=2",
   );
+  assert.equal(trasyHref({ ...parsed.filters, page: parsed.page }).includes("portal="), false);
 });
 
 test("top city chips are the largest cities that actually appear in facets", () => {

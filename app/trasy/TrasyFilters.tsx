@@ -6,7 +6,6 @@ import {
   BILETY_OPTIONS,
   hasActiveTrasyFilters,
   peopleSelectOptions,
-  providerLabel,
   topFacetCities,
   trasyHref,
   type EventFacets,
@@ -67,7 +66,7 @@ export default function TrasyFilters({
 
   return (
     <div role="search" aria-label="Filtruj trasy" className="mb-8 flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex min-w-0 flex-col gap-1.5">
           <label htmlFor="trasy-osoba" className="mono text-xs uppercase" style={labelStyle}>
             Standuper
@@ -134,21 +133,6 @@ export default function TrasyFilters({
             value={filters.doDnia}
             onChange={(event) => go({ doDnia: event.target.value })}
           />
-        </Field>
-        <Field label="Portal">
-          <select
-            className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold"
-            style={controlStyle(Boolean(filters.portal))}
-            value={filters.portal}
-            onChange={(event) => go({ portal: event.target.value as TrasyFilters["portal"] })}
-          >
-            <option value="">Wszystkie</option>
-            {facets.portals.map((portal) => (
-              <option key={portal} value={portal}>
-                {providerLabel(portal)}
-              </option>
-            ))}
-          </select>
         </Field>
       </div>
 
