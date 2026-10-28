@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import {
+  eventPeople,
   formatEventWhen,
+  standuperProfileHref,
   trasyHref,
   type FavoriteUpcomingEvent,
 } from "@/lib/events";
@@ -94,12 +96,24 @@ export default function FavoriteTours({
             >
               <div className="min-w-0">
                 <h3 className="m-0 font-black leading-tight" style={{ fontSize: "18px", letterSpacing: "-.02em" }}>
-                  <Link
-                    href={`/standuper/${event.person.slug}`}
-                    className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
-                  >
-                    {event.person.name}
-                  </Link>
+                  {eventPeople(event).map((person, index) => {
+                    const href = standuperProfileHref(person.slug);
+                    return (
+                      <span key={`${person.slug || person.name}:${index}`}>
+                        {index > 0 && <span style={{ color: "var(--paper-meta)" }}>{" \u00b7 "}</span>}
+                        {href ? (
+                          <Link
+                            href={href}
+                            className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                          >
+                            {person.name}
+                          </Link>
+                        ) : (
+                          person.name
+                        )}
+                      </span>
+                    );
+                  })}
                 </h3>
                 <p className="m-0 mt-1 text-sm" style={{ color: "var(--paper-dim)" }}>
                   <time

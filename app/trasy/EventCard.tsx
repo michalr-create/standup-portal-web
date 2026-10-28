@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  eventPeople,
   formatEventWhen,
   formatPrice,
   formatRelativeWhen,
@@ -10,6 +11,7 @@ import {
   visibleTicketLinks,
   type TicketLink,
   type TourEvent,
+  type TourPerson,
 } from "@/lib/events";
 import { paidExternalUrl } from "@/lib/youtube";
 
@@ -78,7 +80,17 @@ function TicketCta({ href, label }: { href: string; label: string }) {
   );
 }
 
-function PersonAvatar({ name, photo, href }: { name: string; photo: string | null; href: string | null }) {
+function PersonAvatar({
+  name,
+  photo,
+  href,
+  className = "",
+}: {
+  name: string;
+  photo: string | null;
+  href: string | null;
+  className?: string;
+}) {
   const face = (
     <span
       className="grid h-full w-full place-items-center overflow-hidden rounded-full"
@@ -87,7 +99,9 @@ function PersonAvatar({ name, photo, href }: { name: string; photo: string | nul
       {photo ? <img src={photo} alt="" className="h-full w-full object-cover" /> : initials(name)}
     </span>
   );
-  const frame = "grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-black";
+  const frame = ["grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-black", className]
+    .filter(Boolean)
+    .join(" ");
   if (!href) return <div className={frame}>{face}</div>;
   return (
     <Link href={href} aria-label={`Profil: ${name}`} className={`${frame} ${focusRing}`}>
@@ -96,12 +110,25 @@ function PersonAvatar({ name, photo, href }: { name: string; photo: string | nul
   );
 }
 
+function PersonName({ person }: { person: TourPerson }) {
+  const href = standuperProfileHref(person.slug);
+  if (!href) return person.name;
+  return (
+    <Link href={href} className={`rounded-sm hover:text-white ${focusRing}`}>
+      {person.name}
+    </Link>
+  );
+}
+
 export default function EventCard({ event, now }: { event: TourEvent; now: Date }) {
-  const photo = paidExternalUrl(event.person.photo_url);
+  const roster = eventPeople(event);
+  const solo = roster.length <= 1;
+  const lead = roster[0] ?? event.person;
+  const photo = paidExternalUrl(lead.photo_url);
   const price = formatPrice(event.price_from, event.currency);
   const onSale = event.status === "on_sale";
   const relative = formatRelativeWhen(event.starts_at, now);
-  const profileHref = standuperProfileHref(event.person.slug);
+  const profileHref = standuperProfileHref(lead.slug);
   const { primary, secondary } = visibleTicketLinks(event.links, paidExternalUrl);
   const primaryHref = primary?.href ?? null;
   const cardStyle = { border: "1px solid var(--line)", background: "var(--ink-2)" };
@@ -110,7 +137,22 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
     <article className="rounded-[18px]" style={cardStyle}>
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-3 sm:gap-4">
-          <PersonAvatar name={event.person.name} photo={photo} href={profileHref} />
+          {solo ? (
+            <PersonAvatar name={lead.name} photo={photo} href={profileHref} />
+          ) : (
+            <div className="flex shrink-0 -space-x-3">
+              {roster.map((person, index) => (
+                <span key={`${person.slug || person.name}:${index}`} className="relative" style={{ zIndex: roster.length - index }}>
+                  <PersonAvatar
+                    name={person.name}
+                    photo={paidExternalUrl(person.photo_url)}
+                    href={standuperProfileHref(person.slug)}
+                    className="ring-2 ring-[var(--ink-2)]"
+                  />
+                </span>
+              ))}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -150,12 +192,21 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
               </span>
             </div>
             <h3 className="m-0 mt-1 font-black leading-tight" style={{ fontSize: "20px", letterSpacing: "-.02em" }}>
-              {profileHref ? (
-                <Link href={profileHref} className={`rounded-sm hover:text-white ${focusRing}`}>
-                  {event.person.name}
-                </Link>
+              {solo ? (
+                profileHref ? (
+                  <Link href={profileHref} className={`rounded-sm hover:text-white ${focusRing}`}>
+                    {lead.name}
+                  </Link>
+                ) : (
+                  lead.name
+                )
               ) : (
-                event.person.name
+                roster.map((person, index) => (
+                  <span key={`${person.slug || person.name}:${index}`}>
+                    {index > 0 && <span style={{ color: "var(--paper-meta)" }}>{" \u00b7 "}</span>}
+                    <PersonName person={person} />
+                  </span>
+                ))
               )}
             </h3>
             {event.title && (
@@ -178,7 +229,7 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
                 {price}
               </p>
             )}
-            {profileHref && (
+            {solo && profileHref && (
               <Link
                 href={profileHref}
                 className={`mt-3 inline-flex min-h-11 items-center text-sm font-bold underline-offset-4 hover:underline ${focusRing}`}

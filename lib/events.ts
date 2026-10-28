@@ -3,6 +3,12 @@ export type ListedEventStatus = (typeof LISTED_EVENT_STATUSES)[number];
 
 /** Nearest dates across all favorited people, not per person. */
 export const FAVORITE_UPCOMING_LIMIT = 12;
+/**
+ * Raw favorite rows read before joint bills collapse. A show is one row per
+ * person (largest bills in the catalog are four), so the scan is wider than
+ * the card limit.
+ */
+export const FAVORITE_UPCOMING_SCAN_LIMIT = FAVORITE_UPCOMING_LIMIT * 4;
 export const FAVORITE_PERSON_SLUG_CAP = 100;
 
 /** Nearest upcoming dates on a standuper profile. The rest live on /trasy. */
@@ -71,6 +77,7 @@ export type TrasySearch = {
 export type EventFacetSource = {
   city: string;
   person: { slug: string; name: string };
+  people?: readonly { slug: string; name: string }[];
 };
 
 export type TourPerson = {
@@ -99,8 +106,12 @@ export type TourEvent = {
   status: ListedEventStatus;
   ticket_url: string;
   ticket_provider: TicketProvider;
+  /** Raw `events.ticket_url`, before the visible storefront is chosen. */
+  source_ticket_url?: string;
   links: TicketLink[];
+  /** First linked comedian. `people` is the full bill. */
   person: TourPerson;
+  people: TourPerson[];
 };
 
 /** Row shown on /ulubione. Only people the browser already stored as favorites. */
@@ -111,6 +122,7 @@ export type FavoriteUpcomingEvent = {
   status: ListedEventStatus;
   ticket_url: string;
   person: { name: string; slug: string };
+  people?: { name: string; slug: string }[];
 };
 
 type PeopleEmbed = {
@@ -410,6 +422,11 @@ export function toTourEvent(row: EventRow): TourEvent | null {
   const name = person.name?.trim() || "Standuper";
   const slug = person.slug?.trim() || "";
   const title = row.title?.trim() || null;
+  const tourPerson: TourPerson = {
+    name,
+    slug,
+    photo_url: person.photo_url?.trim() || null,
+  };
   return {
     id: row.id,
     person_id: row.person_id,
@@ -423,13 +440,150 @@ export function toTourEvent(row: EventRow): TourEvent | null {
     status,
     ticket_url: primary.ticket_url,
     ticket_provider: primary.ticket_provider,
+    source_ticket_url: row.ticket_url?.trim() || primary.ticket_url,
     links,
-    person: {
-      name,
-      slug,
-      photo_url: person.photo_url?.trim() || null,
-    },
+    person: tourPerson,
+    people: [tourPerson],
   };
+}
+
+/** Comedians on a card. A solo row keeps the single `person`. */
+export function eventPeople<T extends { slug: string; name: string }>(event: {
+  person?: T | null;
+  people?: readonly T[] | null;
+}): T[] {
+  if (event.people && event.people.length > 0) return [...event.people];
+  return event.person ? [event.person] : [];
+}
+
+/**
+ * Ticket URL used to tell two rows apart as the same night. Query and hash
+ * are ignored; the host is compared case-insensitively.
+ */
+export function occurrenceUrlKey(url: string | null | undefined): string {
+  const trimmed = url?.trim() ?? "";
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    const pathname = parsed.pathname.replace(/\/+$/, "") || "/";
+    return `${parsed.protocol}//${parsed.host.toLowerCase()}${pathname}`;
+  } catch {
+    const noHash = trimmed.split("#")[0] ?? "";
+    const noQuery = noHash.split("?")[0] ?? "";
+    return noQuery.replace(/\/+$/, "");
+  }
+}
+
+export function occurrenceKey(event: {
+  ticket_url: string;
+  source_ticket_url?: string;
+  starts_at: string;
+  city: string;
+  venue: string;
+}): string {
+  const starts = new Date(event.starts_at);
+  const when = Number.isNaN(starts.getTime()) ? event.starts_at : starts.toISOString();
+  const url = occurrenceUrlKey(event.source_ticket_url || event.ticket_url);
+  if (url) return `url\u0000${url}\u0000${when}`;
+  const city = event.city.trim().toLocaleLowerCase("pl");
+  const venue = event.venue.trim().toLocaleLowerCase("pl");
+  return `place\u0000${city}\u0000${venue}\u0000${when}`;
+}
+
+function unionTicketLinks(events: readonly TourEvent[]): TicketLink[] {
+  const seenIds = new Set<string>();
+  const seenUrls = new Set<string>();
+  const links: TicketLink[] = [];
+  let primaryKept = false;
+  for (const event of events) {
+    for (const link of event.links) {
+      const idKey = `${link.ticket_provider}:${link.external_id}`;
+      const urlKey = occurrenceUrlKey(link.ticket_url) || link.ticket_url.trim();
+      if (seenIds.has(idKey) || (urlKey && seenUrls.has(urlKey))) continue;
+      seenIds.add(idKey);
+      if (urlKey) seenUrls.add(urlKey);
+      const isPrimary = link.is_primary && !primaryKept;
+      if (isPrimary) primaryKept = true;
+      links.push({ ...link, is_primary: isPrimary });
+    }
+  }
+  if (!primaryKept && links.length > 0) links[0] = { ...links[0], is_primary: true };
+  links.sort(
+    (a, b) =>
+      Number(b.is_primary) - Number(a.is_primary) ||
+      a.ticket_provider.localeCompare(b.ticket_provider, "pl") ||
+      a.external_id.localeCompare(b.external_id),
+  );
+  return links;
+}
+
+function mergeOccurrence(group: readonly TourEvent[]): TourEvent {
+  const ordered = [...group].sort((a, b) => a.id - b.id);
+  const base = ordered[0];
+  const people: TourPerson[] = [];
+  const seen = new Set<string>();
+  for (const event of ordered) {
+    for (const person of eventPeople(event)) {
+      const key = person.slug || `name:${person.name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      people.push(person);
+    }
+  }
+  const links = unionTicketLinks(ordered);
+  const primary = links.find((link) => link.is_primary) ?? links[0] ?? null;
+  const title = base.title ?? ordered.find((event) => event.title)?.title ?? null;
+  const venueAddress = base.venue_address ?? ordered.find((event) => event.venue_address)?.venue_address ?? null;
+  const price = base.price_from ?? ordered.find((event) => event.price_from != null)?.price_from ?? null;
+  const roster = people.length > 0 ? people : [base.person];
+  return {
+    ...base,
+    id: base.id,
+    person_id: base.person_id,
+    title,
+    venue_address: venueAddress,
+    price_from: price,
+    ticket_url: primary?.ticket_url ?? base.ticket_url,
+    ticket_provider: primary?.ticket_provider ?? base.ticket_provider,
+    source_ticket_url: base.source_ticket_url ?? base.ticket_url,
+    links: links.length > 0 ? links : base.links,
+    person: roster[0],
+    people: roster,
+  };
+}
+
+/**
+ * One card per real show. The worker still writes one `events` row per matched
+ * person (`external_id` like `2418520:1` and `2418520:2`); there is no
+ * `event_people` table yet, so duplicates are collapsed here. The worker may
+ * keep writing those rows until its companion change lands.
+ *
+ * Key: normalized ticket URL (query and hash stripped) + start time. Rows with
+ * no URL fall back to city + venue + start time. The kept id is the smallest.
+ */
+export function mergeTourEvents(events: readonly TourEvent[]): TourEvent[] {
+  const groups = new Map<string, TourEvent[]>();
+  for (const event of events) {
+    const key = occurrenceKey(event);
+    const group = groups.get(key);
+    if (group) group.push(event);
+    else groups.set(key, [event]);
+  }
+  const merged = [...groups.values()].map((group) => mergeOccurrence(group));
+  merged.sort((a, b) => {
+    const delta = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    return delta !== 0 ? delta : a.id - b.id;
+  });
+  return merged;
+}
+
+/** Page of already-merged cards. `total` is the merged length, not raw rows. */
+export function pageMergedEvents<T>(events: readonly T[], page: number, pageSize: number): { events: T[]; total: number } {
+  const size = Number.isFinite(pageSize) ? Math.min(100, Math.max(1, Math.floor(pageSize))) : 24;
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  const offset = (safePage - 1) * size;
+  return { events: events.slice(offset, offset + size), total: events.length };
 }
 
 export function statusToBilety(status: ListedEventStatus): BiletyFilter {
@@ -482,9 +636,9 @@ export function eventsForFavoritePeople<T extends FavoriteUpcomingEvent>(
   const seen = new Set<number>();
   const matched: T[] = [];
   for (const event of events) {
-    const slug = event?.person?.slug;
-    if (event == null || typeof event.id !== "number" || typeof slug !== "string") continue;
-    if (!allowed.has(slug) || seen.has(event.id)) continue;
+    if (event == null || typeof event.id !== "number") continue;
+    const roster = eventPeople(event);
+    if (!roster.some((person) => allowed.has(person.slug)) || seen.has(event.id)) continue;
     if (event.status !== "on_sale" && event.status !== "sold_out") continue;
     const time = new Date(event.starts_at).getTime();
     if (Number.isNaN(time) || time < cutoff) continue;
@@ -504,7 +658,7 @@ export function pickFavoriteUpcomingEvents(
   now = new Date(),
   limit?: number,
 ): TourEvent[] {
-  return eventsForFavoritePeople(events, slugs, now, limit);
+  return eventsForFavoritePeople(mergeTourEvents(events), slugs, now, limit);
 }
 
 export function filterUpcomingEvents(
@@ -520,7 +674,7 @@ export function filterUpcomingEvents(
   return events.filter((event) => {
     const time = new Date(event.starts_at).getTime();
     if (Number.isNaN(time) || time < lower || time >= upper) return false;
-    if (filters.osoba && event.person.slug !== filters.osoba) return false;
+    if (filters.osoba && !eventPeople(event).some((person) => person.slug === filters.osoba)) return false;
     if (filters.miasto && event.city !== filters.miasto) return false;
     if (!statuses.has(event.status)) return false;
     return true;
@@ -531,7 +685,9 @@ export function eventFacets(events: readonly EventFacetSource[]): EventFacets {
   const people = new Map<string, string>();
   const cities = new Set<string>();
   for (const event of events) {
-    if (event.person.slug) people.set(event.person.slug, event.person.name);
+    for (const person of eventPeople(event)) {
+      if (person.slug) people.set(person.slug, person.name);
+    }
     if (event.city) cities.add(event.city);
   }
   return {

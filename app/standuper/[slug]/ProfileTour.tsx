@@ -1,8 +1,10 @@
 import Link from "next/link";
 import {
+  eventPeople,
   formatEventWhen,
   formatPrice,
   formatRelativeWhen,
+  standuperProfileHref,
   trasyHref,
   type TourEvent,
 } from "@/lib/events";
@@ -55,6 +57,8 @@ function TicketCta({ event }: { event: TourEvent }) {
 function TourRow({ event, now }: { event: TourEvent; now: Date }) {
   const relative = formatRelativeWhen(event.starts_at, now);
   const price = formatPrice(event.price_from, event.currency);
+  const roster = eventPeople(event);
+  const joint = roster.length > 1;
 
   return (
     <li
@@ -83,6 +87,28 @@ function TourRow({ event, now }: { event: TourEvent; now: Date }) {
             </span>
           )}
         </p>
+        {joint && (
+          <p className="m-0 mt-1 font-black leading-tight" style={{ fontSize: "16px", letterSpacing: "-.02em" }}>
+            {roster.map((comedian, index) => {
+              const href = standuperProfileHref(comedian.slug);
+              return (
+                <span key={`${comedian.slug || comedian.name}:${index}`}>
+                  {index > 0 && <span style={{ color: "var(--paper-meta)" }}>{" \u00b7 "}</span>}
+                  {href ? (
+                    <Link
+                      href={href}
+                      className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                    >
+                      {comedian.name}
+                    </Link>
+                  ) : (
+                    comedian.name
+                  )}
+                </span>
+              );
+            })}
+          </p>
+        )}
         <p className="m-0 mt-1" style={{ color: "var(--paper)" }}>
           {event.city}
           <span style={{ color: "var(--paper-meta)" }}>{" \u00b7 "}</span>

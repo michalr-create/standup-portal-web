@@ -18,7 +18,9 @@ test("favorites API adds upcoming events for the slugs it already receives", () 
   assert.match(fn, /\.in\("status", \[\.\.\.LISTED_EVENT_STATUSES\]\)/);
   assert.match(fn, /\.in\("people\.slug", allowed\)/);
   assert.match(fn, /pickFavoriteUpcomingEvents/);
-  assert.match(fn, /\.limit\(FAVORITE_UPCOMING_LIMIT\)/);
+  assert.match(fn, /withCoPerformers/);
+  assert.match(fn, /\.limit\(FAVORITE_UPCOMING_SCAN_LIMIT\)/);
+  assert.match(fn, /people: roster\.map/);
   assert.doesNotMatch(fn, /SERVICE/);
   assert.match(data, /from "@\/lib\/supabase"/);
 });
@@ -31,7 +33,8 @@ test("ulubione renders tours only from the stored person list", () => {
   assert.match(section, /Grają wkrótce/);
   assert.match(section, /Brak ogłoszonych dat u ulubionych/);
   assert.match(section, /href="\/trasy"/);
-  assert.match(section, /href=\{`\/standuper\/\$\{event\.person\.slug\}`\}/);
+  assert.match(section, /eventPeople\(event\)/);
+  assert.match(section, /standuperProfileHref\(person\.slug\)/);
   assert.match(section, /trasyHref\(\{ osoba: event\.person\.slug \}\)/);
   assert.match(section, /więcej tras/);
   assert.match(section, /target="_blank"/);

@@ -74,8 +74,10 @@ function tour(overrides: Partial<TourEvent> = {}): TourEvent {
     ticket_provider: "kupbilecik",
     links: [],
     person: { name: "Adam Van Bendler", slug: "adam-van-bendler", photo_url: "https://cdn.example/adam.jpg" },
+    people: [],
     ...overrides,
   };
+  if (!overrides.people) event.people = [event.person];
   if (!overrides.links) {
     event.links = [
       {
@@ -164,6 +166,58 @@ test("event card sends the name and avatar to the profile and tickets to a new t
   for (const link of links) {
     assert.equal(attr(link.attrs, "href")?.includes("#"), false);
   }
+});
+
+test("joint show is one card with both comedians and the same ticket buttons", () => {
+  const paczes = { name: "Rafał Pacześ", slug: "rafal-paczes", photo_url: "https://cdn.example/rafal.jpg" };
+  const lotek = { name: "Łukasz Lotek Lodkowski", slug: "lotek", photo_url: null };
+  const html = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({
+        id: 1603,
+        title: "Pacześ x Lotek Tour 2 - Puławy",
+        city: "Puławy",
+        person: paczes,
+        people: [paczes, lotek],
+        ticket_url: "https://goingapp.pl/wydarzenie/paczes-x-lotek-tour-2/pulawy-listopad-2026",
+        ticket_provider: "going",
+        links: [
+          {
+            ticket_url: "https://goingapp.pl/wydarzenie/paczes-x-lotek-tour-2/pulawy-listopad-2026",
+            ticket_provider: "going",
+            external_id: "2418520:1",
+            is_primary: true,
+          },
+          {
+            ticket_url: "https://www.kupbilecik.pl/pl/event/9",
+            ticket_provider: "kupbilecik",
+            external_id: "kb-9",
+            is_primary: false,
+          },
+        ],
+      }),
+      now: NOW,
+    }),
+  );
+  assertNoNestedAnchors(html);
+  assert.equal((html.match(/<article\b/g) ?? []).length, 1);
+  const links = anchors(html);
+  assert.ok(links.some((link) => link.text === "Rafał Pacześ" && attr(link.attrs, "href") === "/standuper/rafal-paczes"));
+  assert.ok(links.some((link) => link.text === "Łukasz Lotek Lodkowski" && attr(link.attrs, "href") === "/standuper/lotek"));
+  assert.ok(links.some((link) => attr(link.attrs, "aria-label") === "Profil: Rafał Pacześ"));
+  assert.ok(links.some((link) => attr(link.attrs, "aria-label") === "Profil: Łukasz Lotek Lodkowski"));
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 2);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 2);
+  const external = links.filter((link) => attr(link.attrs, "target") === "_blank");
+  assert.deepEqual(
+    external.map((link) => link.text.replace(/, otwiera się w nowej karcie/, "").trim()),
+    ["Going", "Kupbilecik"],
+  );
+  assert.match(attr(external[0]?.attrs ?? "", "style") ?? "", /background:var\(--coral\)/);
+  assert.doesNotMatch(html, /Bilety24/);
+  assert.doesNotMatch(html, /Obejrzyj przed biletem/);
+  assert.equal((html.match(/<img\b/g) ?? []).length, 1);
+  assert.match(html, /ŁL/);
 });
 
 test("event card without a slug has no profile link", () => {
