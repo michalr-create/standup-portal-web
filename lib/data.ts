@@ -7,6 +7,7 @@ import {
   hasActiveTrasyFilters,
   LISTED_EVENT_STATUSES,
   pickFavoriteUpcomingEvents,
+  isVisibleTicketProvider,
   toTourEvent,
   TICKET_PROVIDERS,
   upcomingBounds,
@@ -1214,7 +1215,7 @@ function rowToFacetSource(row: FacetRow): EventFacetSource | null {
   const providers = new Set<TicketProvider>();
   const add = (value: string | null | undefined) => {
     const trimmed = value?.trim().toLowerCase() ?? "";
-    if (isTicketProvider(trimmed)) providers.add(trimmed);
+    if (isTicketProvider(trimmed) && isVisibleTicketProvider(trimmed)) providers.add(trimmed);
   };
   add(row.ticket_provider);
   for (const link of listEmbed(row.event_ticket_links)) add(link.ticket_provider);

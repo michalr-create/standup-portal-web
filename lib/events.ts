@@ -31,6 +31,17 @@ export const PROVIDER_LABELS: Record<TicketProvider, string> = {
   other: "Inny portal",
 };
 
+/**
+ * Bilety24 only redirects to Kupbilecik. It stays in the provider enum because
+ * older `event_ticket_links` rows still use it, but it is not a storefront:
+ * cards, facets, and the portal filter leave it out.
+ */
+const AGGREGATOR_PROVIDERS = new Set<TicketProvider>(["bilety24"]);
+
+export function isVisibleTicketProvider(provider: TicketProvider): boolean {
+  return !AGGREGATOR_PROVIDERS.has(provider);
+}
+
 export const BILETY_OPTIONS = [
   { value: "", label: "Wszystkie" },
   { value: "dostepne", label: "W sprzedaży" },
@@ -349,7 +360,9 @@ function canonicalizePortal(raw: string | undefined): { value: TicketProvider | 
   if (raw == null || raw === "") return { value: "", changed: false };
   const trimmed = raw.trim().toLowerCase();
   if ((TICKET_PROVIDERS as readonly string[]).includes(trimmed)) {
-    return { value: trimmed as TicketProvider, changed: trimmed !== raw };
+    const provider = trimmed as TicketProvider;
+    if (!isVisibleTicketProvider(provider)) return { value: "", changed: true };
+    return { value: provider, changed: trimmed !== raw };
   }
   return { value: "", changed: true };
 }
@@ -365,7 +378,7 @@ function ticketLinksFromRow(row: EventRow): TicketLink[] {
   const primaryUrl = row.ticket_url?.trim() ?? "";
   const primaryId = row.external_id?.trim() ?? "";
   const links: TicketLink[] = [];
-  if (primaryProvider && primaryUrl) {
+  if (primaryProvider && isVisibleTicketProvider(primaryProvider) && primaryUrl) {
     links.push({
       ticket_url: primaryUrl,
       ticket_provider: primaryProvider,
@@ -382,7 +395,7 @@ function ticketLinksFromRow(row: EventRow): TicketLink[] {
       const provider = ticketProvider(link.ticket_provider);
       const url = link.ticket_url?.trim() ?? "";
       const externalId = link.external_id?.trim() ?? "";
-      if (!provider || !url || !externalId) return null;
+      if (!provider || !isVisibleTicketProvider(provider) || !url || !externalId) return null;
       return {
         ticket_url: url,
         ticket_provider: provider,
@@ -527,7 +540,13 @@ export function filterUpcomingEvents(
     if (filters.osoba && event.person.slug !== filters.osoba) return false;
     if (filters.miasto && event.city !== filters.miasto) return false;
     if (!statuses.has(event.status)) return false;
-    if (filters.portal && !event.links.some((link) => link.ticket_provider === filters.portal)) return false;
+    if (
+      filters.portal &&
+      (!isVisibleTicketProvider(filters.portal) ||
+        !event.links.some((link) => link.ticket_provider === filters.portal))
+    ) {
+      return false;
+    }
     return true;
   });
 }
@@ -539,7 +558,9 @@ export function eventFacets(events: readonly EventFacetSource[]): EventFacets {
   for (const event of events) {
     if (event.person.slug) people.set(event.person.slug, event.person.name);
     if (event.city) cities.add(event.city);
-    for (const link of event.links) portals.add(link.ticket_provider);
+    for (const link of event.links) {
+      if (isVisibleTicketProvider(link.ticket_provider)) portals.add(link.ticket_provider);
+    }
   }
   return {
     people: [...people.entries()]
@@ -720,6 +741,34 @@ export function statusLabel(status: ListedEventStatus): string {
 
 export function providerLabel(provider: TicketProvider): string {
   return PROVIDER_LABELS[provider];
+}
+
+export type ResolvedTicketLink = {
+  link: TicketLink;
+  href: string;
+};
+
+/**
+ * One filled button for the primary storefront, plus outline badges for other
+ * sellers. Aggregators and a second copy of the primary provider are omitted.
+ */
+export function visibleTicketLinks(
+  links: readonly TicketLink[],
+  hrefFor: (url: string) => string | null,
+): { primary: ResolvedTicketLink | null; secondary: ResolvedTicketLink[] } {
+  const visible: ResolvedTicketLink[] = [];
+  for (const link of links) {
+    if (!isVisibleTicketProvider(link.ticket_provider)) continue;
+    const href = hrefFor(link.ticket_url);
+    if (!href) continue;
+    visible.push({ link, href });
+  }
+  const primary = visible.find((item) => item.link.is_primary) ?? visible[0] ?? null;
+  if (!primary) return { primary: null, secondary: [] };
+  const secondary = visible.filter(
+    (item) => item.href !== primary.href && item.link.ticket_provider !== primary.link.ticket_provider,
+  );
+  return { primary, secondary };
 }
 
 /**
