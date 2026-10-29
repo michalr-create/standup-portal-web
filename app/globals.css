@@ -794,3 +794,24 @@ a.pager-btn:hover {
   appearance: none;
   display: none;
 }
+
+/* Native date fields use a wide min-content size. On a 2-col row near 360px that overflows the page. */
+.trasy-date {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.trasy-date::-webkit-datetime-edit,
+.trasy-date::-webkit-datetime-edit-fields-wrapper,
+.trasy-date::-webkit-datetime-edit-text,
+.trasy-date::-webkit-datetime-edit-month-field,
+.trasy-date::-webkit-datetime-edit-day-field,
+.trasy-date::-webkit-datetime-edit-year-field {
+  min-width: 0;
+  padding: 0;
+}
+.trasy-date::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+}

@@ -16,7 +16,10 @@ import {
   RELATIVE_WHEN_MAX_DAYS,
   groupEventsByMonth,
   parseTrasySearchParams,
+  comboboxTypedValue,
   peopleSelectOptions,
+  personComboboxActiveIndex,
+  personComboboxOptions,
   mergeTourEvents,
   pageMergedEvents,
   pickFavoriteUpcomingEvents,
@@ -300,6 +303,49 @@ test("long standuper lists can be narrowed without dropping the current choice",
     ["osoba-7"],
   );
   assert.deepEqual(peopleSelectOptions(people, "brak", "nikt"), []);
+});
+
+test("standuper combobox folds Polish diacritics and keeps Wszyscy reachable", () => {
+  const people = [
+    { slug: "rafal-zalewski", name: "Rafał Zalewski" },
+    { slug: "lodz-komik", name: "Łódź Komik" },
+    { slug: "anna-nowak", name: "Anna Nowak" },
+  ];
+  assert.equal(personComboboxOptions(people, "").length, 4);
+  assert.equal(personComboboxOptions(people, "   ")[0]?.name, "Wszyscy");
+  assert.deepEqual(
+    personComboboxOptions(people, "zalewski").map((person) => person.slug),
+    ["rafal-zalewski"],
+  );
+  assert.deepEqual(
+    personComboboxOptions(people, "RAFAŁ").map((person) => person.slug),
+    ["rafal-zalewski"],
+  );
+  assert.deepEqual(
+    personComboboxOptions(people, "lodz").map((person) => person.slug),
+    ["lodz-komik"],
+  );
+  assert.deepEqual(
+    personComboboxOptions(people, "wsz").map((person) => person.slug),
+    [""],
+  );
+  assert.deepEqual(personComboboxOptions(people, "brak"), []);
+
+  const all = personComboboxOptions(people, "");
+  assert.equal(personComboboxActiveIndex(all, "", ""), 0);
+  assert.equal(
+    personComboboxActiveIndex(all, "", "anna-nowak"),
+    all.findIndex((person) => person.slug === "anna-nowak"),
+  );
+  assert.equal(
+    personComboboxActiveIndex(personComboboxOptions(people, "lodz"), "lodz", "anna-nowak"),
+    0,
+  );
+  assert.equal(personComboboxActiveIndex([], "lodz", ""), -1);
+
+  assert.equal(comboboxTypedValue("Rafał Zalewskiz", "Rafał Zalewski", true), "z");
+  assert.equal(comboboxTypedValue("z", "Rafał Zalewski", true), "z");
+  assert.equal(comboboxTypedValue("Rafał Zalewski extra", "Rafał Zalewski", false), "Rafał Zalewski extra");
 });
 
 test("rows normalize prices and drop events that are not publicly listed", () => {
