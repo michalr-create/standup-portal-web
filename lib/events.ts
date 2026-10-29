@@ -839,6 +839,45 @@ export function peopleSelectOptions(
   return selected ? [selected, ...matched] : matched;
 }
 
+const EVERYONE_OPTION = { slug: "", name: "Wszyscy" };
+
+/** Options for the /trasy standuper combobox. "Wszyscy" stays available when it matches the query. */
+export function personComboboxOptions(
+  people: readonly { slug: string; name: string }[],
+  query: string,
+): { slug: string; name: string }[] {
+  const matches = peopleSelectOptions(people, query);
+  if (!query.trim()) return [EVERYONE_OPTION, ...matches];
+  return [...peopleSelectOptions([EVERYONE_OPTION], query), ...matches];
+}
+
+/** Highlight the current person when the query is empty, otherwise the first real match. */
+export function personComboboxActiveIndex(
+  options: readonly { slug: string }[],
+  query: string,
+  selectedSlug: string,
+): number {
+  if (options.length === 0) return -1;
+  if (query.trim()) {
+    const firstPerson = options.findIndex((option) => option.slug !== "");
+    return firstPerson >= 0 ? firstPerson : 0;
+  }
+  const selected = options.findIndex((option) => option.slug === selectedSlug);
+  return selected >= 0 ? selected : 0;
+}
+
+/**
+ * If focus has not yet cleared the committed name, a keystroke can land on the
+ * end of that name. Keep only the characters added past it.
+ */
+export function comboboxTypedValue(raw: string, selectedName: string, replacePending: boolean): string {
+  if (!replacePending || selectedName.length === 0) return raw;
+  if (raw.startsWith(selectedName) && raw.length > selectedName.length) {
+    return raw.slice(selectedName.length);
+  }
+  return raw;
+}
+
 export function facetRedirect(filters: TrasyFilters, facets: EventFacets, page = 1): string | null {
   const next: TrasyFilters = { ...filters };
   let changed = false;

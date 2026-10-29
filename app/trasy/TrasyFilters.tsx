@@ -1,18 +1,16 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   BILETY_OPTIONS,
   hasActiveTrasyFilters,
-  peopleSelectOptions,
   topFacetCities,
   trasyHref,
   type EventFacets,
   type TrasyFilters,
 } from "@/lib/events";
-
-const PERSON_LIST_FILTER_AFTER = 40;
+import PersonCombobox from "./PersonCombobox";
 
 const controlStyle = (active: boolean): CSSProperties => ({
   color: "var(--paper)",
@@ -51,13 +49,6 @@ export default function TrasyFilters({
 }) {
   const router = useRouter();
   const active = hasActiveTrasyFilters(filters);
-  const [personQuery, setPersonQuery] = useState("");
-  const showPersonFilter = facets.people.length > PERSON_LIST_FILTER_AFTER;
-  const people = peopleSelectOptions(
-    facets.people,
-    showPersonFilter ? personQuery : "",
-    filters.osoba,
-  );
   const cityChips = topFacetCities(facets.cities);
 
   const go = (next: Partial<TrasyFilters>) => {
@@ -71,33 +62,11 @@ export default function TrasyFilters({
           <label htmlFor="trasy-osoba" className="mono text-xs uppercase" style={labelStyle}>
             Standuper
           </label>
-          {showPersonFilter && (
-            <input
-              type="search"
-              value={personQuery}
-              onChange={(event) => setPersonQuery(event.target.value)}
-              placeholder="Filtruj listę"
-              aria-label="Filtruj listę"
-              autoComplete="off"
-              spellCheck={false}
-              className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold placeholder:text-[var(--paper-mute)]"
-              style={controlStyle(personQuery.trim().length > 0)}
-            />
-          )}
-          <select
-            id="trasy-osoba"
-            className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold"
-            style={controlStyle(Boolean(filters.osoba))}
-            value={filters.osoba}
-            onChange={(event) => go({ osoba: event.target.value })}
-          >
-            <option value="">Wszyscy</option>
-            {people.map((person) => (
-              <option key={person.slug} value={person.slug}>
-                {person.name}
-              </option>
-            ))}
-          </select>
+          <PersonCombobox
+            people={facets.people}
+            selectedSlug={filters.osoba}
+            onSelect={(osoba) => go({ osoba })}
+          />
         </div>
         <Field label="Miasto">
           <select
@@ -114,26 +83,28 @@ export default function TrasyFilters({
             ))}
           </select>
         </Field>
-        <Field label="Od">
-          <input
-            type="date"
-            className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold"
-            style={controlStyle(Boolean(filters.od))}
-            min={today}
-            value={filters.od}
-            onChange={(event) => go({ od: event.target.value })}
-          />
-        </Field>
-        <Field label="Do">
-          <input
-            type="date"
-            className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold"
-            style={controlStyle(Boolean(filters.doDnia))}
-            min={filters.od || today}
-            value={filters.doDnia}
-            onChange={(event) => go({ doDnia: event.target.value })}
-          />
-        </Field>
+        <div className="grid min-w-0 grid-cols-2 gap-3 sm:col-span-2 lg:col-span-2">
+          <Field label="Od">
+            <input
+              type="date"
+              className="trasy-date min-h-10 w-full min-w-0 max-w-full rounded-[10px] px-2 text-sm font-bold sm:px-3"
+              style={{ ...controlStyle(Boolean(filters.od)), minWidth: 0, maxWidth: "100%" }}
+              min={today}
+              value={filters.od}
+              onChange={(event) => go({ od: event.target.value })}
+            />
+          </Field>
+          <Field label="Do">
+            <input
+              type="date"
+              className="trasy-date min-h-10 w-full min-w-0 max-w-full rounded-[10px] px-2 text-sm font-bold sm:px-3"
+              style={{ ...controlStyle(Boolean(filters.doDnia)), minWidth: 0, maxWidth: "100%" }}
+              min={filters.od || today}
+              value={filters.doDnia}
+              onChange={(event) => go({ doDnia: event.target.value })}
+            />
+          </Field>
+        </div>
       </div>
 
       {cityChips.length > 0 && (
