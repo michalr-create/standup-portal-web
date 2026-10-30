@@ -9,6 +9,7 @@ import {
   listingPageHref,
   parseListingPage,
 } from "@/lib/category-browse";
+import { SPECJALE_CACHE_TAG } from "@/lib/revalidate-content";
 
 export const revalidate = 120;
 
@@ -17,7 +18,7 @@ const PATHNAME = "/specjale";
 const getSpecialsPage = unstable_cache(
   (offset: number) => getItemsByTagSlugPage("special", PUBLIC_LISTING_PAGE_SIZE, offset),
   ["specjale", "special", String(PUBLIC_LISTING_PAGE_SIZE)],
-  { revalidate: 120 },
+  { revalidate: 120, tags: [SPECJALE_CACHE_TAG] },
 );
 
 type Props = {
