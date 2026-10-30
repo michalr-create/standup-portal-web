@@ -15,6 +15,8 @@ import {
   formatPrice,
   RELATIVE_WHEN_MAX_DAYS,
   groupEventsByMonth,
+  activeTrasyFilterCount,
+  hasActiveTrasyFilters,
   parseTrasySearchParams,
   comboboxTypedValue,
   peopleSelectOptions,
@@ -246,6 +248,24 @@ test("a ticket portal query is dropped and does not filter the listing", () => {
     "/trasy?osoba=abelard-giza&miasto=Krak%C3%B3w&od=2026-11-12&do=2026-11-20&bilety=dostepne&page=2",
   );
   assert.equal(trasyHref({ ...parsed.filters, page: parsed.page }).includes("portal="), false);
+});
+
+test("active trasy filter count is the number of set fields", () => {
+  const empty: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" };
+  assert.equal(activeTrasyFilterCount(empty), 0);
+  assert.equal(hasActiveTrasyFilters(empty), false);
+  assert.equal(activeTrasyFilterCount({ ...empty, miasto: "Kraków", bilety: "dostepne" }), 2);
+  assert.equal(
+    activeTrasyFilterCount({
+      osoba: "abelard-giza",
+      miasto: "",
+      od: "2026-11-01",
+      doDnia: "2026-11-30",
+      bilety: "",
+    }),
+    3,
+  );
+  assert.equal(hasActiveTrasyFilters({ ...empty, od: "2026-11-01" }), true);
 });
 
 test("top city chips are the largest cities that actually appear in facets", () => {

@@ -827,3 +827,13 @@ a.pager-btn:hover {
   margin: 0;
   padding: 0;
 }
+/* Chromium paints the date from the browser locale, so lang=pl still shows mm/dd/yyyy. Hide that text; the field draws dd.mm.rrrr on top. */
+.trasy-date-mask,
+.trasy-date-mask::-webkit-datetime-edit,
+.trasy-date-mask::-webkit-datetime-edit-fields-wrapper,
+.trasy-date-mask::-webkit-datetime-edit-text,
+.trasy-date-mask::-webkit-datetime-edit-month-field,
+.trasy-date-mask::-webkit-datetime-edit-day-field,
+.trasy-date-mask::-webkit-datetime-edit-year-field {
+  color: transparent;
+}

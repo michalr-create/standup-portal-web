@@ -305,8 +305,14 @@ export function parseTrasySearchParams(raw: TrasySearch): {
   };
 }
 
+export function activeTrasyFilterCount(filters: TrasyFilters): number {
+  return [filters.osoba, filters.miasto, filters.od, filters.doDnia, filters.bilety].filter(
+    (value) => value !== "",
+  ).length;
+}
+
 export function hasActiveTrasyFilters(filters: TrasyFilters): boolean {
-  return Boolean(filters.osoba || filters.miasto || filters.od || filters.doDnia || filters.bilety);
+  return activeTrasyFilterCount(filters) > 0;
 }
 
 function warsawWallClockAsUtc(instant: Date): number {
