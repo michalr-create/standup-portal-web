@@ -28,6 +28,8 @@ import {
 import { SEARCH_CANDIDATE_LIMIT, SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
 import { supabase } from "@/lib/supabase";
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
+import { PUBLIC_LISTING_PAGE_SIZE } from "@/lib/category-browse";
+import { mergeShowEpisodes, pageShowEpisodes } from "@/lib/show-episodes";
 import { paidExternalUrl } from "@/lib/youtube";
 
 export type Item = {
@@ -806,6 +808,158 @@ export async function getItemsByTagSlugPage(
 export async function getItemsByTagSlug(tagSlug: string, limit = 10, offset = 0): Promise<Item[]> {
   const { items } = await getItemsByTagSlugPage(tagSlug, limit, offset);
   return items;
+}
+
+// =================================================================
+// QUERY: strona kategorii (published_at desc) z dokładnym count
+// =================================================================
+export async function getItemsByCategorySlugPage(
+  slug: string,
+  limit = PUBLIC_LISTING_PAGE_SIZE,
+  offset = 0,
+): Promise<PagedItems> {
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : PUBLIC_LISTING_PAGE_SIZE;
+  const safeOffset = Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0;
+
+  const { data: cat, error: catError } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (catError || !cat) return { items: [], total: 0 };
+
+  const { data, error, count } = await supabase
+    .from("content_items")
+    .select(ITEM_COLUMNS, { count: "exact" })
+    .eq("status", "approved")
+    .eq("category_id", cat.id)
+    .is("merged_into_id", null)
+    .order("published_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(safeOffset, safeOffset + safeLimit - 1);
+
+  // Zakres poza końcem zbioru (416) nie zwraca count — dolicz osobno, żeby pager mógł wrócić na ostatnią stronę.
+  if (error?.code === "PGRST103") {
+    const { count: total, error: countError } = await supabase
+      .from("content_items")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "approved")
+      .eq("category_id", cat.id)
+      .is("merged_into_id", null);
+    if (countError) {
+      console.error("Blad pobierania kategorii:", countError);
+      return { items: [], total: 0 };
+    }
+    return { items: [], total: total ?? 0 };
+  }
+
+  if (error || !data) {
+    console.error("Blad pobierania kategorii:", error);
+    return { items: [], total: 0 };
+  }
+
+  return {
+    items: await hydrateItems(data as ContentItemRow[]),
+    total: count ?? 0,
+  };
+}
+
+// =================================================================
+// QUERY: strona odcinków formatu (DESC), total po zmergowaniu show_id i źródeł
+// =================================================================
+const EPISODE_STAMP_PAGE = 1000;
+const EPISODE_STAMP_CAP = 100;
+
+type EpisodeStampRow = { id: number; published_at: string | null };
+
+function episodeStampQuery(shortsCatId: number | null) {
+  let query = supabase
+    .from("content_items")
+    .select("id, published_at")
+    .eq("status", "approved")
+    .neq("content_type", "short")
+    .is("merged_into_id", null)
+    .order("id", { ascending: true });
+  if (shortsCatId != null) query = query.neq("category_id", shortsCatId);
+  return query;
+}
+
+async function scanEpisodeStamps(
+  load: (from: number, to: number) => PromiseLike<{
+    data: unknown;
+    error: { message?: string } | null;
+  }>,
+): Promise<EpisodeStampRow[] | null> {
+  const rows: EpisodeStampRow[] = [];
+  for (let page = 0; page < EPISODE_STAMP_CAP; page += 1) {
+    const from = page * EPISODE_STAMP_PAGE;
+    const { data, error } = await load(from, from + EPISODE_STAMP_PAGE - 1);
+    if (error) {
+      console.error("Blad pobierania odcinkow:", error);
+      return null;
+    }
+    const batch = (data ?? []) as EpisodeStampRow[];
+    rows.push(...batch);
+    if (batch.length < EPISODE_STAMP_PAGE) return rows;
+  }
+  console.error("Blad pobierania odcinkow: przekroczono limit skanu");
+  return null;
+}
+
+export async function getShowEpisodesPage(
+  slug: string,
+  limit = PUBLIC_LISTING_PAGE_SIZE,
+  offset = 0,
+): Promise<PagedItems> {
+  const { data: show, error: showError } = await supabase
+    .from("shows")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (showError || !show) return { items: [], total: 0 };
+
+  const [sourcesRes, shortsCatRes] = await Promise.all([
+    supabase.from("sources").select("id").eq("show_id", show.id),
+    supabase.from("categories").select("id").eq("slug", "shorts").maybeSingle(),
+  ]);
+  if (sourcesRes.error) {
+    console.error("Blad pobierania odcinkow:", sourcesRes.error);
+    return { items: [], total: 0 };
+  }
+
+  const sourceIds = (sourcesRes.data || []).map((source: { id: number }) => source.id);
+  const shortsCatId = shortsCatRes.data?.id ?? null;
+
+  const [byShow, bySource] = await Promise.all([
+    scanEpisodeStamps((from, to) => episodeStampQuery(shortsCatId).eq("show_id", show.id).range(from, to)),
+    sourceIds.length === 0
+      ? Promise.resolve([])
+      : scanEpisodeStamps((from, to) => episodeStampQuery(shortsCatId).in("source_id", sourceIds).range(from, to)),
+  ]);
+  if (!byShow || !bySource) return { items: [], total: 0 };
+
+  const merged = mergeShowEpisodes(byShow, bySource);
+  const window = pageShowEpisodes(merged, offset, limit);
+  if (window.episodes.length === 0) return { items: [], total: window.total };
+
+  const ids = window.episodes.map((episode) => episode.id);
+  const { data, error } = await supabase.from("content_items").select(ITEM_COLUMNS).in("id", ids);
+  if (error || !data) {
+    console.error("Blad pobierania odcinkow:", error);
+    return { items: [], total: window.total };
+  }
+
+  const byId = new Map((data as ContentItemRow[]).map((row) => [row.id, row]));
+  const ordered = ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [row] : [];
+  });
+
+  return {
+    items: await hydrateItems(ordered),
+    total: window.total,
+  };
 }
 
 // =================================================================

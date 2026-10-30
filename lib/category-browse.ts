@@ -23,6 +23,56 @@ export type ParsedCategoryBrowse = {
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_QUERY = 120;
 
+/** One page size for public listings: standup, categories, format, specjale, trasy. */
+export const PUBLIC_LISTING_PAGE_SIZE = 24;
+
+function normalizePageSize(pageSize: number): number {
+  if (!Number.isFinite(pageSize) || pageSize < 1) return PUBLIC_LISTING_PAGE_SIZE;
+  return Math.floor(pageSize);
+}
+
+/** Empty catalogs still have a single page, so a high ?page= can clamp back to it. */
+export function listingTotalPages(total: number, pageSize = PUBLIC_LISTING_PAGE_SIZE): number {
+  const size = normalizePageSize(pageSize);
+  if (!Number.isFinite(total) || total <= 0) return 1;
+  return Math.ceil(total / size);
+}
+
+/**
+ * Page to render or redirect to. A request past the end lands on the last
+ * page (page 1 when nothing matches), matching /standup and /trasy.
+ */
+export function clampListingPage(
+  page: number,
+  total: number,
+  pageSize = PUBLIC_LISTING_PAGE_SIZE,
+): { page: number; totalPages: number } {
+  const totalPages = listingTotalPages(total, pageSize);
+  const requested = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  return {
+    page: requested > totalPages ? totalPages : requested,
+    totalPages,
+  };
+}
+
+export function listingPageHref(pathname: string, page: number): string {
+  if (!Number.isFinite(page) || page <= 1) return pathname;
+  return `${pathname}?page=${Math.floor(page)}`;
+}
+
+/** Canonical ?page= for listings that have no other query filters. */
+export function parseListingPage(
+  raw: string | string[] | undefined,
+  pathname: string,
+): { page: number; redirectHref: string | null } {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const page = parseBrowsePage(raw);
+  if (page == null || (value != null && value !== "" && page === 1)) {
+    return { page: 1, redirectHref: pathname };
+  }
+  return { page, redirectHref: null };
+}
+
 function first(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
   return value;

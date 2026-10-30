@@ -1,7 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { getCategoryBrowse, getCategoryBySlug } from "@/lib/data";
 import {
+  PUBLIC_LISTING_PAGE_SIZE,
   categoryBrowseHref,
+  clampListingPage,
   parseCategoryBrowseSearchParams,
 } from "@/lib/category-browse";
 import FilterableItemsBrowser from "@/app/components/FilterableItemsBrowser";
@@ -9,7 +11,6 @@ import Pager from "@/app/components/Pager";
 
 export const revalidate = 120;
 
-const PAGE_SIZE = 100;
 const PATHNAME = "/standup";
 
 type Props = {
@@ -29,8 +30,8 @@ export default async function StandupPage({ searchParams }: Props) {
   const [category, browse] = await Promise.all([
     getCategoryBySlug("standup"),
     getCategoryBrowse("standup", {
-      limit: PAGE_SIZE,
-      offset: (parsed.page - 1) * PAGE_SIZE,
+      limit: PUBLIC_LISTING_PAGE_SIZE,
+      offset: (parsed.page - 1) * PUBLIC_LISTING_PAGE_SIZE,
       personSlug: parsed.osoba,
       tagSlug: parsed.tag,
       search: parsed.q,
@@ -43,13 +44,13 @@ export default async function StandupPage({ searchParams }: Props) {
     redirect(categoryBrowseHref(PATHNAME, { tag: parsed.tag, q: parsed.q, page: parsed.page }));
   }
 
-  const totalPages = browse.total === 0 ? 1 : Math.ceil(browse.total / PAGE_SIZE);
-  if (parsed.page > totalPages) {
+  const clamped = clampListingPage(parsed.page, browse.total, PUBLIC_LISTING_PAGE_SIZE);
+  if (clamped.page !== parsed.page) {
     redirect(categoryBrowseHref(PATHNAME, {
       osoba: parsed.osoba,
       tag: parsed.tag,
       q: parsed.q,
-      page: totalPages,
+      page: clamped.page,
     }));
   }
 
@@ -85,7 +86,7 @@ export default async function StandupPage({ searchParams }: Props) {
             tags: browse.tags,
           }}
         />
-        <Pager page={parsed.page} total={browse.total} pageSize={PAGE_SIZE} hrefForPage={hrefForPage} />
+        <Pager page={parsed.page} total={browse.total} pageSize={PUBLIC_LISTING_PAGE_SIZE} hrefForPage={hrefForPage} />
       </div>
     </div>
   );
