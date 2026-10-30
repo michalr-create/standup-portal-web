@@ -114,7 +114,7 @@ export default async function TrasyPage({ searchParams }: Props) {
   return (
     <div className="band">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-8">
+        <header className="mb-4 lg:mb-8">
           <div className="mb-2 flex flex-wrap items-baseline gap-4">
             <h1
               className="m-0 font-black leading-none"
@@ -135,49 +135,49 @@ export default async function TrasyPage({ searchParams }: Props) {
           </p>
         </header>
 
-        {listing.ok && (
-          <TrasyFilters filters={parsed.filters} facets={listing.facets} today={warsawToday(now)} />
-        )}
-
         {!listing.ok ? (
           <Notice eyebrow="trasy" title="Coś poszło nie tak">
             Nie udało się wczytać terminów. Odśwież stronę za chwilę.
           </Notice>
-        ) : listing.total === 0 ? (
-          <Notice eyebrow="kalendarz" title="Brak terminów">
-            {filteredView ? (
-              <>
-                <p className="m-0">Żaden nadchodzący występ nie pasuje do tych filtrów.</p>
-                <Link
-                  href="/trasy"
-                  className="mt-6 inline-flex min-h-11 items-center font-black"
-                  style={{ color: "var(--coral)" }}
-                >
-                  Wyczyść filtry
-                </Link>
-              </>
-            ) : (
-              <p className="m-0">
-                Nie ma jeszcze ogłoszonych dat. Gdy pojawią się trasy, zobaczysz tu miasto, scenę i link do biletów.
-              </p>
-            )}
-          </Notice>
         ) : (
-          <div className="flex flex-col gap-10">
-            {groups.map((group) => (
-              <section key={group.key}>
-                <SectionHead title={group.label} sub={`${group.events.length} ${terminLabel(group.events.length)}`} />
-                <div className="flex flex-col gap-3">
-                  {group.events.map((event) => (
-                    <EventCard key={event.id} event={event} now={now} />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
-        {listing.ok && listing.total > 0 && (
-          <Pager page={parsed.page} total={listing.total} pageSize={PUBLIC_LISTING_PAGE_SIZE} hrefForPage={hrefForPage} />
+          <TrasyFilters filters={parsed.filters} facets={listing.facets} today={warsawToday(now)}>
+            {listing.total === 0 ? (
+              <Notice eyebrow="kalendarz" title="Brak terminów">
+                {filteredView ? (
+                  <>
+                    <p className="m-0">Żaden nadchodzący występ nie pasuje do tych filtrów.</p>
+                    <Link
+                      href="/trasy"
+                      className="mt-6 inline-flex min-h-11 items-center font-black"
+                      style={{ color: "var(--coral)" }}
+                    >
+                      Wyczyść filtry
+                    </Link>
+                  </>
+                ) : (
+                  <p className="m-0">
+                    Nie ma jeszcze ogłoszonych dat. Gdy pojawią się trasy, zobaczysz tu miasto, scenę i link do biletów.
+                  </p>
+                )}
+              </Notice>
+            ) : (
+              <div className="flex flex-col gap-10">
+                {groups.map((group) => (
+                  <section key={group.key}>
+                    <SectionHead title={group.label} sub={`${group.events.length} ${terminLabel(group.events.length)}`} />
+                    <div className="flex flex-col gap-3">
+                      {group.events.map((event) => (
+                        <EventCard key={event.id} event={event} now={now} />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+            {listing.total > 0 && (
+              <Pager page={parsed.page} total={listing.total} pageSize={PUBLIC_LISTING_PAGE_SIZE} hrefForPage={hrefForPage} />
+            )}
+          </TrasyFilters>
         )}
       </div>
     </div>
