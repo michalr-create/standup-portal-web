@@ -13,6 +13,7 @@ export default function KulisyPage({ searchParams }: Props) {
       pathname="/kulisy"
       title="Kulisy"
       countWord={{ one: "materia\u0142", many: "materia\u0142\u00f3w" }}
+      showCategoryBadge={false}
       searchParams={searchParams}
     />
   );

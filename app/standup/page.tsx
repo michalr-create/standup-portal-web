@@ -85,6 +85,7 @@ export default async function StandupPage({ searchParams }: Props) {
             people: browse.people,
             tags: browse.tags,
           }}
+          showCategoryBadge={false}
         />
         <Pager page={parsed.page} total={browse.total} pageSize={PUBLIC_LISTING_PAGE_SIZE} hrefForPage={hrefForPage} />
       </div>

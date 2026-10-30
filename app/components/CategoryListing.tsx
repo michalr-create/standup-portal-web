@@ -22,6 +22,7 @@ export default async function CategoryListing({
   title,
   countWord,
   variant,
+  showCategoryBadge,
   searchParams,
 }: {
   slug: string;
@@ -29,6 +30,7 @@ export default async function CategoryListing({
   title: string;
   countWord: CountWord;
   variant?: ItemsBrowserVariant;
+  showCategoryBadge?: boolean;
   searchParams: Promise<{ page?: string | string[] }>;
 }) {
   const params = await searchParams;
@@ -67,6 +69,7 @@ export default async function CategoryListing({
           countWord={countWord}
           catalogTotal={pageResult.total}
           variant={variant}
+          showCategoryBadge={showCategoryBadge}
         />
         <Pager
           page={parsed.page}

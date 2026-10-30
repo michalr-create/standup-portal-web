@@ -24,10 +24,13 @@ export default function ItemsBrowser({
   items,
   variant,
   highlight,
+  showCategoryBadge = true,
 }: {
   items: Item[];
   variant?: ItemsBrowserVariant;
   highlight?: string;
+  /** Mixed grids keep the chip. Single-category listings pass false. */
+  showCategoryBadge?: boolean;
 }) {
   const layout = resolveItemsBrowserVariant(items, variant);
   const { watched, markWatched } = useWatchHistory();
@@ -84,18 +87,20 @@ export default function ItemsBrowser({
                     />
                   )}
                   <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
-                  <div
-                    className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-bold"
-                    style={{
-                      background: "rgba(11,11,11,.75)",
-                      backdropFilter: "blur(6px)",
-                      color: "var(--paper)",
-                      fontSize: "11px",
-                    }}
-                  >
-                    <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--coral)" }} />
-                    {item.categoryName || "YouTube"}
-                  </div>
+                  {showCategoryBadge && (
+                    <div
+                      className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-bold"
+                      style={{
+                        background: "rgba(11,11,11,.75)",
+                        backdropFilter: "blur(6px)",
+                        color: "var(--paper)",
+                        fontSize: "11px",
+                      }}
+                    >
+                      <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--coral)" }} />
+                      {item.categoryName || "YouTube"}
+                    </div>
+                  )}
                   {item.is_paid && <PaidBadge url={item.url} />}
                   {isWatched && (
                     <div

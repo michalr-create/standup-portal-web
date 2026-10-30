@@ -294,6 +294,7 @@ export default function FilterableItemsBrowser({
   tagChipOrder = "alphabetical",
   serverFilters,
   variant,
+  showCategoryBadge = true,
 }: {
   items: Item[];
   countWord?: CountWord;
@@ -303,6 +304,8 @@ export default function FilterableItemsBrowser({
   serverFilters?: ServerItemFilters;
   /** Portrait thumbs and a 2-column phone grid. Used by /shorts. */
   variant?: ItemsBrowserVariant;
+  /** Mixed grids keep the chip. Single-category listings pass false. */
+  showCategoryBadge?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -581,7 +584,7 @@ export default function FilterableItemsBrowser({
       </div>
 
       <div aria-busy={pendingTagSlug ? true : undefined}>
-        <ItemsBrowser items={filtered} variant={variant} />
+        <ItemsBrowser items={filtered} variant={variant} showCategoryBadge={showCategoryBadge} />
       </div>
     </div>
   );

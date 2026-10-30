@@ -173,7 +173,7 @@ export default async function StanduperPage({ params }: Props) {
                   {sectionItems.length} {materialLabel(sectionItems.length)}
                 </span>
               </div>
-              <ItemsBrowser items={sectionItems} />
+              <ItemsBrowser items={sectionItems} showCategoryBadge={false} />
             </section>
           );
         })}
@@ -194,7 +194,7 @@ export default async function StanduperPage({ params }: Props) {
               </div>
             )}
             {(grouped.get("formaty") ?? []).length > 0 && (
-              <ItemsBrowser items={grouped.get("formaty")!} />
+              <ItemsBrowser items={grouped.get("formaty")!} showCategoryBadge={false} />
             )}
           </section>
         )}
@@ -213,7 +213,7 @@ export default async function StanduperPage({ params }: Props) {
                   {sectionItems.length} {materialLabel(sectionItems.length)}
                 </span>
               </div>
-              <ItemsBrowser items={sectionItems} />
+              <ItemsBrowser items={sectionItems} showCategoryBadge={false} />
             </section>
           );
         })}
