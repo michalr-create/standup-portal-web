@@ -13,6 +13,7 @@ export default function WywiadyPage({ searchParams }: Props) {
       pathname="/wywiady"
       title="Wywiady"
       countWord={{ one: "rozmowa", many: "rozm\u00f3w" }}
+      showCategoryBadge={false}
       searchParams={searchParams}
     />
   );

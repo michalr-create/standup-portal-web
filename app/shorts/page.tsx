@@ -14,6 +14,7 @@ export default function ShortsPage({ searchParams }: Props) {
       title="Shorts"
       countWord={{ one: "kr\u00f3tki klip", many: "kr\u00f3tkich klip\u00f3w" }}
       variant="shorts"
+      showCategoryBadge={false}
       searchParams={searchParams}
     />
   );

@@ -13,6 +13,7 @@ export default function RoastPage({ searchParams }: Props) {
       pathname="/roast"
       title="Roast"
       countWord={{ one: "roast", many: "roast\u00f3w" }}
+      showCategoryBadge={false}
       searchParams={searchParams}
     />
   );

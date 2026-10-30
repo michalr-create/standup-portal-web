@@ -43,7 +43,7 @@ test("standuper profile lists nearest dates above the film sections", () => {
   const filmsAt = page.indexOf('label: "Specjale"');
   assert.ok(tourAt > 0 && filmsAt > tourAt);
   assert.match(page, /profileCountLabel\(videoCount, formatCount\)/);
-  assert.match(page, /<ItemsBrowser items=\{sectionItems\} \/>/);
+  assert.match(page, /<ItemsBrowser items=\{sectionItems\} showCategoryBadge=\{false\} \/>/);
   assert.doesNotMatch(page, /getTrasyListing/);
 
   assert.match(section, /if \(events\.length === 0\) return null/);
