@@ -94,6 +94,13 @@ export default async function HomePage() {
             >
               Trasy i bilety
             </Link>
+            <Link
+              href="/open-mic"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black transition-colors hover:bg-[var(--ink-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+              style={{ color: "var(--paper)", border: "1px solid var(--line-2)" }}
+            >
+              Open mic
+            </Link>
           </div>
         </div>
       </header>

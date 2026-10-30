@@ -41,8 +41,10 @@ export default async function RootLayout({
   const drawerShows = footerShows(showActivity, DRAWER_FORMAT_LIMIT);
   const footerFormatShows = footerShows(showActivity, FOOTER_FORMAT_LIMIT);
 
-  // Desktop nav stays at nine links: from lg they already fill the bar (UX-11).
-  // Trasy stays off that bar. The drawer, home hero, and footer link to /trasy.
+  // Desktop nav includes Open mic. The row scrolls inside the bar so it is not
+  // clipped (the nav itself is overflow-x-clip). Trasy stays off that bar
+  // (UX-11): the drawer inserts it before Ulubione, and the hero and footer
+  // link to /trasy as well. The drawer therefore lists both Trasy and Open mic.
   const navLinks = [
     { href: "/", label: "Start" },
     { href: "/standup", label: "Standup" },
@@ -52,6 +54,7 @@ export default async function RootLayout({
     { href: "/kulisy", label: "Kulisy" },
     { href: "/roast", label: "Roast" },
     { href: "/standuperzy", label: "Standuperzy" },
+    { href: "/open-mic", label: "Open mic" },
     { href: "/ulubione", label: "Ulubione" },
   ];
 
@@ -81,9 +84,9 @@ export default async function RootLayout({
                 parska<span className="dot-accent">.</span>
               </Link>
 
-              <ul className="hidden lg:flex gap-1 list-none p-0 m-0 shrink-0">
+              <ul className="scrollbar-hide hidden min-w-0 flex-1 list-none gap-0.5 overflow-x-auto p-0 m-0 lg:flex xl:gap-1">
                 {navLinks.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.href} className="shrink-0">
                     <Link
                       href={link.href}
                       className="px-2 py-2 xl:px-3 rounded-full font-semibold text-sm whitespace-nowrap transition-all hover:bg-[var(--ink-3)] flex items-center gap-1.5"
@@ -99,8 +102,6 @@ export default async function RootLayout({
                   </li>
                 ))}
               </ul>
-
-              <div className="flex-1" />
 
               <NavSearch />
               <InstallButton />
