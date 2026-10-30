@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { containTab } from "@/lib/focus-trap";
 
 type NavLink = { href: string; label: string };
 
@@ -25,18 +26,6 @@ function withTourLink(navLinks: NavLink[], tourLink: NavLink): NavLink[] {
 }
 
 const MAX_VISIBLE_SHOWS = 8;
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function focusableIn(root: HTMLElement) {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => {
-    if (el.hasAttribute("disabled") || el.getAttribute("aria-hidden") === "true") return false;
-    if (el.closest("[hidden]")) return false;
-    const style = window.getComputedStyle(el);
-    return style.display !== "none" && style.visibility !== "hidden";
-  });
-}
 
 function HeartIcon() {
   return (
@@ -101,33 +90,7 @@ export default function MobileDrawer({ navLinks, tourLink, shows }: Props) {
         close();
         return;
       }
-      if (event.key !== "Tab") return;
-
-      const items = focusableIn(panel);
-      if (items.length === 0) {
-        event.preventDefault();
-        panel.focus({ preventScroll: true });
-        return;
-      }
-
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement;
-
-      const inside = active instanceof Node && panel.contains(active) && active !== panel;
-
-      if (event.shiftKey) {
-        if (active === first || !inside) {
-          event.preventDefault();
-          last.focus();
-        }
-        return;
-      }
-
-      if (active === last || !inside) {
-        event.preventDefault();
-        first.focus();
-      }
+      containTab(event, panel);
     };
 
     document.addEventListener("keydown", onKeyDown, true);
