@@ -17,7 +17,7 @@ export const revalidate = 120;
 
 function SectionHead({ title, sub, linkHref, linkText }: { title: string; sub?: string; linkHref?: string; linkText?: string }) {
   return (
-    <div className="flex items-end justify-between mb-8 gap-6 flex-wrap">
+    <div className="flex items-end justify-between mb-5 md:mb-8 gap-6 flex-wrap">
       <div className="flex items-baseline gap-4 flex-wrap">
         <h2 className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}>
           {title}<span className="dot-accent">.</span>
@@ -154,7 +154,7 @@ export default async function HomePage() {
               linkHref="/formaty"
               linkText={"Wszystkie formaty \u2192"}
             />
-            <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide md:hidden">
+            <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-hide md:hidden">
               {activeShows.map(({ show, totalCount, latestDate, items }) => (
                 <div key={show.id} className="w-72 sm:w-80 shrink-0 snap-start">
                   <FormatCard

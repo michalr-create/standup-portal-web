@@ -170,11 +170,13 @@ export default function ScrollRow({ items }: { items: Item[] }) {
           </button>
         )}
 
-        {/* pb-6 holds the compact byline heart's 44px hit slop inside this
-            overflow-x scroller (overflow-y computes to auto and would clip it). */}
+        {/* 22px holds the compact byline heart's 44px hit slop inside this
+            overflow-x scroller (overflow-y computes to auto and would clip it).
+            The ::before hangs 1.25rem below the glyph, which sits a fraction
+            below the meta row, so pb-4 would crop the target. lg keeps pb-6. */}
         <div
           ref={scrollRef}
-          className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide"
+          className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-[22px] lg:pb-6 scrollbar-hide"
         >
           {items.map((item) => (
             <ScrollCard
