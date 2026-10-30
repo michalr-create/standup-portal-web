@@ -9,8 +9,20 @@ type NavLink = { href: string; label: string };
 
 type Props = {
   navLinks: NavLink[];
+  tourLink: NavLink;
   shows: { id: number; name: string; slug: string }[];
 };
+
+function withTourLink(navLinks: NavLink[], tourLink: NavLink): NavLink[] {
+  if (navLinks.some((link) => link.href === tourLink.href)) return navLinks;
+  const favoritesIndex = navLinks.findIndex((link) => link.href === "/ulubione");
+  if (favoritesIndex === -1) return [...navLinks, tourLink];
+  return [
+    ...navLinks.slice(0, favoritesIndex),
+    tourLink,
+    ...navLinks.slice(favoritesIndex),
+  ];
+}
 
 const MAX_VISIBLE_SHOWS = 8;
 
@@ -45,7 +57,7 @@ function HeartIcon() {
   );
 }
 
-export default function MobileDrawer({ navLinks, shows }: Props) {
+export default function MobileDrawer({ navLinks, tourLink, shows }: Props) {
   const [open, setOpen] = useState(false);
   const [showsOpen, setShowsOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
@@ -54,6 +66,7 @@ export default function MobileDrawer({ navLinks, shows }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const showsPanelId = useId();
+  const links = withTourLink(navLinks, tourLink);
   const visibleShows = shows.slice(0, MAX_VISIBLE_SHOWS);
 
   const close = useCallback(() => {
@@ -208,7 +221,7 @@ export default function MobileDrawer({ navLinks, shows }: Props) {
 
             <nav aria-label="G\u0142\u00f3wne">
               <ul className="list-none p-0 m-0">
-                {navLinks.map((link) => (
+                {links.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}

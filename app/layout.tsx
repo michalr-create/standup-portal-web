@@ -42,7 +42,7 @@ export default async function RootLayout({
   const footerFormatShows = footerShows(showActivity, FOOTER_FORMAT_LIMIT);
 
   // Desktop nav stays at nine links: from lg they already fill the bar (UX-11).
-  // Trasy is linked from the home hero and the footer instead.
+  // Trasy stays off that bar. The drawer, home hero, and footer link to /trasy.
   const navLinks = [
     { href: "/", label: "Start" },
     { href: "/standup", label: "Standup" },
@@ -106,6 +106,7 @@ export default async function RootLayout({
               <InstallButton />
               <MobileDrawer
                 navLinks={navLinks}
+                tourLink={{ href: "/trasy", label: "Trasy" }}
                 shows={drawerShows.map(({ id, name, slug }) => ({ id, name, slug }))}
               />
             </div>
