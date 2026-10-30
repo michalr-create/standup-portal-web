@@ -61,7 +61,6 @@ export default async function HomePage() {
     getLatestPerShow(3),
   ]);
   const activeShows = selectHomeFormats(showSections);
-  const noweHref = recentItems.length > 0 ? "#nowe" : "/standup";
 
   return (
     <>
@@ -89,13 +88,6 @@ export default async function HomePage() {
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-3 md:mt-7">
             <Link
-              href={noweHref}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2.5 text-sm font-black text-[var(--ink)] transition-colors hover:bg-[var(--coral-hi)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--paper)]"
-            >
-              Zobacz nowe
-              <span aria-hidden="true">{"\u2192"}</span>
-            </Link>
-            <Link
               href="/trasy"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black transition-colors hover:bg-[var(--ink-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
               style={{ color: "var(--paper)", border: "1px solid var(--line-2)" }}
@@ -108,7 +100,7 @@ export default async function HomePage() {
 
       {/* NOWE */}
       {recentItems.length > 0 && (
-        <section id="nowe" className="band scroll-mt-16">
+        <section className="band">
           <div className="max-w-6xl mx-auto">
             <SectionHead title="Nowe" sub={"Ostatnie 7 dni \u00b7 " + recentItems.length + " " + pozycjaLabel(recentItems.length)} linkHref="/standup" linkText={"Zobacz wszystkie \u2192"} />
             <div className="md:hidden">
