@@ -36,6 +36,13 @@ import {
   type YtSnapshot,
 } from "@/lib/sleep-timer";
 import { bindVideoHistory } from "@/lib/video-history";
+import {
+  containTab,
+  escapeLayer,
+  focusVisibleClose,
+  focusWithRing,
+  isFocusableVisible,
+} from "@/lib/focus-trap";
 
 type Props = {
   item: Item;
@@ -345,9 +352,13 @@ function PlayerTools({
   );
 }
 
+const CLOSE_PIN_MS = 1500;
+const IFRAME_FOCUS_DELAY_MS = 20;
+
 export default function VideoModal({ item, videoId, onClose }: Props) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const phoneEmbedRef = useRef(false);
@@ -439,13 +450,96 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   }, [videoId]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (menuOpen) {
+    const root = dialogRef.current;
+    if (!root) return;
+
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement && !root.contains(document.activeElement)
+        ? document.activeElement
+        : null;
+
+    focusVisibleClose(root);
+    const pinCloseUntil = Date.now() + CLOSE_PIN_MS;
+    let cancelled = false;
+
+    const iframeHasFocus = () => {
+      const frame = iframeRef.current;
+      return !!frame && document.activeElement === frame;
+    };
+
+    // Cross-origin player content never delivers keys to the parent.
+    // Capture on document handles Escape while the iframe element itself is
+    // focused; once focus moves inside the frame, return it to the dialog.
+    const reclaimFromPlayer = () => {
+      window.setTimeout(() => {
+        if (cancelled || !iframeHasFocus()) return;
+        if (Date.now() < pinCloseUntil) {
+          focusVisibleClose(root);
+          return;
+        }
+        root.focus({ preventScroll: true });
+      }, IFRAME_FOCUS_DELAY_MS);
+    };
+
+    const onFocusIn = (event: FocusEvent) => {
+      if (event.target === iframeRef.current) reclaimFromPlayer();
+    };
+
+    window.addEventListener("blur", reclaimFromPlayer);
+    document.addEventListener("focusin", onFocusIn, true);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("blur", reclaimFromPlayer);
+      document.removeEventListener("focusin", onFocusIn, true);
+      // history.back() on UI close traverses in a later task and Chrome
+      // moves focus to the body after this cleanup. Put the trigger back
+      // once that settles. Skip while a player is still mounted (strict remount
+      // or a second open).
+      const restoreTrigger = () => {
+        if (document.querySelector(".video-modal")) return;
+        if (!previouslyFocused?.isConnected) return;
+        focusWithRing(previouslyFocused);
+      };
+      restoreTrigger();
+      queueMicrotask(restoreTrigger);
+      const onPop = () => restoreTrigger();
+      window.addEventListener("popstate", onPop);
+      const timers = [0, 50, 200, 500].map((ms) => window.setTimeout(restoreTrigger, ms));
+      window.setTimeout(() => {
+        window.removeEventListener("popstate", onPop);
+        timers.forEach((id) => window.clearTimeout(id));
+      }, 700);
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = dialogRef.current;
+    if (!root) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        containTab(event, root, { redirectUnmanaged: true });
+        return;
+      }
+      if (event.key !== "Escape") return;
+
+      const hintOpen = Array.from(root.querySelectorAll<HTMLElement>('.video-modal-why[aria-expanded="true"]')).some(
+        isFocusableVisible,
+      );
+      const moreOpen = Array.from(root.querySelectorAll<HTMLElement>('.video-modal-more-btn[aria-expanded="true"]')).some(
+        isFocusableVisible,
+      );
+      const layer = escapeLayer({ hintOpen, moreOpen, timerOpen: menuOpen, cover });
+      // Hint and Więcej close themselves in their own capture listeners.
+      if (layer === "hint" || layer === "more") return;
+
+      event.preventDefault();
+      if (layer === "timer") {
         setMenuOpen(false);
         return;
       }
-      if (cover) {
+      if (layer === "cover") {
         setCover(false);
         const doc = document as FullscreenDocument;
         if (currentFullscreenElement()) {
@@ -453,11 +547,21 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
         }
         return;
       }
-      onClose();
+      onCloseRef.current();
     };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose, cover, menuOpen]);
+
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [cover, menuOpen]);
+
+  useEffect(() => {
+    const root = dialogRef.current;
+    if (!root) return;
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !root.contains(active) || active === root) return;
+    if (isFocusableVisible(active)) return;
+    if (!focusVisibleClose(root)) root.focus({ preventScroll: true });
+  }, [cover]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -781,7 +885,14 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   };
 
   return createPortal(
-    <div className={cover ? "video-modal is-cover" : "video-modal"} role="dialog" aria-modal="true" aria-label={item.title}>
+    <div
+      ref={dialogRef}
+      className={cover ? "video-modal is-cover outline-none" : "video-modal outline-none"}
+      role="dialog"
+      aria-modal="true"
+      aria-label={item.title}
+      tabIndex={-1}
+    >
       <div className="video-modal-backdrop" onClick={onClose} />
       <div className="video-modal-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="video-modal-player" ref={playerRef} aria-busy={!frameReady}>
@@ -799,6 +910,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
           <iframe
             ref={iframeRef}
             id={YT_FRAME_ID}
+            tabIndex={-1}
             className="video-modal-iframe"
             src={iframeSrc}
             title={item.title}
