@@ -1,8 +1,15 @@
 import Link from "next/link";
-import { getShowBySlug, getItemsByShowSlug } from "@/lib/data";
+import { notFound, redirect } from "next/navigation";
+import { getShowBySlug, getShowEpisodesPage } from "@/lib/data";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
 import HeartButton from "@/app/components/HeartButton";
-import { notFound } from "next/navigation";
+import Pager from "@/app/components/Pager";
+import {
+  PUBLIC_LISTING_PAGE_SIZE,
+  clampListingPage,
+  listingPageHref,
+  parseListingPage,
+} from "@/lib/category-browse";
 
 export const revalidate = 120;
 
@@ -14,16 +21,24 @@ function odcinekLabel(n: number): string {
 
 type Props = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string | string[] }>;
 };
 
-export default async function FormatPage({ params }: Props) {
+export default async function FormatPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const [show, items] = await Promise.all([
+  const pathname = "/format/" + slug;
+  const parsed = parseListingPage((await searchParams).page, pathname);
+  if (parsed.redirectHref) redirect(parsed.redirectHref);
+
+  const [show, episodes] = await Promise.all([
     getShowBySlug(slug),
-    getItemsByShowSlug(slug, 999),
+    getShowEpisodesPage(slug, PUBLIC_LISTING_PAGE_SIZE, (parsed.page - 1) * PUBLIC_LISTING_PAGE_SIZE),
   ]);
 
   if (!show) notFound();
+
+  const clamped = clampListingPage(parsed.page, episodes.total, PUBLIC_LISTING_PAGE_SIZE);
+  if (clamped.page !== parsed.page) redirect(listingPageHref(pathname, clamped.page));
 
   return (
     <div className="band">
@@ -35,7 +50,7 @@ export default async function FormatPage({ params }: Props) {
             </h1>
             <HeartButton type="show" slug={slug} />
             <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-              {items.length} {odcinekLabel(items.length)}
+              {episodes.total} {odcinekLabel(episodes.total)}
             </span>
           </div>
           {show.description && (
@@ -66,7 +81,13 @@ export default async function FormatPage({ params }: Props) {
             )}
           </div>
         </header>
-        <ItemsBrowser items={items} />
+        <ItemsBrowser items={episodes.items} />
+        <Pager
+          page={parsed.page}
+          total={episodes.total}
+          pageSize={PUBLIC_LISTING_PAGE_SIZE}
+          hrefForPage={(page) => listingPageHref(pathname, page)}
+        />
       </div>
     </div>
   );

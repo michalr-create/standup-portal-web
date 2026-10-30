@@ -6,6 +6,7 @@ import EventCard from "./EventCard";
 import TrasyFilters from "./TrasyFilters";
 import Pager from "@/app/components/Pager";
 import { getTrasyListing } from "@/lib/data";
+import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "@/lib/category-browse";
 import {
   facetRedirect,
   groupEventsByMonth,
@@ -23,8 +24,6 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 120;
-
-const PAGE_SIZE = 24;
 
 type Props = {
   searchParams: Promise<TrasySearch>;
@@ -93,12 +92,12 @@ export default async function TrasyPage({ searchParams }: Props) {
   if (parsed.redirectHref) redirect(parsed.redirectHref);
 
   const now = new Date();
-  const listing = await getTrasyListing(parsed.filters, parsed.page, PAGE_SIZE, now);
+  const listing = await getTrasyListing(parsed.filters, parsed.page, PUBLIC_LISTING_PAGE_SIZE, now);
   if (listing.ok) {
     const unknownFacet = facetRedirect(parsed.filters, listing.facets, parsed.page);
     if (unknownFacet) redirect(unknownFacet);
-    const totalPages = listing.total === 0 ? 1 : Math.ceil(listing.total / PAGE_SIZE);
-    if (parsed.page > totalPages) redirect(trasyHref({ ...parsed.filters, page: totalPages }));
+    const clamped = clampListingPage(parsed.page, listing.total, PUBLIC_LISTING_PAGE_SIZE);
+    if (clamped.page !== parsed.page) redirect(trasyHref({ ...parsed.filters, page: clamped.page }));
   }
 
   const groups = groupEventsByMonth(listing.events);
@@ -178,7 +177,7 @@ export default async function TrasyPage({ searchParams }: Props) {
           </div>
         )}
         {listing.ok && listing.total > 0 && (
-          <Pager page={parsed.page} total={listing.total} pageSize={PAGE_SIZE} hrefForPage={hrefForPage} />
+          <Pager page={parsed.page} total={listing.total} pageSize={PUBLIC_LISTING_PAGE_SIZE} hrefForPage={hrefForPage} />
         )}
       </div>
     </div>
