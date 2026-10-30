@@ -1,13 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  DIRECTORY_LETTERS,
-  directoryLetter,
   formatItemCount,
-  groupPeopleByLetter,
-  jumpLettersFromGroups,
   peopleByActivity,
   pozycjaCountLabel,
+  sortPeopleByName,
 } from "./standuperzy-directory.ts";
 
 test("pozycja pluralization follows Polish rules", () => {
@@ -25,35 +22,23 @@ test("pozycja pluralization follows Polish rules", () => {
   assert.equal(pozycjaCountLabel(701), "pozycja");
 });
 
-test("directory letters keep \u0141 after L and \u017b at the end", () => {
-  const letters = [...DIRECTORY_LETTERS];
-  assert.ok(letters.indexOf("L") + 1 === letters.indexOf("\u0141"));
-  assert.equal(letters[letters.length - 1], "\u017b");
-  assert.equal(directoryLetter(" \u0142ukasz "), "\u0141");
-  assert.equal(directoryLetter(""), "#");
-});
-
-test("jump bar lists only letters that have people, in index order", () => {
-  const groups = groupPeopleByLetter([
-    { name: "Abelard Giza" },
-    { name: "Cezary" },
-    { name: "\u0141ukasz Lotek Lodkowski" },
-    { name: "Magda Kubicka" },
-    { name: "#nocna" },
-  ]);
-  assert.deepEqual(jumpLettersFromGroups(groups), ["A", "C", "\u0141", "M", "#"]);
-  assert.equal(jumpLettersFromGroups(groups).includes("B"), false);
-  assert.equal(jumpLettersFromGroups([]).length, 0);
-});
-
-test("jump bar follows the search filter", () => {
+test("directory names sort with Polish collation", () => {
   const people = [
-    { name: "Abelard Giza" },
-    { name: "Bartek" },
-    { name: "Magda Kubicka" },
+    { id: 4, name: "\u017baneta" },
+    { id: 2, name: "\u0141ukasz" },
+    { id: 1, name: "Adam" },
+    { id: 6, name: "Lukasz" },
+    { id: 3, name: "Zosia" },
+    { id: 5, name: "Adam" },
   ];
-  const filtered = people.filter((person) => person.name.toLowerCase().includes("m"));
-  assert.deepEqual(jumpLettersFromGroups(groupPeopleByLetter(filtered)), ["M"]);
+  assert.deepEqual(
+    sortPeopleByName(people).map((person) => person.id),
+    [1, 5, 6, 2, 3, 4],
+  );
+  assert.deepEqual(
+    people.map((person) => person.id),
+    [4, 2, 1, 6, 3, 5],
+  );
 });
 
 test("item count line is omitted when there are no items", () => {
@@ -62,21 +47,6 @@ test("item count line is omitted when there are no items", () => {
   assert.equal(formatItemCount(1), "1 pozycja");
   assert.equal(formatItemCount(22), "22 pozycje");
   assert.equal(formatItemCount(5), "5 pozycji");
-});
-
-test("grouping keeps database order inside a letter", () => {
-  const groups = groupPeopleByLetter([
-    { name: "Abelard Giza" },
-    { name: "Antoni Syrek-D\u0105browski" },
-    { name: "Lego\u0144koff" },
-    { name: "\u0141ukasz Lotek Lodkowski" },
-    { name: "Magda Kubicka" },
-  ]);
-  assert.deepEqual(groups.map((group) => group.letter), ["A", "L", "\u0141", "M"]);
-  assert.deepEqual(groups[0].people.map((person) => person.name), [
-    "Abelard Giza",
-    "Antoni Syrek-D\u0105browski",
-  ]);
 });
 
 test("activity order breaks ties by Polish name", () => {

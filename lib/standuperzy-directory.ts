@@ -1,76 +1,11 @@
-/** Litera indeksu A–Z z polskimi znakami, w kolejności alfabetu. */
-export const DIRECTORY_LETTERS = [
-  "A",
-  "\u0104",
-  "B",
-  "C",
-  "\u0106",
-  "D",
-  "E",
-  "\u0118",
-  "F",
-  "G",
-  "H",
-  "I",
-  "J",
-  "K",
-  "L",
-  "\u0141",
-  "M",
-  "N",
-  "\u0143",
-  "O",
-  "\u00d3",
-  "P",
-  "Q",
-  "R",
-  "S",
-  "\u015a",
-  "T",
-  "U",
-  "V",
-  "W",
-  "X",
-  "Y",
-  "Z",
-  "\u0179",
-  "\u017b",
-] as const;
-
-export function directoryLetter(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "#";
-  const first = Array.from(trimmed)[0] ?? "#";
-  return first.toLocaleUpperCase("pl-PL");
-}
-
-export function groupPeopleByLetter<T extends { name: string }>(
-  people: readonly T[],
-): { letter: string; people: T[] }[] {
-  const groups: { letter: string; people: T[] }[] = [];
-  for (const person of people) {
-    const letter = directoryLetter(person.name);
-    const last = groups[groups.length - 1];
-    if (last && last.letter === letter) last.people.push(person);
-    else groups.push({ letter, people: [person] });
-  }
-  return groups;
-}
-
-/**
- * Litery paska A–Z: tylko te, które mają osoby w `groups`.
- * Kolejność alfabetu polskiego, potem kubełki spoza indeksu (np. „#”).
- */
-export function jumpLettersFromGroups(groups: readonly { letter: string }[]): string[] {
-  const present = new Set(groups.map((group) => group.letter));
-  const known = new Set<string>(DIRECTORY_LETTERS);
-  const ordered = DIRECTORY_LETTERS.filter((letter) => present.has(letter));
-  const extra: string[] = [];
-  for (const group of groups) {
-    if (known.has(group.letter) || extra.includes(group.letter)) continue;
-    extra.push(group.letter);
-  }
-  return [...ordered, ...extra];
+/** Alphabetical directory order. Polish collation via `localeCompare(..., "pl")`. */
+export function sortPeopleByName<T extends { name: string; id?: number }>(people: readonly T[]): T[] {
+  return [...people].sort((a, b) => {
+    const byName = a.name.localeCompare(b.name, "pl");
+    if (byName !== 0) return byName;
+    if (typeof a.id === "number" && typeof b.id === "number" && a.id !== b.id) return a.id - b.id;
+    return 0;
+  });
 }
 
 /** 1 pozycja, 2 pozycje, 5 pozycji, 22 pozycje, 701 pozycja. */

@@ -825,11 +825,11 @@ function foldPl(value: string): string {
     .replace(/\p{M}/gu, "");
 }
 
-export function peopleSelectOptions(
-  people: readonly { slug: string; name: string }[],
+export function peopleSelectOptions<T extends { slug: string; name: string }>(
+  people: readonly T[],
   query: string,
   selectedSlug = "",
-): { slug: string; name: string }[] {
+): T[] {
   const needle = foldPl(query);
   const matched = needle
     ? people.filter((person) => foldPl(person.name).includes(needle))
