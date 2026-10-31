@@ -5,6 +5,8 @@ import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { Item } from "@/lib/data";
 import { categoryBrowseHref } from "@/lib/category-browse";
+import { listingCountLabel, type CountWord } from "@/lib/listing-count";
+import PersonCombobox from "@/app/trasy/PersonCombobox";
 import ItemsBrowser from "./ItemsBrowser";
 import type { ItemsBrowserVariant } from "./itemsBrowserLayout";
 import { sortStandupTagChips } from "./standupTagChipOrder";
@@ -27,8 +29,6 @@ export type ServerItemFilters = {
   tags: FacetTag[];
 };
 
-type CountWord = { one: string; many: string };
-
 const CHIP_ROW_MOBILE = "(max-width: 767px)";
 
 const filterStyles = `
@@ -48,48 +48,6 @@ const filterStyles = `
   position: relative;
   min-width: 0;
   max-width: 100%;
-}
-.fib-person {
-  -webkit-appearance: none;
-  appearance: none;
-  width: auto;
-  max-width: 100%;
-  min-height: 40px;
-  margin: 0;
-  background-color: transparent;
-  background-image: linear-gradient(rgba(239, 232, 220, .10), rgba(239, 232, 220, .10));
-  background-repeat: no-repeat;
-  background-position: right center;
-  background-size: 34px 100%;
-  color: var(--paper);
-  border: 1px solid rgba(239, 232, 220, .42);
-  border-radius: 10px;
-  padding: 0 36px 0 12px;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: inherit;
-  line-height: 1.2;
-  cursor: pointer;
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fib-person[data-active="true"] {
-  border-color: var(--coral);
-  background-image: linear-gradient(rgba(232, 89, 74, .22), rgba(232, 89, 74, .22));
-}
-.fib-person-chevron {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  width: 0;
-  height: 0;
-  margin-top: -3px;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 7px solid var(--paper);
-  pointer-events: none;
 }
 .fib-chip-scroller {
   position: relative;
@@ -118,7 +76,7 @@ const filterStyles = `
     grid-row: 1;
     width: auto;
   }
-  .fib-filters:not(:has(.fib-person)) .fib-search {
+  .fib-filters:not(:has(.fib-person-wrap)) .fib-search {
     grid-column: 1 / -1;
   }
   .fib-person-wrap {
@@ -126,8 +84,10 @@ const filterStyles = `
     grid-row: 1;
     width: clamp(8.5rem, 42vw, 11rem);
   }
-  .fib-person {
-    width: 100%;
+  .fib-person-wrap ul[role="listbox"] {
+    width: min(18rem, calc(100vw - 2.5rem));
+    right: 0;
+    left: auto;
   }
   .fib-chip-scroller {
     grid-column: 1 / -1;
@@ -161,11 +121,12 @@ const filterStyles = `
   .fib-search {
     flex: 1 0 100%;
   }
-  .fib-person {
-    field-sizing: content;
+  .fib-person-wrap {
+    flex: 0 0 16rem;
+    width: 16rem;
     max-width: 18rem;
   }
-  /* Chips stay in the same wrapping row as the person select. */
+  /* Chips stay in the same wrapping row as the person combobox. */
   .fib-chip-scroller,
   .fib-chip-row {
     display: contents;
@@ -203,6 +164,7 @@ const filterStyles = `
 `;
 
 const TAG_CHIP_PENDING_MS = 10_000;
+const NO_HIDDEN_TAGS: readonly string[] = [];
 
 function useChipRowFade(itemCount: number) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -236,27 +198,6 @@ function useChipRowFade(itemCount: number) {
   }, [itemCount]);
 
   return { rowRef, showFade };
-}
-
-function countLabel(
-  shown: number,
-  inView: number,
-  word: CountWord,
-  isFiltered: boolean,
-  catalogTotal?: number,
-  serverFiltered = false,
-): string {
-  if (catalogTotal != null && (serverFiltered || !isFiltered)) {
-    const w = catalogTotal === 1 ? word.one : word.many;
-    return `${catalogTotal} ${w}`;
-  }
-  const w = shown === 1 ? word.one : word.many;
-  if (isFiltered) {
-    return catalogTotal != null
-      ? `${shown} z ${inView} ${w} na tej stronie`
-      : `${shown} z ${inView} ${w}`;
-  }
-  return `${shown} ${w}`;
 }
 
 function useUrlSearch(committed: string, enabled: boolean, commit: (value: string) => void) {
@@ -295,6 +236,7 @@ export default function FilterableItemsBrowser({
   serverFilters,
   variant,
   showCategoryBadge = true,
+  hiddenTagSlugs = NO_HIDDEN_TAGS,
 }: {
   items: Item[];
   countWord?: CountWord;
@@ -306,6 +248,8 @@ export default function FilterableItemsBrowser({
   variant?: ItemsBrowserVariant;
   /** Mixed grids keep the chip. Single-category listings pass false. */
   showCategoryBadge?: boolean;
+  /** Slugs that define the page itself, so they are not offered as chips. */
+  hiddenTagSlugs?: readonly string[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -373,10 +317,16 @@ export default function FilterableItemsBrowser({
       .sort((a, b) => a.name.localeCompare(b.name, "pl"));
   }, [items, server]);
 
+  const hiddenTags = useMemo(
+    () => new Set(hiddenTagSlugs.map((slug) => slug.trim().toLowerCase()).filter(Boolean)),
+    [hiddenTagSlugs],
+  );
+
   const availableTags = useMemo(() => {
     const sortTags = <T extends { name: string; slug: string }>(tags: T[]): T[] => {
-      if (tagChipOrder === "standup") return sortStandupTagChips(tags);
-      return [...tags].sort((a, b) => a.name.localeCompare(b.name, "pl"));
+      const visible = tags.filter((tag) => !hiddenTags.has(tag.slug.trim().toLowerCase()));
+      if (tagChipOrder === "standup") return sortStandupTagChips(visible);
+      return [...visible].sort((a, b) => a.name.localeCompare(b.name, "pl"));
     };
     if (server) return sortTags(server.tags);
     const map = new Map<string, { name: string; slug: string; tag_type: string }>();
@@ -386,7 +336,7 @@ export default function FilterableItemsBrowser({
       }
     }
     return sortTags([...map.values()]);
-  }, [items, server, tagChipOrder]);
+  }, [items, server, tagChipOrder, hiddenTags]);
 
   const { rowRef, showFade } = useChipRowFade(availableTags.length);
 
@@ -404,9 +354,10 @@ export default function FilterableItemsBrowser({
     return result;
   }, [items, search, personSlug, tagSlug, server]);
 
-  const isFiltered = server
-    ? !!(server.personSlug || server.tagSlug || server.search || draft.trim())
+  const countFiltered = server
+    ? !!(server.personSlug || server.tagSlug || server.search)
     : !!search.trim() || !!personSlug || !!tagSlug;
+  const showClear = countFiltered || (server ? draft.trim() !== server.search.trim() && draft.trim() !== "" : false);
 
   const goToFilters = (next: { osoba?: string; tag?: string; q?: string }) => {
     if (!server) return;
@@ -451,24 +402,16 @@ export default function FilterableItemsBrowser({
 
         {people.length > 0 && (
           <div className="fib-person-wrap">
-            <select
-              className="fib-person"
-              data-active={activePerson ? "true" : "false"}
-              aria-label="Standuper"
-              value={activePerson}
-              onChange={(e) => {
-                if (server) goToFilters({ osoba: e.target.value });
-                else setPersonSlug(e.target.value);
+            <label htmlFor="listing-osoba" className="sr-only">Standuper</label>
+            <PersonCombobox
+              inputId="listing-osoba"
+              people={people}
+              selectedSlug={activePerson}
+              onSelect={(slug) => {
+                if (server) goToFilters({ osoba: slug });
+                else setPersonSlug(slug);
               }}
-            >
-              <option value="">Wszyscy</option>
-              {people.map((p) => (
-                <option key={p.slug} value={p.slug}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <span className="fib-person-chevron" aria-hidden="true" />
+            />
           </div>
         )}
 
@@ -546,9 +489,16 @@ export default function FilterableItemsBrowser({
           className="mono text-xs uppercase"
           style={{ color: "var(--paper-mute)", letterSpacing: ".16em", minWidth: 0, flex: "1 1 auto" }}
         >
-          {countLabel(filtered.length, items.length, countWord, isFiltered, catalogTotal, !!server)}
+          {listingCountLabel({
+            catalogTotal,
+            shown: filtered.length,
+            inView: items.length,
+            word: countWord,
+            filtered: countFiltered,
+            server: !!server,
+          })}
         </span>
-        {isFiltered && (
+        {showClear && (
           <button
             type="button"
             onClick={() => {

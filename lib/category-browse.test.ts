@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   PUBLIC_LISTING_PAGE_SIZE,
+  browsePageHref,
   categoryBrowseHref,
   clampListingPage,
+  listingClampHref,
   listingPageHref,
   listingTotalPages,
   parseBrowsePage,
   parseCategoryBrowseSearchParams,
   parseListingPage,
+  unknownFacetPersonHref,
 } from "./category-browse.ts";
 
 test("browse href omits empty filters and the first page", () => {
@@ -105,6 +108,33 @@ test("listing page query canonicalizes invalid and explicit first pages", () => 
     page: 1,
     redirectHref: "/format/wahanie",
   });
+});
+
+test("pager links keep filters and a missing person or a short page redirects", () => {
+  const filters = { osoba: "mateusz-socha", tag: "klip", q: "socha", page: 2 };
+  assert.equal(
+    browsePageHref("/specjale", filters, 3),
+    "/specjale?osoba=mateusz-socha&tag=klip&q=socha&page=3",
+  );
+  assert.equal(browsePageHref("/specjale", filters, 1), "/specjale?osoba=mateusz-socha&tag=klip&q=socha");
+
+  assert.equal(unknownFacetPersonHref("/standup", filters, [{ slug: "mateusz-socha" }]), null);
+  assert.equal(unknownFacetPersonHref("/standup", { ...filters, osoba: "" }, []), null);
+  assert.equal(
+    unknownFacetPersonHref("/specjale", filters, [{ slug: "abelard-giza" }]),
+    "/specjale?tag=klip&q=socha&page=2",
+  );
+  assert.equal(unknownFacetPersonHref("/wywiady", filters, []), null);
+
+  assert.equal(listingClampHref("/shorts", filters, 48), null);
+  assert.equal(
+    listingClampHref("/shorts", { ...filters, page: 9 }, 31),
+    "/shorts?osoba=mateusz-socha&tag=klip&q=socha&page=2",
+  );
+  assert.equal(
+    listingClampHref("/specjale", { ...filters, tag: "", page: 2 }, 6),
+    "/specjale?osoba=mateusz-socha&q=socha",
+  );
 });
 
 test("invalid slugs and pages are dropped instead of applied to the query", () => {

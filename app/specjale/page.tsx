@@ -1,38 +1,70 @@
 import { unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
-import { getItemsByTagSlugPage } from "@/lib/data";
+import { getTagBrowse } from "@/lib/data";
 import FilterableItemsBrowser from "@/app/components/FilterableItemsBrowser";
 import Pager from "@/app/components/Pager";
 import {
   PUBLIC_LISTING_PAGE_SIZE,
-  clampListingPage,
-  listingPageHref,
-  parseListingPage,
+  browsePageHref,
+  categoryBrowseHref,
+  listingClampHref,
+  parseCategoryBrowseSearchParams,
+  unknownFacetPersonHref,
+  type CategoryBrowseSearch,
 } from "@/lib/category-browse";
 import { SPECJALE_CACHE_TAG } from "@/lib/revalidate-content";
 
 export const revalidate = 120;
 
 const PATHNAME = "/specjale";
+const DEFINING_TAG = "special";
 
-const getSpecialsPage = unstable_cache(
-  (offset: number) => getItemsByTagSlugPage("special", PUBLIC_LISTING_PAGE_SIZE, offset),
-  ["specjale", "special", String(PUBLIC_LISTING_PAGE_SIZE)],
+const getSpecialsBrowse = unstable_cache(
+  (offset: number, personSlug: string, tagSlug: string, search: string) =>
+    getTagBrowse(DEFINING_TAG, {
+      limit: PUBLIC_LISTING_PAGE_SIZE,
+      offset,
+      personSlug,
+      tagSlug,
+      search,
+    }),
+  ["specjale", "browse", String(PUBLIC_LISTING_PAGE_SIZE)],
   { revalidate: 120, tags: [SPECJALE_CACHE_TAG] },
 );
 
+function withoutDefiningTag(params: CategoryBrowseSearch): { search: CategoryBrowseSearch; dropped: boolean } {
+  const raw = Array.isArray(params.tag) ? params.tag[0] : params.tag;
+  if (raw == null || raw.trim().toLowerCase() !== DEFINING_TAG) return { search: params, dropped: false };
+  const { tag: _tag, ...rest } = params;
+  return { search: rest, dropped: true };
+}
+
 type Props = {
-  searchParams: Promise<{ page?: string | string[] }>;
+  searchParams: Promise<CategoryBrowseSearch>;
 };
 
 export default async function SpecjalePage({ searchParams }: Props) {
-  const params = await searchParams;
-  const parsed = parseListingPage(params.page, PATHNAME);
-  if (parsed.redirectHref) redirect(parsed.redirectHref);
+  const incoming = await searchParams;
+  const { search, dropped } = withoutDefiningTag(incoming);
+  const parsed = parseCategoryBrowseSearchParams(search, PATHNAME);
+  if (parsed.redirectHref || dropped) {
+    redirect(parsed.redirectHref ?? categoryBrowseHref(PATHNAME, parsed));
+  }
 
-  const { items, total } = await getSpecialsPage((parsed.page - 1) * PUBLIC_LISTING_PAGE_SIZE);
-  const clamped = clampListingPage(parsed.page, total, PUBLIC_LISTING_PAGE_SIZE);
-  if (clamped.page !== parsed.page) redirect(listingPageHref(PATHNAME, clamped.page));
+  const browse = await getSpecialsBrowse(
+    (parsed.page - 1) * PUBLIC_LISTING_PAGE_SIZE,
+    parsed.osoba,
+    parsed.tag,
+    parsed.q,
+  );
+
+  const unknownPerson = unknownFacetPersonHref(PATHNAME, parsed, browse.people);
+  if (unknownPerson) redirect(unknownPerson);
+
+  const clamped = listingClampHref(PATHNAME, parsed, browse.total, PUBLIC_LISTING_PAGE_SIZE);
+  if (clamped) redirect(clamped);
+
+  const hrefForPage = (page: number) => browsePageHref(PATHNAME, parsed, page);
 
   return (
     <div className="band">
@@ -46,15 +78,24 @@ export default async function SpecjalePage({ searchParams }: Props) {
           </p>
         </header>
         <FilterableItemsBrowser
-          items={items}
-          countWord={{ one: "specjal", many: "specjali" }}
-          catalogTotal={total}
+          items={browse.items}
+          countWord={{ one: "specjal", few: "specjale", many: "specjali" }}
+          catalogTotal={browse.total}
+          hiddenTagSlugs={[DEFINING_TAG]}
+          serverFilters={{
+            pathname: PATHNAME,
+            personSlug: parsed.osoba,
+            tagSlug: parsed.tag,
+            search: parsed.q,
+            people: browse.people,
+            tags: browse.tags,
+          }}
         />
         <Pager
           page={parsed.page}
-          total={total}
+          total={browse.total}
           pageSize={PUBLIC_LISTING_PAGE_SIZE}
-          hrefForPage={(page) => listingPageHref(PATHNAME, page)}
+          hrefForPage={hrefForPage}
         />
       </div>
     </div>

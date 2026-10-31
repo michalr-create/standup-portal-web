@@ -144,3 +144,52 @@ export function parseCategoryBrowseSearchParams(
     redirectHref,
   };
 }
+
+type BrowseFilterState = {
+  osoba: string;
+  tag: string;
+  q: string;
+  page: number;
+};
+
+/** Drop a person slug that is not in this listing's facet. Keeps the other filters and the page. */
+export function unknownFacetPersonHref(
+  pathname: string,
+  filters: BrowseFilterState,
+  people: readonly { slug: string }[],
+): string | null {
+  if (!filters.osoba) return null;
+  if (people.length === 0) return null;
+  if (people.some((person) => person.slug === filters.osoba)) return null;
+  return categoryBrowseHref(pathname, {
+    tag: filters.tag,
+    q: filters.q,
+    page: filters.page,
+  });
+}
+
+/** Redirect a page past the filtered total onto the last page, filters included. */
+export function listingClampHref(
+  pathname: string,
+  filters: BrowseFilterState,
+  total: number,
+  pageSize = PUBLIC_LISTING_PAGE_SIZE,
+): string | null {
+  const clamped = clampListingPage(filters.page, total, pageSize);
+  if (clamped.page === filters.page) return null;
+  return categoryBrowseHref(pathname, {
+    osoba: filters.osoba,
+    tag: filters.tag,
+    q: filters.q,
+    page: clamped.page,
+  });
+}
+
+export function browsePageHref(pathname: string, filters: BrowseFilterState, page: number): string {
+  return categoryBrowseHref(pathname, {
+    osoba: filters.osoba,
+    tag: filters.tag,
+    q: filters.q,
+    page,
+  });
+}
