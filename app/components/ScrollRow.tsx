@@ -15,10 +15,12 @@ function ScrollCard({
   item,
   isWatched,
   onClick,
+  showCategoryBadge,
 }: {
   item: Item;
   isWatched: boolean;
   onClick: () => void;
+  showCategoryBadge: boolean;
 }) {
   const solePerson = item.people.length === 1 ? item.people[0] : null;
 
@@ -43,6 +45,20 @@ function ScrollCard({
             />
           )}
           <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
+          {showCategoryBadge && (
+            <div
+              className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-bold"
+              style={{
+                background: "rgba(11,11,11,.75)",
+                backdropFilter: "blur(6px)",
+                color: "var(--paper)",
+                fontSize: "11px",
+              }}
+            >
+              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--coral)" }} />
+              {item.categoryName || "YouTube"}
+            </div>
+          )}
           {item.is_paid && <PaidBadge url={item.url} />}
           {isWatched && (
             <div
@@ -90,7 +106,14 @@ const arrowBtnRight = [
   "opacity-0 group-hover/scroll:opacity-100 transition-opacity",
 ].join(" ");
 
-export default function ScrollRow({ items }: { items: Item[] }) {
+export default function ScrollRow({
+  items,
+  showCategoryBadge = false,
+}: {
+  items: Item[];
+  /** Mixed rows (home Nowe) show the category chip. Other rows leave it off. */
+  showCategoryBadge?: boolean;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -184,6 +207,7 @@ export default function ScrollRow({ items }: { items: Item[] }) {
               item={item}
               isWatched={watched.has(item.url)}
               onClick={() => handleClick(item)}
+              showCategoryBadge={showCategoryBadge}
             />
           ))}
         </div>

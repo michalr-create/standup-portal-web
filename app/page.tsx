@@ -8,7 +8,6 @@ import {
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { selectHomeFormats } from "@/lib/home-shows";
 import ScrollRow from "./components/ScrollRow";
-import HomeVideoGrid from "./components/HomeVideoGrid";
 import FavoritesSection from "./components/FavoritesSection";
 import FormatCard from "./components/FormatCard";
 
@@ -17,7 +16,7 @@ export const revalidate = 120;
 
 function SectionHead({ title, sub, linkHref, linkText }: { title: string; sub?: string; linkHref?: string; linkText?: string }) {
   return (
-    <div className="flex items-end justify-between mb-5 md:mb-8 gap-6 flex-wrap">
+    <div className="flex items-end justify-between mb-5 md:mb-6 gap-6 flex-wrap">
       <div className="flex items-baseline gap-4 flex-wrap">
         <h2 className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}>
           {title}<span className="dot-accent">.</span>
@@ -110,12 +109,7 @@ export default async function HomePage() {
         <section className="band">
           <div className="max-w-6xl mx-auto">
             <SectionHead title="Nowe" sub={"Ostatnie 7 dni \u00b7 " + recentItems.length + " " + pozycjaLabel(recentItems.length)} linkHref="/standup" linkText={"Zobacz wszystkie \u2192"} />
-            <div className="md:hidden">
-              <ScrollRow items={recentItems} />
-            </div>
-            <div className="hidden md:block">
-              <HomeVideoGrid items={recentItems} />
-            </div>
+            <ScrollRow items={recentItems} showCategoryBadge />
           </div>
         </section>
       )}

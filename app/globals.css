@@ -125,20 +125,20 @@ a.pager-btn:hover {
 }
 
 /* Section separator.
-   Phones stay tight so a row's bottom padding does not stack on 64px bands.
-   md is the tablet step; lg keeps the original 64/40. The hairline stays. */
+   Phones stay at 28/20 (UX-43). md is 40/32; lg is 44/40.
+   Side padding at lg stays 40px. The hairline stays. */
 .band {
   padding: 28px 20px;
   border-bottom: 1px solid var(--line);
 }
 @media (min-width: 768px) {
   .band {
-    padding: 48px 32px;
+    padding: 40px 32px;
   }
 }
 @media (min-width: 1024px) {
   .band {
-    padding: 64px 40px;
+    padding: 44px 40px;
   }
 }
 
