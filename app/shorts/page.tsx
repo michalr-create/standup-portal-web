@@ -17,7 +17,7 @@ export default function ShortsPage({ searchParams }: Props) {
       slug="shorts"
       pathname="/shorts"
       title="Shorts"
-      countWord={{ one: "kr\u00f3tki klip", many: "kr\u00f3tkich klip\u00f3w" }}
+      countWord={{ one: "kr\u00f3tki klip", few: "kr\u00f3tkie klipy", many: "kr\u00f3tkich klip\u00f3w" }}
       variant="shorts"
       showCategoryBadge={false}
       searchParams={searchParams}

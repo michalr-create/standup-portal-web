@@ -21,6 +21,11 @@ test("category listings page through one catalog component and a server total", 
     assert.doesNotMatch(page, /999/);
   }
 
+  assert.match(source("app/wywiady/page.tsx"), /one: "wywiad", few: "wywiady", many: "wywiad\\u00f3w"/);
+  assert.match(source("app/shorts/page.tsx"), /few: "kr\\u00f3tkie klipy"/);
+  assert.match(source("app/kulisy/page.tsx"), /few: "materia\\u0142y"/);
+  assert.match(source("app/roast/page.tsx"), /few: "roasty"/);
+
   const listing = source("app/components/CategoryListing.tsx");
   assert.match(listing, /getCategoryBrowse/);
   assert.doesNotMatch(listing, /getItemsByCategorySlugPage/);
@@ -42,6 +47,12 @@ test("format episodes page with the full total and clamp instead of a 999 cap", 
   assert.match(page, /clampListingPage/);
   assert.match(page, /episodes\.total/);
   assert.match(page, /<Pager/);
+  assert.match(page, /listingCountLabel/);
+  assert.match(page, /few: "odcinki"/);
+  assert.match(page, /many: "odcink\\u00f3w"/);
+  const countAt = page.indexOf("listingCountLabel");
+  const gridAt = page.indexOf("<ItemsBrowser");
+  assert.ok(countAt > 0 && gridAt > countAt);
   assert.match(page, /if \(!show\) notFound\(\)/);
   assert.doesNotMatch(page, /getItemsByShowSlug/);
   assert.doesNotMatch(page, /999/);
@@ -65,6 +76,7 @@ test("standup, specjale, and trasy keep their filters and use the shared page si
   assert.match(standup, /parseCategoryBrowseSearchParams/);
   assert.match(standup, /serverFilters/);
   assert.match(standup, /catalogTotal=\{browse\.total\}/);
+  assert.match(standup, /one: "nagranie", few: "nagrania", many: "nagra\\u0144"/);
   assert.doesNotMatch(standup, /PAGE_SIZE = 100/);
   assert.doesNotMatch(standup, /999/);
 
@@ -94,5 +106,25 @@ test("standup, specjale, and trasy keep their filters and use the shared page si
   assert.match(trasy, /trasyHref/);
   assert.match(trasy, /Brak terminów/);
   assert.match(trasy, /<Pager/);
+  assert.match(trasy, /few: "wydarzenia"/);
+  assert.match(trasy, /many: "wydarze\\u0144"/);
+  assert.match(trasy, /listingCountLabel/);
+  const filtersAt = trasy.indexOf("<TrasyFilters");
+  const listAt = trasy.indexOf("{listCount && (");
+  const cardsAt = trasy.indexOf("<EventCard");
+  assert.ok(filtersAt > 0 && filtersAt < listAt && listAt < cardsAt);
   assert.doesNotMatch(trasy, /PAGE_SIZE = /);
+});
+
+test("pager drops the visible page range and keeps a screen-reader page line", () => {
+  const pager = source("app/components/Pager.tsx");
+  assert.doesNotMatch(pager, /pager-status/);
+  assert.doesNotMatch(pager, /\$\{from\}/);
+  assert.doesNotMatch(pager, /\$\{to\}/);
+  assert.match(pager, /className="sr-only"/);
+  assert.match(pager, /Strona \$\{page\} z \$\{totalPages\}/);
+  assert.match(pager, /aria-label="Paginacja"/);
+  assert.match(pager, /Poprzednia/);
+  assert.match(pager, /Nast/);
+  assert.doesNotMatch(source("app/globals.css"), /\.pager-status/);
 });

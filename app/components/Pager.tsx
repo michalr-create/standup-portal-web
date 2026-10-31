@@ -39,18 +39,11 @@ export default function Pager({
   if (pageSize <= 0 || total <= pageSize) return null;
 
   const totalPages = Math.ceil(total / pageSize);
-  const from = (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
   const tokens = pageWindow(page, totalPages);
 
   return (
     <nav className="pager" aria-label="Paginacja">
-      <p
-        className="pager-status mono text-xs uppercase"
-        style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
-      >
-        {`Strona ${page} z ${totalPages} \u00b7 ${from}\u2013${to} z ${total}`}
-      </p>
+      <p className="sr-only">{`Strona ${page} z ${totalPages}`}</p>
       <div className="pager-controls">
         {page > 1 ? (
           <Link href={hrefForPage(page - 1)} className="pager-btn" rel="prev">

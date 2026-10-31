@@ -7,6 +7,7 @@ import TrasyFilters from "./TrasyFilters";
 import Pager from "@/app/components/Pager";
 import { getTrasyListing } from "@/lib/data";
 import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "@/lib/category-browse";
+import { listingCountLabel } from "@/lib/listing-count";
 import {
   facetRedirect,
   groupEventsByMonth,
@@ -102,13 +103,23 @@ export default async function TrasyPage({ searchParams }: Props) {
 
   const groups = groupEventsByMonth(listing.events);
   const filteredView = hasActiveTrasyFilters(parsed.filters);
-  const countLabel = !listing.ok
+  const headerStatus = !listing.ok
     ? "błąd wczytywania"
     : listing.catalogTotal === 0
       ? "na razie pusto"
-      : filteredView
-        ? `${listing.total} z ${listing.catalogTotal}`
-        : `${listing.total} ${terminLabel(listing.total)}`;
+      : null;
+  const listCount = !listing.ok || listing.catalogTotal === 0
+    ? null
+    : filteredView
+      ? `${listing.total} z ${listing.catalogTotal}`
+      : listingCountLabel({
+          catalogTotal: listing.total,
+          shown: listing.events.length,
+          inView: listing.events.length,
+          word: { one: "wydarzenie", few: "wydarzenia", many: "wydarze\u0144" },
+          filtered: false,
+          server: true,
+        });
   const hrefForPage = (page: number) => trasyHref({ ...parsed.filters, page });
 
   return (
@@ -123,12 +134,14 @@ export default async function TrasyPage({ searchParams }: Props) {
               Trasy
               <span className="dot-accent">.</span>
             </h1>
-            <span
-              className="mono text-xs uppercase"
-              style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
-            >
-              {countLabel}
-            </span>
+            {headerStatus && (
+              <span
+                className="mono text-xs uppercase"
+                style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
+              >
+                {headerStatus}
+              </span>
+            )}
           </div>
           <p className="m-0 max-w-2xl text-[15px] md:text-[17px]" style={{ color: "var(--paper-dim)" }}>
             Nadchodzące występy stand-upowe. Imię prowadzi do profilu artysty, a bilety i plakietki portali otwierają się w nowej karcie.
@@ -141,6 +154,16 @@ export default async function TrasyPage({ searchParams }: Props) {
           </Notice>
         ) : (
           <TrasyFilters filters={parsed.filters} facets={listing.facets} today={warsawToday(now)}>
+            {listCount && (
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <span
+                  className="mono text-xs uppercase"
+                  style={{ color: "var(--paper-mute)", letterSpacing: ".16em", minWidth: 0, flex: "1 1 auto" }}
+                >
+                  {listCount}
+                </span>
+              </div>
+            )}
             {listing.total === 0 ? (
               <Notice eyebrow="kalendarz" title="Brak terminów">
                 {filteredView ? (

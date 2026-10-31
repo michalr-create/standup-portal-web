@@ -17,7 +17,7 @@ export default function WywiadyPage({ searchParams }: Props) {
       slug="wywiady"
       pathname="/wywiady"
       title="Wywiady"
-      countWord={{ one: "rozmowa", many: "rozm\u00f3w" }}
+      countWord={{ one: "wywiad", few: "wywiady", many: "wywiad\u00f3w" }}
       showCategoryBadge={false}
       searchParams={searchParams}
     />
