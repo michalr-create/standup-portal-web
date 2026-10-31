@@ -125,7 +125,7 @@ a.pager-btn:hover {
 }
 
 /* Section separator.
-   Phones stay at 28/20 (UX-43). md is 40/32; lg is 44/40.
+   Phones stay at 28/20 (UX-43). md is 40/32; lg is 36/40.
    Side padding at lg stays 40px. The hairline stays. */
 .band {
   padding: 28px 20px;
@@ -138,7 +138,7 @@ a.pager-btn:hover {
 }
 @media (min-width: 1024px) {
   .band {
-    padding: 44px 40px;
+    padding: 36px 40px;
   }
 }
 

@@ -25,6 +25,7 @@ import {
   mergeTourEvents,
   pageMergedEvents,
   pickFavoriteUpcomingEvents,
+  profileWatchAriaLabel,
   profileWatchLabel,
   providerLabel,
   standuperProfileHref,
@@ -996,6 +997,13 @@ test("tour card profile link stays on parska and skips a missing slug", () => {
   assert.equal(standuperProfileHref("Adam Van"), null);
   assert.equal(standuperProfileHref("../admin"), null);
   assert.equal(standuperProfileHref("adam-van-bendler#special"), null);
-  assert.equal(profileWatchLabel(true), "Obejrzyj przed biletem");
+  assert.equal(profileWatchLabel(true), "Obejrzyj próbkę");
   assert.equal(profileWatchLabel(false), "Filmy artysty");
+  assert.equal(profileWatchAriaLabel(["Adam Van Bendler"]), "Nagrania: Adam Van Bendler na parska.pl");
+  assert.equal(profileWatchAriaLabel(["  Rafał Pacześ  "]), "Nagrania: Rafał Pacześ na parska.pl");
+  assert.equal(
+    profileWatchAriaLabel(["Rafał Pacześ", "Łukasz Lotek Lodkowski"]),
+    "Nagrania artystów na parska.pl",
+  );
+  assert.equal(profileWatchAriaLabel([]), "Nagrania artystów na parska.pl");
 });
