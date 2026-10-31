@@ -62,7 +62,7 @@ export default async function StandupPage({ searchParams }: Props) {
         </header>
         <FilterableItemsBrowser
           items={browse.items}
-          countWord={{ one: "pozycja", many: "pozycji" }}
+          countWord={{ one: "nagranie", few: "nagrania", many: "nagra\u0144" }}
           catalogTotal={browse.total}
           tagChipOrder="standup"
           serverFilters={{

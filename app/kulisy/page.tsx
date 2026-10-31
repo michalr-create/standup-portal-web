@@ -17,7 +17,7 @@ export default function KulisyPage({ searchParams }: Props) {
       slug="kulisy"
       pathname="/kulisy"
       title="Kulisy"
-      countWord={{ one: "materia\u0142", many: "materia\u0142\u00f3w" }}
+      countWord={{ one: "materia\u0142", few: "materia\u0142y", many: "materia\u0142\u00f3w" }}
       showCategoryBadge={false}
       searchParams={searchParams}
     />

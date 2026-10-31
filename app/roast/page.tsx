@@ -17,7 +17,7 @@ export default function RoastPage({ searchParams }: Props) {
       slug="roast"
       pathname="/roast"
       title="Roast"
-      countWord={{ one: "roast", many: "roast\u00f3w" }}
+      countWord={{ one: "roast", few: "roasty", many: "roast\u00f3w" }}
       showCategoryBadge={false}
       searchParams={searchParams}
     />

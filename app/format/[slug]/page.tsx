@@ -10,14 +10,11 @@ import {
   listingPageHref,
   parseListingPage,
 } from "@/lib/category-browse";
+import { listingCountLabel } from "@/lib/listing-count";
 
 export const revalidate = 120;
 
-function odcinekLabel(n: number): string {
-  if (n === 1) return "odcinek";
-  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 > 20)) return "odcinki";
-  return "odcink\u00f3w";
-}
+const ODCINEK = { one: "odcinek", few: "odcinki", many: "odcink\u00f3w" };
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -49,9 +46,6 @@ export default async function FormatPage({ params, searchParams }: Props) {
               {show.name}<span className="dot-accent">.</span>
             </h1>
             <HeartButton type="show" slug={slug} />
-            <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-              {episodes.total} {odcinekLabel(episodes.total)}
-            </span>
           </div>
           {show.description && (
             <p className="max-w-2xl" style={{ color: "var(--paper-dim)", fontSize: "17px", lineHeight: "1.55" }}>
@@ -81,6 +75,21 @@ export default async function FormatPage({ params, searchParams }: Props) {
             )}
           </div>
         </header>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <span
+            className="mono text-xs uppercase"
+            style={{ color: "var(--paper-mute)", letterSpacing: ".16em", minWidth: 0, flex: "1 1 auto" }}
+          >
+            {listingCountLabel({
+              catalogTotal: episodes.total,
+              shown: episodes.items.length,
+              inView: episodes.items.length,
+              word: ODCINEK,
+              filtered: false,
+              server: true,
+            })}
+          </span>
+        </div>
         <ItemsBrowser items={episodes.items} />
         <Pager
           page={parsed.page}

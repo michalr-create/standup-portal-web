@@ -79,7 +79,6 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: 14px;
 }
-.pager-status { margin: 0; }
 .pager-controls {
   display: flex;
   flex-wrap: wrap;
