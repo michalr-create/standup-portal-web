@@ -1023,19 +1023,17 @@ export function standuperProfileHref(slug: string | null | undefined): string | 
   return `/standuper/${trimmed}`;
 }
 
-/** Secondary cue from a tour card to that profile. */
-export function profileWatchLabel(hasTicketLink: boolean): string {
-  return hasTicketLink ? "Obejrzyj próbkę" : "Filmy artysty";
+/**
+ * Secondary cue from a tour card to one comedian's profile.
+ * The name stays in the nominative after the colon — surnames are not declined.
+ */
+export function profileWatchLabel(name: string): string {
+  return `Obejrzyj filmy: ${name.trim()}`;
 }
 
-/**
- * Accessible name for that cue. "Próbka" alone does not say whose recordings
- * open. One comedian is named; several share one label.
- */
-export function profileWatchAriaLabel(names: readonly string[]): string {
-  const people = names.map((name) => name.trim()).filter(Boolean);
-  if (people.length === 1) return `Nagrania: ${people[0]} na parska.pl`;
-  return "Nagrania artystów na parska.pl";
+/** Accessible name for that cue. One comedian per link. */
+export function profileWatchAriaLabel(name: string): string {
+  return `Nagrania: ${name.trim()} na parska.pl`;
 }
 
 export function terminLabel(count: number): string {
