@@ -4,6 +4,7 @@ import {
   formatEventWhen,
   formatPrice,
   formatRelativeWhen,
+  profileWatchAriaLabel,
   profileWatchLabel,
   providerLabel,
   standuperProfileHref,
@@ -207,6 +208,7 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
         {solo && profileHref && (
           <Link
             href={profileHref}
+            aria-label={profileWatchAriaLabel([lead.name])}
             className={`mt-3 inline-flex min-h-11 items-center text-sm font-bold underline-offset-4 hover:underline ${focusRing}`}
             style={{ color: "var(--coral)" }}
           >

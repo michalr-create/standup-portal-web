@@ -1025,7 +1025,17 @@ export function standuperProfileHref(slug: string | null | undefined): string | 
 
 /** Secondary cue from a tour card to that profile. */
 export function profileWatchLabel(hasTicketLink: boolean): string {
-  return hasTicketLink ? "Obejrzyj przed biletem" : "Filmy artysty";
+  return hasTicketLink ? "Obejrzyj próbkę" : "Filmy artysty";
+}
+
+/**
+ * Accessible name for that cue. "Próbka" alone does not say whose recordings
+ * open. One comedian is named; several share one label.
+ */
+export function profileWatchAriaLabel(names: readonly string[]): string {
+  const people = names.map((name) => name.trim()).filter(Boolean);
+  if (people.length === 1) return `Nagrania: ${people[0]} na parska.pl`;
+  return "Nagrania artystów na parska.pl";
 }
 
 export function terminLabel(count: number): string {
