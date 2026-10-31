@@ -35,12 +35,15 @@ export default function PersonCombobox({
   people,
   selectedSlug,
   onSelect,
+  inputId = "trasy-osoba",
 }: {
   people: readonly Person[];
   selectedSlug: string;
   onSelect: (slug: string) => void;
+  /** Defaults to the /trasy field id so its label stays attached. */
+  inputId?: string;
 }) {
-  const listId = "trasy-osoba-listbox";
+  const listId = `${inputId}-listbox`;
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -210,7 +213,7 @@ export default function PersonCombobox({
     <div ref={rootRef} className={open ? "relative z-30 min-w-0" : "relative min-w-0"}>
       <input
         ref={inputRef}
-        id="trasy-osoba"
+        id={inputId}
         type="text"
         role="combobox"
         aria-autocomplete="list"

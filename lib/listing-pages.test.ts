@@ -22,13 +22,18 @@ test("category listings page through one catalog component and a server total", 
   }
 
   const listing = source("app/components/CategoryListing.tsx");
-  assert.match(listing, /getItemsByCategorySlugPage/);
+  assert.match(listing, /getCategoryBrowse/);
+  assert.doesNotMatch(listing, /getItemsByCategorySlugPage/);
   assert.match(listing, /PUBLIC_LISTING_PAGE_SIZE/);
-  assert.match(listing, /parseListingPage/);
-  assert.match(listing, /clampListingPage/);
-  assert.match(listing, /catalogTotal=\{pageResult\.total\}/);
+  assert.match(listing, /parseCategoryBrowseSearchParams/);
+  assert.match(listing, /listingClampHref/);
+  assert.match(listing, /unknownFacetPersonHref/);
+  assert.match(listing, /browsePageHref/);
+  assert.match(listing, /serverFilters/);
+  assert.match(listing, /catalogTotal=\{browse\.total\}/);
   assert.match(listing, /<Pager/);
   assert.match(listing, /if \(!category\) notFound\(\)/);
+  assert.doesNotMatch(listing, /na tej stronie/);
 });
 
 test("format episodes page with the full total and clamp instead of a 999 cap", () => {
@@ -56,7 +61,7 @@ test("format episodes page with the full total and clamp instead of a 999 cap", 
 test("standup, specjale, and trasy keep their filters and use the shared page size", () => {
   const standup = source("app/standup/page.tsx");
   assert.match(standup, /PUBLIC_LISTING_PAGE_SIZE/);
-  assert.match(standup, /clampListingPage/);
+  assert.match(standup, /listingClampHref/);
   assert.match(standup, /parseCategoryBrowseSearchParams/);
   assert.match(standup, /serverFilters/);
   assert.match(standup, /catalogTotal=\{browse\.total\}/);
@@ -65,9 +70,23 @@ test("standup, specjale, and trasy keep their filters and use the shared page si
 
   const specjale = source("app/specjale/page.tsx");
   assert.match(specjale, /PUBLIC_LISTING_PAGE_SIZE/);
-  assert.match(specjale, /clampListingPage/);
-  assert.match(specjale, /catalogTotal=\{total\}/);
+  assert.match(specjale, /listingClampHref/);
+  assert.match(specjale, /parseCategoryBrowseSearchParams/);
+  assert.match(specjale, /getTagBrowse/);
+  assert.match(specjale, /serverFilters/);
+  assert.match(specjale, /catalogTotal=\{browse\.total\}/);
+  assert.match(specjale, /few: "specjale"/);
+  assert.match(specjale, /const DEFINING_TAG = "special"/);
+  assert.match(specjale, /hiddenTagSlugs=\{\[DEFINING_TAG\]\}/);
   assert.match(specjale, /<Pager/);
+  assert.doesNotMatch(specjale, /parseListingPage/);
+  assert.doesNotMatch(specjale, /na tej stronie/);
+
+  const browser = source("app/components/FilterableItemsBrowser.tsx");
+  assert.match(browser, /PersonCombobox/);
+  assert.match(browser, /inputId="listing-osoba"/);
+  assert.match(browser, /listingCountLabel/);
+  assert.doesNotMatch(browser, /<select/);
 
   const trasy = source("app/trasy/page.tsx");
   assert.match(trasy, /PUBLIC_LISTING_PAGE_SIZE/);

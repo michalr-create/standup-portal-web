@@ -53,6 +53,8 @@ test("trasy standuper filter is one combobox and dates share a row", () => {
   assert.match(combo, /aria-expanded=\{open\}/);
   assert.match(combo, /role="listbox"/);
   assert.match(combo, /role="option"/);
+  assert.match(combo, /inputId = "trasy-osoba"/);
+  assert.match(combo, /id=\{inputId\}/);
   assert.match(combo, /Wszyscy/);
   assert.match(combo, /Wyczyść standupera/);
   assert.match(combo, /personComboboxOptions/);

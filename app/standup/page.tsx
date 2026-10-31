@@ -2,9 +2,10 @@ import { redirect, notFound } from "next/navigation";
 import { getCategoryBrowse, getCategoryBySlug } from "@/lib/data";
 import {
   PUBLIC_LISTING_PAGE_SIZE,
-  categoryBrowseHref,
-  clampListingPage,
+  browsePageHref,
+  listingClampHref,
   parseCategoryBrowseSearchParams,
+  unknownFacetPersonHref,
 } from "@/lib/category-browse";
 import FilterableItemsBrowser from "@/app/components/FilterableItemsBrowser";
 import Pager from "@/app/components/Pager";
@@ -40,26 +41,13 @@ export default async function StandupPage({ searchParams }: Props) {
 
   if (!category) notFound();
 
-  if (parsed.osoba && browse.people.length > 0 && !browse.people.some((person) => person.slug === parsed.osoba)) {
-    redirect(categoryBrowseHref(PATHNAME, { tag: parsed.tag, q: parsed.q, page: parsed.page }));
-  }
+  const unknownPerson = unknownFacetPersonHref(PATHNAME, parsed, browse.people);
+  if (unknownPerson) redirect(unknownPerson);
 
-  const clamped = clampListingPage(parsed.page, browse.total, PUBLIC_LISTING_PAGE_SIZE);
-  if (clamped.page !== parsed.page) {
-    redirect(categoryBrowseHref(PATHNAME, {
-      osoba: parsed.osoba,
-      tag: parsed.tag,
-      q: parsed.q,
-      page: clamped.page,
-    }));
-  }
+  const clamped = listingClampHref(PATHNAME, parsed, browse.total, PUBLIC_LISTING_PAGE_SIZE);
+  if (clamped) redirect(clamped);
 
-  const hrefForPage = (page: number) => categoryBrowseHref(PATHNAME, {
-    osoba: parsed.osoba,
-    tag: parsed.tag,
-    q: parsed.q,
-    page,
-  });
+  const hrefForPage = (page: number) => browsePageHref(PATHNAME, parsed, page);
 
   return (
     <div className="band">
