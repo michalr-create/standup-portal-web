@@ -997,13 +997,10 @@ test("tour card profile link stays on parska and skips a missing slug", () => {
   assert.equal(standuperProfileHref("Adam Van"), null);
   assert.equal(standuperProfileHref("../admin"), null);
   assert.equal(standuperProfileHref("adam-van-bendler#special"), null);
-  assert.equal(profileWatchLabel(true), "Obejrzyj próbkę");
-  assert.equal(profileWatchLabel(false), "Filmy artysty");
-  assert.equal(profileWatchAriaLabel(["Adam Van Bendler"]), "Nagrania: Adam Van Bendler na parska.pl");
-  assert.equal(profileWatchAriaLabel(["  Rafał Pacześ  "]), "Nagrania: Rafał Pacześ na parska.pl");
-  assert.equal(
-    profileWatchAriaLabel(["Rafał Pacześ", "Łukasz Lotek Lodkowski"]),
-    "Nagrania artystów na parska.pl",
-  );
-  assert.equal(profileWatchAriaLabel([]), "Nagrania artystów na parska.pl");
+  assert.equal(profileWatchLabel("Adam Van Bendler"), "Obejrzyj filmy: Adam Van Bendler");
+  assert.equal(profileWatchLabel("  Rafał Pacześ  "), "Obejrzyj filmy: Rafał Pacześ");
+  assert.equal(profileWatchLabel("Abelard Giza"), "Obejrzyj filmy: Abelard Giza");
+  assert.equal(profileWatchAriaLabel("Adam Van Bendler"), "Nagrania: Adam Van Bendler na parska.pl");
+  assert.equal(profileWatchAriaLabel("  Rafał Pacześ  "), "Nagrania: Rafał Pacześ na parska.pl");
+  assert.equal(profileWatchAriaLabel("Łukasz Lotek Lodkowski"), "Nagrania: Łukasz Lotek Lodkowski na parska.pl");
 });

@@ -154,10 +154,17 @@ test("event card sends the name to the profile and tickets to a new tab", () => 
   }
   assert.ok(profile.some((link) => link.text === "Adam Van Bendler"));
   assert.equal(profile.some((link) => attr(link.attrs, "aria-label") === "Profil: Adam Van Bendler"), false);
-  const watch = profile.find((link) => link.text === "Obejrzyj próbkę");
+  const watch = profile.find((link) => link.text === "Obejrzyj filmy: Adam Van Bendler");
   assert.ok(watch);
   assert.equal(attr(watch.attrs, "aria-label"), "Nagrania: Adam Van Bendler na parska.pl");
+  assert.equal(attr(watch.attrs, "target"), null);
+  const watchClass = attr(watch.attrs, "class") ?? "";
+  assert.match(watchClass, /break-words/);
+  assert.match(watchClass, /max-w-full/);
+  assert.match(watchClass, /whitespace-normal/);
+  assert.doesNotMatch(watchClass, /truncate|line-clamp|ellipsis|whitespace-nowrap/);
   assert.equal(attr(profile.find((link) => link.text === "Adam Van Bendler")?.attrs ?? "", "aria-label"), null);
+  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Nagrania artystów/);
   assert.match(html, /jutro/);
   assert.match(html, /19:00/);
   assertPosterSlot(html, "W sprzedaży");
@@ -224,9 +231,24 @@ test("joint show is one card with both comedians and the same ticket buttons", (
   const links = anchors(html);
   assert.ok(links.some((link) => link.text === "Rafał Pacześ" && attr(link.attrs, "href") === "/standuper/rafal-paczes"));
   assert.ok(links.some((link) => link.text === "Łukasz Lotek Lodkowski" && attr(link.attrs, "href") === "/standuper/lotek"));
+  const paczesFilms = links.find(
+    (link) => link.text === "Obejrzyj filmy: Rafał Pacześ" && attr(link.attrs, "href") === "/standuper/rafal-paczes",
+  );
+  const lotekFilms = links.find(
+    (link) =>
+      link.text === "Obejrzyj filmy: Łukasz Lotek Lodkowski" && attr(link.attrs, "href") === "/standuper/lotek",
+  );
+  assert.ok(paczesFilms);
+  assert.ok(lotekFilms);
+  assert.equal(attr(paczesFilms.attrs, "aria-label"), "Nagrania: Rafał Pacześ na parska.pl");
+  assert.equal(attr(lotekFilms.attrs, "aria-label"), "Nagrania: Łukasz Lotek Lodkowski na parska.pl");
+  assert.equal(attr(paczesFilms.attrs, "target"), null);
+  assert.equal(attr(lotekFilms.attrs, "target"), null);
   assert.equal(links.some((link) => (attr(link.attrs, "aria-label") ?? "").startsWith("Profil:")), false);
-  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 1);
-  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 1);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 2);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 2);
+  assert.match(html, /mt-3 flex w-full min-w-0 flex-wrap items-start gap-x-4 gap-y-1/);
+  assert.doesNotMatch(html, /flex-col/);
   const external = links.filter((link) => attr(link.attrs, "target") === "_blank");
   assert.deepEqual(
     external.map((link) => link.text.replace(/, otwiera się w nowej karcie/, "").trim()),
@@ -234,7 +256,7 @@ test("joint show is one card with both comedians and the same ticket buttons", (
   );
   assert.match(attr(external[0]?.attrs ?? "", "style") ?? "", /background:var\(--coral\)/);
   assert.doesNotMatch(html, /Bilety24/);
-  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Nagrania artystów|Nagrania:/);
+  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Nagrania artystów/);
   assert.doesNotMatch(html, /ŁL/);
   assert.doesNotMatch(html, /h-12 w-12/);
   assert.doesNotMatch(html, /cdn\.example\/rafal\.jpg/);
@@ -257,7 +279,7 @@ test("event card without a slug has no profile link", () => {
   assertNoNestedAnchors(html);
   assert.doesNotMatch(html, /\/standuper\//);
   assert.match(html, /<h3[^>]*>Bez sluga<\/h3>/);
-  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Nagrania:/);
+  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Obejrzyj filmy|Nagrania:/);
   const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
   assert.equal(external.length, 2);
   assert.ok(external.some((link) => link.text.startsWith("Kupbilecik")));
@@ -353,10 +375,11 @@ test("event card without a ticket link still points at the films", () => {
   assertNoNestedAnchors(html);
   const links = anchors(html);
   assert.equal(links.filter((link) => attr(link.attrs, "target") === "_blank").length, 0);
-  const films = links.find((link) => link.text === "Filmy artysty");
+  const films = links.find((link) => link.text === "Obejrzyj filmy: Adam Van Bendler");
   assert.ok(films);
   assert.equal(attr(films.attrs, "href"), "/standuper/adam-van-bendler");
   assert.equal(attr(films.attrs, "aria-label"), "Nagrania: Adam Van Bendler na parska.pl");
+  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty/);
   assert.match(html, /Link do biletów niedostępny/);
 });
 
@@ -381,9 +404,10 @@ test("event card puts a 4:3 poster on top and keeps the name as a link", () => {
   assert.doesNotMatch(html, /linear-gradient/);
   const links = anchors(html);
   assert.ok(links.some((link) => link.text === "Adam Van Bendler" && attr(link.attrs, "href") === "/standuper/adam-van-bendler"));
-  const watch = links.find((link) => link.text === "Obejrzyj próbkę");
+  const watch = links.find((link) => link.text === "Obejrzyj filmy: Adam Van Bendler");
   assert.ok(watch);
   assert.equal(attr(watch.attrs, "aria-label"), "Nagrania: Adam Van Bendler na parska.pl");
+  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty/);
 });
 
 test("event card without a poster uses the same 4:3 slot for the name and city", () => {
@@ -414,9 +438,61 @@ test("event card without a poster uses the same 4:3 slot for the name and city",
   assert.match(fallback[0] ?? "", /Puławy/);
   assert.match(fallback[0] ?? "", /linear-gradient/);
   const links = anchors(html);
-  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 1);
-  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 1);
-  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Nagrania artystów|Nagrania:/);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/rafal-paczes").length, 2);
+  assert.equal(links.filter((link) => attr(link.attrs, "href") === "/standuper/lotek").length, 2);
+  assert.ok(links.some((link) => link.text === "Obejrzyj filmy: Rafał Pacześ"));
+  assert.ok(links.some((link) => link.text === "Obejrzyj filmy: Łukasz Lotek Lodkowski"));
+  assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Nagrania artystów/);
+});
+
+test("joint card skips people without a profile and stacks three film links", () => {
+  const paczes = { name: "Rafał Pacześ", slug: "rafal-paczes", photo_url: null };
+  const guest = { name: "Gość bez profilu", slug: "", photo_url: null };
+  const lotek = { name: "Łukasz Lotek Lodkowski", slug: "lotek", photo_url: null };
+  const giza = { name: "Abelard Giza", slug: "abelard-giza", photo_url: null };
+  const skipped = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({
+        person: paczes,
+        people: [paczes, guest, lotek],
+      }),
+      now: NOW,
+    }),
+  );
+  assertNoNestedAnchors(skipped);
+  const skippedLinks = anchors(skipped);
+  assert.ok(skippedLinks.some((link) => link.text === "Obejrzyj filmy: Rafał Pacześ"));
+  assert.ok(skippedLinks.some((link) => link.text === "Obejrzyj filmy: Łukasz Lotek Lodkowski"));
+  assert.equal(skippedLinks.some((link) => link.text.includes("Gość bez profilu") && link.text.startsWith("Obejrzyj")), false);
+  assert.match(skipped, />Gość bez profilu</);
+  assert.doesNotMatch(skipped, /href="\/standuper\/"/);
+  assert.match(skipped, /mt-3 flex w-full min-w-0 flex-wrap items-start gap-x-4 gap-y-1/);
+
+  const stacked = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({
+        person: paczes,
+        people: [paczes, lotek, giza],
+      }),
+      now: NOW,
+    }),
+  );
+  assertNoNestedAnchors(stacked);
+  const stackedLinks = anchors(stacked);
+  for (const [name, slug] of [
+    ["Rafał Pacześ", "rafal-paczes"],
+    ["Łukasz Lotek Lodkowski", "lotek"],
+    ["Abelard Giza", "abelard-giza"],
+  ] as const) {
+    const films = stackedLinks.find((link) => link.text === `Obejrzyj filmy: ${name}`);
+    assert.ok(films, name);
+    assert.equal(attr(films.attrs, "href"), `/standuper/${slug}`);
+    assert.equal(attr(films.attrs, "aria-label"), `Nagrania: ${name} na parska.pl`);
+    assert.match(attr(films.attrs, "class") ?? "", /break-words/);
+    assert.doesNotMatch(attr(films.attrs, "class") ?? "", /truncate|line-clamp|ellipsis/);
+  }
+  assert.match(stacked, /mt-3 flex w-full min-w-0 flex-col items-start gap-1/);
+  assert.doesNotMatch(stacked, /Obejrzyj próbkę|Filmy artysty|Nagrania artystów/);
 });
 
 test("event card ignores a poster url that is not http", () => {

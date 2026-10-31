@@ -81,6 +81,22 @@ function PersonName({ person }: { person: TourPerson }) {
   );
 }
 
+function ProfileFilmsLink({ person }: { person: TourPerson }) {
+  const href = standuperProfileHref(person.slug);
+  const name = person.name.trim();
+  if (!href || !name) return null;
+  return (
+    <Link
+      href={href}
+      aria-label={profileWatchAriaLabel(name)}
+      className={`inline-block w-max min-h-11 max-w-full min-w-0 whitespace-normal break-words py-2.5 text-sm font-bold leading-snug underline-offset-4 hover:underline ${focusRing}`}
+      style={{ color: "var(--coral)" }}
+    >
+      {profileWatchLabel(name)}
+    </Link>
+  );
+}
+
 function posterLabel(roster: readonly TourPerson[]): string {
   return roster.map((person) => person.name).filter(Boolean).join(" \u00b7 ");
 }
@@ -94,8 +110,8 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
   const onSale = event.status === "on_sale";
   const relative = formatRelativeWhen(event.starts_at, now);
   const profileHref = standuperProfileHref(lead.slug);
+  const films = roster.filter((person) => standuperProfileHref(person.slug) && person.name.trim());
   const { primary, secondary } = visibleTicketLinks(event.links, paidExternalUrl);
-  const primaryHref = primary?.href ?? null;
   const cardStyle = { border: "1px solid var(--line)", background: "var(--ink-2)" };
   const statusStyle = onSale
     ? {
@@ -205,15 +221,18 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
             {price}
           </p>
         )}
-        {solo && profileHref && (
-          <Link
-            href={profileHref}
-            aria-label={profileWatchAriaLabel([lead.name])}
-            className={`mt-3 inline-flex min-h-11 items-center text-sm font-bold underline-offset-4 hover:underline ${focusRing}`}
-            style={{ color: "var(--coral)" }}
+        {films.length > 0 && (
+          <div
+            className={
+              films.length >= 3
+                ? "mt-3 flex w-full min-w-0 flex-col items-start gap-1"
+                : "mt-3 flex w-full min-w-0 flex-wrap items-start gap-x-4 gap-y-1"
+            }
           >
-            {profileWatchLabel(Boolean(primaryHref))}
-          </Link>
+            {films.map((person, index) => (
+              <ProfileFilmsLink key={`${person.slug}:${index}`} person={person} />
+            ))}
+          </div>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-4 sm:px-5 sm:pb-5">
