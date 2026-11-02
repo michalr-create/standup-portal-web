@@ -1,14 +1,8 @@
 "use server";
 
 import { getAdminSupabase } from "@/lib/supabase-admin";
-import { getCurrentUser } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/admin-auth";
 import { revalidatePath } from "next/cache";
-
-async function requireAuth() {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
-  return user;
-}
 
 // =============================================
 // SOURCES CRUD

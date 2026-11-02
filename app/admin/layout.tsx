@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { getCurrentUser } from "@/lib/supabase-server";
+import { getAdminAccess } from "@/lib/admin-auth";
 import LogoutButton from "./components/LogoutButton";
 
 export const dynamic = "force-dynamic";
@@ -16,16 +16,20 @@ export default async function AdminLayout({
   const pathname = headersList.get("x-pathname") || headersList.get("referer") || "";
   const isLoginPage = pathname.includes("/admin/login");
 
-  const user = await getCurrentUser();
+  // Login stays reachable without an admin session (Michał signs in here).
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
-  // Redirect tylko gdy nie jestesmy na stronie logowania i nie ma usera
-  if (!user && !isLoginPage) {
+  const { user, gate } = await getAdminAccess();
+
+  if (gate === "login") {
     redirect("/admin/login");
   }
 
-  // Na stronie logowania - renderuj tylko children, bez layoutu panelu
-  if (isLoginPage || !user) {
-    return <>{children}</>;
+  // Signed-in is not enough. public.admins / is_admin() decides.
+  if (gate !== "allow" || !user) {
+    forbidden();
   }
 
   return (
