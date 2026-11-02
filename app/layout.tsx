@@ -7,6 +7,7 @@ import { peopleByActivity } from "@/lib/standuperzy-directory";
 import MobileDrawer from "./components/MobileDrawer";
 import InstallButton, { InstallBand, InstallProvider } from "./components/InstallButton";
 import NavSearch from "./components/NavSearch";
+import AuthStatus from "./components/AuthStatus";
 
 export const metadata: Metadata = {
   title: "parska. \u2014 polski stand-up w jednym miejscu",
@@ -105,6 +106,7 @@ export default async function RootLayout({
 
               <NavSearch />
               <InstallButton />
+              <AuthStatus />
               <MobileDrawer
                 navLinks={navLinks}
                 tourLink={{ href: "/trasy", label: "Trasy" }}
