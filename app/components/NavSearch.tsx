@@ -22,6 +22,7 @@ export default function NavSearch() {
   return (
     <form
       onSubmit={handleSubmit}
+      data-resume-safe=""
       className="hidden lg:flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 w-[140px] xl:focus-within:w-[200px]"
       style={{
         background: focused ? "var(--ink-3)" : "transparent",

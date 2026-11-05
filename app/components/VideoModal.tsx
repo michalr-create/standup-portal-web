@@ -36,6 +36,7 @@ import {
   type YtSnapshot,
 } from "@/lib/sleep-timer";
 import { bindVideoHistory } from "@/lib/video-history";
+import { PLAYER_SESSION_END_EVENT } from "@/lib/resume-refresh";
 import {
   containTab,
   escapeLayer,
@@ -583,7 +584,10 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     clearHaltTimers();
   }, [videoId]);
 
-  useEffect(() => () => clearHaltTimers(), []);
+  useEffect(() => () => {
+    clearHaltTimers();
+    document.dispatchEvent(new Event(PLAYER_SESSION_END_EVENT));
+  }, []);
 
   useEffect(() => {
     if (!wakeSupported) return;
@@ -891,6 +895,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label={item.title}
+      data-player-session=""
       tabIndex={-1}
     >
       <div className="video-modal-backdrop" onClick={onClose} />
