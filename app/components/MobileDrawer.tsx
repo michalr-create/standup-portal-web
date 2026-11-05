@@ -156,6 +156,7 @@ export default function MobileDrawer({ navLinks, tourLink, shows }: Props) {
 
             <form
               onSubmit={handleSearch}
+              data-resume-safe=""
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-6"
               style={{ background: "var(--ink-3)", border: "1px solid var(--line)" }}
             >

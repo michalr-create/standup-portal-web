@@ -8,6 +8,7 @@ import MobileDrawer from "./components/MobileDrawer";
 import InstallButton, { InstallBand, InstallProvider } from "./components/InstallButton";
 import NavSearch from "./components/NavSearch";
 import AuthStatus from "./components/AuthStatus";
+import ResumeRefresh from "./components/ResumeRefresh";
 
 export const metadata: Metadata = {
   title: "parska. \u2014 polski stand-up w jednym miejscu",
@@ -65,6 +66,7 @@ export default async function RootLayout({
         <meta name="theme-color" content="#0B0B0B" />
       </head>
       <body>
+        <ResumeRefresh />
         {/* NAV */}
         <nav
           className="sticky top-0 z-40 overflow-x-clip"
