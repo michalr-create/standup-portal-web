@@ -25,12 +25,20 @@ function compile(source: string, jsx: boolean): string {
 function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.ReactElement {
   const dir = mkdtempSync(join(tmpdir(), "event-card-"));
   const eventsPath = join(dir, "events.cjs");
+  const comboboxPath = join(dir, "combobox.cjs");
   const youtubePath = join(dir, "youtube.cjs");
   const linkPath = join(dir, "link.cjs");
   const cardPath = join(dir, "card.cjs");
   const reactPath = require.resolve("react");
   const jsxPath = require.resolve("react/jsx-runtime");
-  writeFileSync(eventsPath, compile(readFileSync(new URL("./events.ts", import.meta.url), "utf8"), false));
+  writeFileSync(comboboxPath, compile(readFileSync(new URL("./combobox.ts", import.meta.url), "utf8"), false));
+  writeFileSync(
+    eventsPath,
+    compile(readFileSync(new URL("./events.ts", import.meta.url), "utf8"), false).replaceAll(
+      'require("./combobox.ts")',
+      `require(${JSON.stringify(comboboxPath)})`,
+    ),
+  );
   writeFileSync(youtubePath, compile(readFileSync(new URL("./youtube.ts", import.meta.url), "utf8"), false));
   writeFileSync(
     linkPath,

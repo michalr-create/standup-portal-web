@@ -1,3 +1,12 @@
+import {
+  comboboxActiveIndex,
+  comboboxOptions,
+  foldComboboxQuery,
+  type ComboboxOption,
+} from "./combobox.ts";
+
+export { comboboxTypedValue } from "./combobox.ts";
+
 export const LISTED_EVENT_STATUSES = ["on_sale", "sold_out"] as const;
 export type ListedEventStatus = (typeof LISTED_EVENT_STATUSES)[number];
 
@@ -822,39 +831,32 @@ export function topFacetCities(cities: readonly string[]): string[] {
   return chips;
 }
 
-function foldPl(value: string): string {
-  return value
-    .trim()
-    .toLocaleLowerCase("pl")
-    .replace(/ł/g, "l")
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
-}
-
 export function peopleSelectOptions<T extends { slug: string; name: string }>(
   people: readonly T[],
   query: string,
   selectedSlug = "",
 ): T[] {
-  const needle = foldPl(query);
+  const needle = foldComboboxQuery(query);
   const matched = needle
-    ? people.filter((person) => foldPl(person.name).includes(needle))
+    ? people.filter((person) => foldComboboxQuery(person.name).includes(needle))
     : [...people];
   if (!selectedSlug || matched.some((person) => person.slug === selectedSlug)) return matched;
   const selected = people.find((person) => person.slug === selectedSlug);
   return selected ? [selected, ...matched] : matched;
 }
 
-const EVERYONE_OPTION = { slug: "", name: "Wszyscy" };
+const EVERYONE_OPTION: ComboboxOption = { value: "", label: "Wszyscy" };
 
-/** Options for the /trasy standuper combobox. "Wszyscy" stays available when it matches the query. */
+/** Options for the standuper combobox. "Wszyscy" stays available when it matches the query. */
 export function personComboboxOptions(
   people: readonly { slug: string; name: string }[],
   query: string,
 ): { slug: string; name: string }[] {
-  const matches = peopleSelectOptions(people, query);
-  if (!query.trim()) return [EVERYONE_OPTION, ...matches];
-  return [...peopleSelectOptions([EVERYONE_OPTION], query), ...matches];
+  return comboboxOptions(
+    people.map((person) => ({ value: person.slug, label: person.name })),
+    query,
+    EVERYONE_OPTION,
+  ).map((option) => ({ slug: option.value, name: option.label }));
 }
 
 /** Highlight the current person when the query is empty, otherwise the first real match. */
@@ -863,25 +865,11 @@ export function personComboboxActiveIndex(
   query: string,
   selectedSlug: string,
 ): number {
-  if (options.length === 0) return -1;
-  if (query.trim()) {
-    const firstPerson = options.findIndex((option) => option.slug !== "");
-    return firstPerson >= 0 ? firstPerson : 0;
-  }
-  const selected = options.findIndex((option) => option.slug === selectedSlug);
-  return selected >= 0 ? selected : 0;
-}
-
-/**
- * If focus has not yet cleared the committed name, a keystroke can land on the
- * end of that name. Keep only the characters added past it.
- */
-export function comboboxTypedValue(raw: string, selectedName: string, replacePending: boolean): string {
-  if (!replacePending || selectedName.length === 0) return raw;
-  if (raw.startsWith(selectedName) && raw.length > selectedName.length) {
-    return raw.slice(selectedName.length);
-  }
-  return raw;
+  return comboboxActiveIndex(
+    options.map((option) => ({ value: option.slug })),
+    query,
+    selectedSlug,
+  );
 }
 
 export function facetRedirect(filters: TrasyFilters, facets: EventFacets, page = 1): string | null {

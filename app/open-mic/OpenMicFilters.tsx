@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import CityCombobox from "@/app/components/CityCombobox";
 import {
   OPEN_MIC_LANGUAGES,
   OPEN_MIC_WEEKDAYS,
@@ -52,21 +53,18 @@ export default function OpenMicFilters({
   return (
     <div role="search" aria-label="Filtruj open miki" className="mb-8 flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Field label="Miasto">
-          <select
-            className="min-h-11 w-full rounded-[10px] px-3 text-sm font-bold"
-            style={controlStyle(Boolean(filters.miasto))}
-            value={filters.miasto}
-            onChange={(event) => go({ miasto: event.target.value })}
-          >
-            <option value="">Wszystkie</option>
-            {cities.map((city) => (
-              <option key={city} value={city}>
-                {city}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label htmlFor="open-mic-miasto" className="mono text-xs uppercase" style={labelStyle}>
+            Miasto
+          </label>
+          <CityCombobox
+            cities={cities}
+            selectedCity={filters.miasto}
+            onSelect={(miasto) => go({ miasto })}
+            inputId="open-mic-miasto"
+            minHeightClass="min-h-11"
+          />
+        </div>
         <Field label="Dzień tygodnia">
           <select
             className="min-h-11 w-full rounded-[10px] px-3 text-sm font-bold"
