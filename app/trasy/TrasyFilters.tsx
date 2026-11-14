@@ -10,6 +10,7 @@ import {
   type EventFacets,
   type TrasyFilters,
 } from "@/lib/events";
+import CityCombobox from "@/app/components/CityCombobox";
 import PersonCombobox from "./PersonCombobox";
 
 const controlStyle = (active: boolean): CSSProperties => ({
@@ -169,21 +170,17 @@ export default function TrasyFilters({
               onSelect={(osoba) => go({ osoba })}
             />
           </div>
-          <Field label="Miasto">
-            <select
-              className="min-h-10 w-full rounded-[10px] px-3 text-sm font-bold"
-              style={controlStyle(Boolean(filters.miasto))}
-              value={filters.miasto}
-              onChange={(event) => go({ miasto: event.target.value })}
-            >
-              <option value="">Wszystkie</option>
-              {facets.cities.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <label htmlFor="trasy-miasto" className="mono text-xs uppercase" style={labelStyle}>
+              Miasto
+            </label>
+            <CityCombobox
+              cities={facets.cities}
+              selectedCity={filters.miasto}
+              onSelect={(miasto) => go({ miasto })}
+              inputId="trasy-miasto"
+            />
+          </div>
           <div className="grid min-w-0 grid-cols-2 gap-3 sm:col-span-2 lg:col-span-2">
             <Field label="Od">
               <DateControl

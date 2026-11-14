@@ -223,7 +223,9 @@ test("a ticket portal query is dropped and does not filter the listing", () => {
   const filtersUi = readFileSync(new URL("../app/trasy/TrasyFilters.tsx", import.meta.url), "utf8");
   const listing = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
   assert.match(filtersUi, /Standuper/);
-  assert.match(filtersUi, /label="Miasto"/);
+  assert.match(filtersUi, /htmlFor="trasy-miasto"/);
+  assert.match(filtersUi, /<CityCombobox/);
+  assert.match(filtersUi, /onSelect=\{\(miasto\) => go\(\{ miasto \}\)\}/);
   assert.match(filtersUi, /label="Od"/);
   assert.match(filtersUi, /label="Do"/);
   assert.doesNotMatch(filtersUi, /Portal|filters\.portal|facets\.portals|providerLabel/);

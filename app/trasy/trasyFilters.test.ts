@@ -4,9 +4,17 @@ import { test } from "node:test";
 
 test("trasy standuper filter is one combobox and dates share a row", () => {
   const filters = readFileSync(new URL("./TrasyFilters.tsx", import.meta.url), "utf8");
-  const combo = readFileSync(new URL("./PersonCombobox.tsx", import.meta.url), "utf8");
+  const combo = readFileSync(new URL("../components/OptionCombobox.tsx", import.meta.url), "utf8");
+  const person = readFileSync(new URL("./PersonCombobox.tsx", import.meta.url), "utf8");
+  const city = readFileSync(new URL("../components/CityCombobox.tsx", import.meta.url), "utf8");
 
   assert.match(filters, /<PersonCombobox/);
+  assert.match(filters, /<CityCombobox/);
+  assert.match(filters, /htmlFor="trasy-miasto"/);
+  assert.match(filters, /inputId="trasy-miasto"/);
+  assert.match(filters, /selectedCity=\{filters\.miasto\}/);
+  assert.match(filters, /onSelect=\{\(miasto\) => go\(\{ miasto \}\)\}/);
+  assert.doesNotMatch(filters, /<select/);
   assert.doesNotMatch(filters, /Filtruj listę/);
   assert.doesNotMatch(filters, /<select[\s\S]*?id="trasy-osoba"/);
   assert.match(filters, /grid min-w-0 grid-cols-2 gap-3 sm:col-span-2 lg:col-span-2/);
@@ -51,13 +59,30 @@ test("trasy standuper filter is one combobox and dates share a row", () => {
   assert.match(combo, /role="combobox"/);
   assert.match(combo, /aria-autocomplete="list"/);
   assert.match(combo, /aria-expanded=\{open\}/);
+  assert.match(combo, /aria-controls=\{open \? listId : undefined\}/);
+  assert.match(combo, /aria-activedescendant=/);
   assert.match(combo, /role="listbox"/);
   assert.match(combo, /role="option"/);
-  assert.match(combo, /inputId = "trasy-osoba"/);
+  assert.match(combo, /aria-selected=\{selectedOption\}/);
   assert.match(combo, /id=\{inputId\}/);
-  assert.match(combo, /Wszyscy/);
-  assert.match(combo, /Wyczyść standupera/);
-  assert.match(combo, /personComboboxOptions/);
+  assert.match(combo, /comboboxOptions/);
+  assert.match(combo, /comboboxTypedValue/);
+  assert.match(combo, /comboboxActiveIndex/);
   assert.match(combo, /ArrowDown/);
+  assert.match(combo, /ArrowUp/);
   assert.match(combo, /Escape/);
+  assert.match(combo, /Enter/);
+
+  assert.match(person, /inputId = "trasy-osoba"/);
+  assert.match(person, /<OptionCombobox/);
+  assert.match(person, /allLabel="Wszyscy"/);
+  assert.match(person, /Wyczyść standupera/);
+  assert.match(person, /listLabel="Standuperzy"/);
+
+  assert.match(city, /<OptionCombobox/);
+  assert.match(city, /allLabel="Wszystkie"/);
+  assert.match(city, /Wyczyść miasto/);
+  assert.match(city, /Szukaj miasta\\u2026/);
+  assert.match(city, /listLabel="Miasta"/);
+  assert.match(city, /value: city, label: city/);
 });
