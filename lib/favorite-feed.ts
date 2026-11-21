@@ -4,8 +4,42 @@ export const FAVORITE_FEED_DEFAULT = 12;
 export const FAVORITE_FEED_MAX = 48;
 /** Collapsed "Grają wkrótce" and "Najnowsze treści w Ulubione". */
 export const ACCOUNT_SECTION_PREVIEW = 5;
-/** Home "Do obejrzenia" row. The rest stays on the account. */
-export const WATCH_LATER_HOME_LIMIT = 12;
+/** Home "Do obejrzenia" row. Same cap as the other saved home row. */
+export const WATCH_LATER_HOME_LIMIT = FAVORITE_FEED_DEFAULT;
+
+/**
+ * Saved order is newest-first. Keep that order and stop at the home-row cap.
+ * Invalid ids are dropped. Duplicates stay once, at the first occurrence.
+ */
+export function homeWatchLaterIds(ids: readonly unknown[], limit = WATCH_LATER_HOME_LIMIT): number[] {
+  const cap = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : WATCH_LATER_HOME_LIMIT;
+  const out: number[] = [];
+  const seen = new Set<number>();
+  for (const value of ids) {
+    const id =
+      typeof value === "number" && Number.isSafeInteger(value) && value > 0
+        ? value
+        : typeof value === "string" && /^[1-9]\d*$/.test(value)
+          ? Number(value)
+          : null;
+    if (id == null || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+/** Cards still on the list, in the saved order. Ids missing from `ids` drop out. */
+export function orderWatchLaterItems<T extends { id: number }>(
+  items: readonly T[],
+  ids: readonly number[],
+): T[] {
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return items
+    .filter((item) => item != null && order.has(item.id))
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
 
 export function clampFavoriteFeedLimit(value: unknown): number {
   const parsed =
