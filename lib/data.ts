@@ -36,6 +36,7 @@ import { supabase } from "@/lib/supabase";
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { PUBLIC_LISTING_PAGE_SIZE } from "@/lib/category-browse";
 import { mergeShowEpisodes, pageShowEpisodes } from "@/lib/show-episodes";
+import { normalizeHomeCity } from "@/lib/home-city";
 import { paidExternalUrl } from "@/lib/youtube";
 
 export type Item = {
@@ -2007,6 +2008,50 @@ export async function getUpcomingEventsForPersonSlugs(
       people: roster.map((person) => ({ name: person.name, slug: person.slug })),
     };
   });
+}
+
+const CITY_UPCOMING_LIMIT = 24;
+
+// Najbliższe terminy w zapisanym mieście, także gdy na scenie nie ma ulubionej osoby.
+export async function getUpcomingEventsInCity(
+  city: string,
+  now = new Date(),
+): Promise<FavoriteUpcomingEvent[]> {
+  const normalized = normalizeHomeCity(city);
+  if (!normalized) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from("events")
+      .select(UPCOMING_EVENT_COLUMNS)
+      .gte("starts_at", now.toISOString())
+      .in("status", [...LISTED_EVENT_STATUSES])
+      .eq("city", normalized)
+      .order("starts_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(FAVORITE_UPCOMING_SCAN_LIMIT);
+    if (error || !data) {
+      console.error("Błąd pobierania tras miasta:", error);
+      return [];
+    }
+    const events = await withCoPerformers(rowsToTourEvents(data as unknown as EventRow[]), now);
+    return events.slice(0, CITY_UPCOMING_LIMIT).map((event) => {
+      const roster = eventPeople(event);
+      const lead = roster[0] ?? event.person;
+      return {
+        id: event.id,
+        starts_at: event.starts_at,
+        city: event.city,
+        status: event.status,
+        ticket_url: paidExternalUrl(event.ticket_url) ?? "",
+        person: { name: lead.name, slug: lead.slug },
+        people: roster.map((person) => ({ name: person.name, slug: person.slug })),
+      };
+    });
+  } catch (error) {
+    console.error("Błąd pobierania tras miasta:", error);
+    return [];
+  }
 }
 
 // Najbliższe terminy jednego standupera (profil). Dopasowanie po person_id

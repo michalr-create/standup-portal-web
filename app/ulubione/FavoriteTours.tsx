@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { ACCOUNT_SECTION_PREVIEW, accountPreview } from "@/lib/favorite-feed";
 import {
   eventPeople,
   formatEventWhen,
@@ -56,12 +58,19 @@ function TicketCta({ event }: { event: FavoriteUpcomingEvent }) {
 export default function FavoriteTours({
   loading,
   events,
+  city = "",
 }: {
   loading: boolean;
   events: FavoriteUpcomingEvent[];
+  city?: string;
 }) {
+  const signature = events.map((event) => event.id).join(",");
+  const [expandedFor, setExpandedFor] = useState<string | null>(null);
+  const showAll = expandedFor === signature;
+  const visible = accountPreview(events, showAll);
   const showList = events.length > 0;
   const showEmpty = !loading && !showList;
+  const toursHref = city ? `/trasy?miasto=${encodeURIComponent(city)}` : "/trasy";
 
   return (
     <section className="mb-10" aria-labelledby="graja-wkrotce" aria-busy={loading}>
@@ -80,15 +89,16 @@ export default function FavoriteTours({
       )}
       {showEmpty && (
         <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>
-          Brak ogłoszonych dat u ulubionych.{" "}
-          <Link href="/trasy" className="font-bold" style={{ color: "var(--coral)" }}>
+          Brak ogłoszonych dat u ulubionych.
+          {city ? " W wybranym mieście też nie ma najbliższego terminu." : null}{" "}
+          <Link href={toursHref} className="font-bold" style={{ color: "var(--coral)" }}>
             Zobacz trasy
           </Link>
         </p>
       )}
       {showList && (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
-          {events.map((event) => (
+          {visible.map((event) => (
             <li
               key={event.id}
               className="flex flex-col gap-3 rounded-[18px] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
@@ -140,6 +150,16 @@ export default function FavoriteTours({
             </li>
           ))}
         </ul>
+      )}
+      {events.length > ACCOUNT_SECTION_PREVIEW && !showAll && (
+        <button
+          type="button"
+          className="mt-4 inline-flex min-h-11 items-center text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+          style={{ color: "var(--coral)", background: "transparent", border: 0 }}
+          onClick={() => setExpandedFor(signature)}
+        >
+          Pokaż wszystkie
+        </button>
       )}
     </section>
   );

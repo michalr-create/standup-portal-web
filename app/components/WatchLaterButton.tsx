@@ -15,15 +15,15 @@ export default function WatchLaterButton({
   const library = useLibrary();
   const on = library.later.includes(itemId);
   const label = on
-    ? `Usuń „${title}” z listy na później`
-    : `Zapisz „${title}” na później`;
+    ? `Usuń „${title}” z listy Do obejrzenia`
+    : `Dodaj „${title}” do listy Do obejrzenia`;
 
   return (
     <button
       type="button"
       aria-pressed={on}
       aria-label={label}
-      className={`inline-flex min-h-11 items-center rounded-full px-3 text-sm font-bold ${focusRing}`}
+      className={`inline-flex min-h-11 max-w-full items-center rounded-full px-3 text-left text-sm font-bold ${focusRing}`}
       style={
         on
           ? { color: "var(--ink)", background: "var(--coral)" }
@@ -36,7 +36,7 @@ export default function WatchLaterButton({
       }}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      {on ? "Na później" : "Później"}
+      {on ? "Usuń z listy Do obejrzenia" : "Do obejrzenia"}
     </button>
   );
 }

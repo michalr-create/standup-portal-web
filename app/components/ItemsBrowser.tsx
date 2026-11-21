@@ -7,7 +7,6 @@ import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import CardByline from "./CardByline";
-import ReportMaterialLink from "./ReportMaterialLink";
 import HighlightedText from "./HighlightedText";
 import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
@@ -138,7 +137,6 @@ export default function ItemsBrowser({
               </div>
               <AdminMaterialActions itemId={item.id} />
               <CardByline item={item} />
-              <ReportMaterialLink itemId={item.id} title={item.title} />
             </article>
           );
         })}

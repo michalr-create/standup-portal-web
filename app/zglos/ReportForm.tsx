@@ -14,16 +14,33 @@ function isKind(value: string): value is ReportKind {
   return (REPORT_KINDS as readonly string[]).includes(value);
 }
 
+function linkLabel(kind: ReportKind): string {
+  if (kind === "missing_video") return "Link YouTube";
+  if (kind === "missing_event") return "Link do biletów albo strony, jeśli jest";
+  return "Link, jeśli jest";
+}
+
+function messageLabel(kind: ReportKind): string {
+  if (kind === "missing_video") return "Dopisek, opcjonalnie";
+  if (kind === "missing_event") return "Kto, gdzie i kiedy";
+  if (kind === "missing_person") return "Kogo brakuje";
+  if (kind === "new_open_mic") return "Gdzie i kiedy";
+  return "Co zgłaszasz";
+}
+
 export default function ReportForm({
   initialKind,
   contentItemId,
   returnPath,
+  kinds = REPORT_KINDS,
 }: {
   initialKind: ReportKind;
   contentItemId: number | null;
   returnPath: string;
+  kinds?: readonly ReportKind[];
 }) {
-  const [kind, setKind] = useState<ReportKind>(initialKind);
+  const allowed = kinds.length > 0 ? kinds : REPORT_KINDS;
+  const [kind, setKind] = useState<ReportKind>(allowed.includes(initialKind) ? initialKind : allowed[0]);
   const [url, setUrl] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
@@ -67,10 +84,10 @@ export default function ReportForm({
           style={{ color: "var(--paper)", background: "var(--ink-3)", border: "1px solid var(--line-2)" }}
           value={kind}
           onChange={(event) => {
-            if (isKind(event.target.value)) setKind(event.target.value);
+            if (isKind(event.target.value) && allowed.includes(event.target.value)) setKind(event.target.value);
           }}
         >
-          {REPORT_KINDS.map((value) => (
+          {allowed.map((value) => (
             <option key={value} value={value}>
               {reportKindLabel(value)}
             </option>
@@ -89,7 +106,7 @@ export default function ReportForm({
       {kind !== "wrong_meta" && (
         <label className="flex flex-col gap-1.5">
           <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".14em" }}>
-            {kind === "missing_video" ? "Link YouTube" : "Link, jeśli jest"}
+            {linkLabel(kind)}
           </span>
           <input
             type="url"
@@ -106,7 +123,7 @@ export default function ReportForm({
 
       <label className="flex flex-col gap-1.5">
         <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".14em" }}>
-          {kind === "missing_video" ? "Dopisek, opcjonalnie" : "Co zgłaszasz"}
+          {messageLabel(kind)}
         </span>
         <textarea
           required={kind !== "missing_video"}

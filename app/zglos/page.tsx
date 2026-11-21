@@ -4,7 +4,7 @@ import { REPORT_KINDS, type ReportKind } from "@/lib/content-report";
 
 export const metadata: Metadata = {
   title: "Zgłoś — parska.",
-  description: "Zgłoś brakujący film, błędny tag albo nowy open mic.",
+  description: "Zgłoś brakujący film, występ, open mic, standupera albo błędny tag.",
 };
 
 type Search = {
@@ -47,7 +47,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
             <span className="dot-accent">.</span>
           </h1>
           <p className="mt-3 max-w-xl text-[15px]" style={{ color: "var(--paper-dim)" }}>
-            Brakujący film z YouTube, zły tag, osoba albo format przy materiale, albo open mic, którego nie ma na liście. Najwyżej 10 zgłoszeń dziennie.
+            Brakujący film, występ, open mic albo standuper, a także zły tag, osoba albo format przy materiale. Najwyżej 10 zgłoszeń dziennie.
           </p>
         </header>
         <ReportForm initialKind={kind} contentItemId={contentItemId} returnPath={returnPath} />

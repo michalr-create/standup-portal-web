@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   eventFacets,
   eventsForFavoritePeople,
+  mergeAccountUpcoming,
   isVisibleTicketProvider,
   FAVORITE_PERSON_SLUG_CAP,
   FAVORITE_UPCOMING_LIMIT,
@@ -986,6 +987,28 @@ test("the favorites screen drops events for people who are not favorited", () =>
     ["adam-van-bendler"],
   );
   assert.deepEqual(eventsForFavoritePeople(rows, [], NOW), []);
+});
+
+test("the account tour list keeps city dates and does not repeat a favorite date", () => {
+  const favorite = {
+    id: 1,
+    starts_at: "2026-11-20T18:00:00.000Z",
+    city: "Toruń",
+    status: "on_sale" as const,
+    ticket_url: "https://example.com/a",
+    person: { name: "Adam", slug: "adam-van-bendler" },
+  };
+  const cityOnly = {
+    id: 2,
+    starts_at: "2026-11-12T18:00:00.000Z",
+    city: "Kraków",
+    status: "sold_out" as const,
+    ticket_url: "https://example.com/k",
+    person: { name: "Kuba", slug: "kuba-wu" },
+  };
+  const past = { ...cityOnly, id: 3, starts_at: "2026-10-01T18:00:00.000Z" };
+  const merged = mergeAccountUpcoming([[favorite, favorite], [cityOnly, past]], NOW);
+  assert.deepEqual(merged.map((event) => event.id), [2, 1]);
 });
 
 test("tour card profile link stays on parska and skips a missing slug", () => {
