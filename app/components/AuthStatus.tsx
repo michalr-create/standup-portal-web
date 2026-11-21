@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signOut } from "@/app/auth/actions";
+import SignOutButton from "@/app/components/SignOutButton";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 
 type Variant = "nav" | "drawer";
@@ -17,16 +17,6 @@ function ZalogujLink({ className, onNavigate }: { className: string; onNavigate?
     <Link href="/zaloguj" onClick={onNavigate} className={className} style={{ color: "var(--paper)" }}>
       Zaloguj
     </Link>
-  );
-}
-
-function SignOutButton({ className }: { className: string }) {
-  return (
-    <form action={signOut} className="m-0">
-      <button type="submit" className={`${bareButton} ${className}`} style={{ color: "var(--paper)" }}>
-        Wyloguj
-      </button>
-    </form>
   );
 }
 
@@ -64,7 +54,7 @@ export default function AuthStatus({
         <Link href="/ulubione" onClick={onNavigate} className={itemClass} style={{ color: "var(--paper)" }}>
           Ulubione
         </Link>
-        <SignOutButton className={itemClass} />
+        <SignOutButton className={itemClass} style={{ color: "var(--paper)" }} />
       </div>
     );
   }

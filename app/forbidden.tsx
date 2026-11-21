@@ -1,5 +1,5 @@
-import { signOut } from "@/app/auth/actions";
 import Link from "next/link";
+import SignOutButton from "@/app/components/SignOutButton";
 
 export default function Forbidden() {
   return (
@@ -21,15 +21,10 @@ export default function Forbidden() {
         >
           Wróć na portal
         </Link>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold"
-            style={{ color: "var(--paper)", border: "1px solid var(--line-2)" }}
-          >
-            Wyloguj
-          </button>
-        </form>
+        <SignOutButton
+          className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold"
+          style={{ color: "var(--paper)", border: "1px solid var(--line-2)" }}
+        />
       </div>
     </main>
   );
