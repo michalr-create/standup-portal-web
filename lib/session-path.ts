@@ -5,6 +5,7 @@ export const SESSION_REFRESH_PREFIXES = [
   "/auth",
   "/ulubione",
   "/konto",
+  "/zglos",
 ] as const;
 
 export function shouldRefreshSession(pathname: string): boolean {

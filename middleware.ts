@@ -59,5 +59,7 @@ export const config = {
     "/ulubione",
     "/konto",
     "/konto/:path*",
+    "/zglos",
+    "/zglos/:path*",
   ],
 };

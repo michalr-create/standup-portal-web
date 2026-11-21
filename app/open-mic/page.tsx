@@ -114,9 +114,18 @@ export default async function OpenMicPage({ searchParams }: Props) {
               Cykliczne open miki stand-upowe. Na karcie jest scena, zapisy i najbliższy termin, a bilety otwierają się w nowej karcie.
             </p>
           </div>
-          <Link href="/open-mic/dodaj" className={addClass}>
-            Dodaj swój open mic
-          </Link>
+          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            <Link href="/open-mic/dodaj" className={addClass}>
+              Dodaj swój open mic
+            </Link>
+            <Link
+              href="/zglos?rodzaj=open-mic"
+              className="inline-flex min-h-11 items-center justify-center text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+              style={{ color: "var(--paper-dim)" }}
+            >
+              Zgłoś brakujący open mic
+            </Link>
+          </div>
         </header>
 
         {catalog.ok && view.catalogCount > 0 && (
