@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { shouldRefreshSession } from "./session-path.ts";
 
 test("session refresh is limited to account and admin paths", () => {
-  for (const path of ["/admin", "/admin/login", "/zaloguj", "/auth/callback", "/ulubione", "/konto", "/konto/push"]) {
+  for (const path of ["/admin", "/admin/login", "/zaloguj", "/auth/callback", "/ulubione", "/konto", "/konto/push", "/zglos"]) {
     assert.equal(shouldRefreshSession(path), true, path);
   }
   for (const path of ["/", "/standup", "/formaty", "/standuperzy", "/administrator", "/ulubione-archiwum"]) {
@@ -18,7 +18,7 @@ test("middleware matcher is the same prefix list and still sets x-pathname", () 
   assert.match(source, /getClaims\(\)/);
   assert.match(source, /shouldRefreshSession/);
   assert.doesNotMatch(source, /matcher:\s*\[\s*"\/:path\*"/);
-  for (const path of ["/admin", "/admin/:path*", "/zaloguj", "/auth/:path*", "/ulubione", "/konto", "/konto/:path*"]) {
+  for (const path of ["/admin", "/admin/:path*", "/zaloguj", "/auth/:path*", "/ulubione", "/konto", "/konto/:path*", "/zglos", "/zglos/:path*"]) {
     assert.match(source, new RegExp(path.replace(/[/*]/g, "\\$&")));
   }
 });

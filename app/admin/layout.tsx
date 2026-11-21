@@ -53,6 +53,9 @@ export default async function AdminLayout({
               <Link href="/admin/zrodla" className="text-gray-300 hover:text-white">
                 Zrodla
               </Link>
+              <Link href="/admin/zgloszenia" className="text-gray-300 hover:text-white">
+                Zgłoszenia
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3">

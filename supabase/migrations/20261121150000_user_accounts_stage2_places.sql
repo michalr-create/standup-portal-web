@@ -166,7 +166,7 @@ as $$
   select a.event_id, count(*)::bigint as going_count
   from public.event_attendance a
   where a.status = 'going'
-    and a.event_id = any (coalesce(event_ids, '{}'::bigint[])[1:200])
+    and a.event_id = any ((coalesce(event_ids, '{}'::bigint[]))[1:200])
   group by a.event_id
 $$;
 
