@@ -8,6 +8,7 @@ import MobileDrawer from "./components/MobileDrawer";
 import InstallButton, { InstallBand, InstallProvider } from "./components/InstallButton";
 import NavSearch from "./components/NavSearch";
 import AuthStatus from "./components/AuthStatus";
+import HeaderSearchLink from "./components/HeaderSearchLink";
 import AdminModeProvider from "./components/AdminMode";
 import AdminNavLink from "./components/AdminNavLink";
 import LibraryProvider from "./components/LibraryProvider";
@@ -85,7 +86,8 @@ export default async function RootLayout({
           }}
         >
           <InstallProvider>
-            <div className="flex items-center gap-4 xl:gap-6 px-4 xl:px-10 py-3 lg:py-4">
+            {/* Logo left, actions right. Below lg the nav is hidden, so justify-between pins the group to the edge. */}
+            <div className="flex items-center justify-between flex-nowrap gap-3 px-3 py-3 sm:gap-4 sm:px-4 lg:py-4 xl:gap-6 xl:px-10">
               <Link
                 href="/"
                 className="flex items-baseline gap-0.5 font-black text-2xl lg:text-3xl shrink-0"
@@ -113,15 +115,18 @@ export default async function RootLayout({
                 ))}
               </ul>
 
-              <NavSearch />
-              <InstallButton />
-              <AdminNavLink />
-              <AuthStatus />
-              <MobileDrawer
-                navLinks={navLinks}
-                tourLink={{ href: "/trasy", label: "Trasy" }}
-                shows={drawerShows.map(({ id, name, slug }) => ({ id, name, slug }))}
-              />
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:gap-4 xl:gap-6">
+                <NavSearch />
+                <InstallButton />
+                <AdminNavLink />
+                <HeaderSearchLink />
+                <AuthStatus />
+                <MobileDrawer
+                  navLinks={navLinks}
+                  tourLink={{ href: "/trasy", label: "Trasy" }}
+                  shows={drawerShows.map(({ id, name, slug }) => ({ id, name, slug }))}
+                />
+              </div>
             </div>
             <InstallBand />
           </InstallProvider>

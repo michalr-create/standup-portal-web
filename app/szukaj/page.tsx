@@ -15,6 +15,7 @@ import {
   unknownSearchCategoryHref,
   wynikLabel,
 } from "@/lib/search-filters";
+import FocusSearchField from "./FocusSearchField";
 import SearchCategoryChips from "./SearchCategoryChips";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,15 @@ const RECOVERY = [
   { href: "/standup", label: "Standup" },
 ] as const;
 
-function SearchField({ query, kategoria }: { query: string; kategoria: string }) {
+function SearchField({
+  query,
+  kategoria,
+  focusOnMount = false,
+}: {
+  query: string;
+  kategoria: string;
+  focusOnMount?: boolean;
+}) {
   return (
     <form
       key={`${query}\n${kategoria}`}
@@ -50,6 +59,7 @@ function SearchField({ query, kategoria }: { query: string; kategoria: string })
           placeholder="Standuper, film, format…"
           enterKeyHint="search"
           autoComplete="off"
+          autoFocus={focusOnMount}
           className={`min-h-14 w-full appearance-none rounded-2xl text-[17px] outline-none placeholder:text-[var(--paper-mute)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)] ${query ? "pl-4 pr-14" : "px-4"}`}
           style={{
             background: "var(--ink-3)",
@@ -57,6 +67,7 @@ function SearchField({ query, kategoria }: { query: string; kategoria: string })
             color: "var(--paper)",
           }}
         />
+        {focusOnMount ? <FocusSearchField /> : null}
         {query ? (
           <Link
             href="/szukaj"
@@ -133,7 +144,7 @@ function Prompt({
         <p className="mx-auto mb-8 mt-4 max-w-md break-words text-base" style={{ color: "var(--paper-dim)" }}>
           {lead}
         </p>
-        <SearchField query={query} kategoria="" />
+        <SearchField query={query} kategoria="" focusOnMount={!query} />
         <RecoveryLinks />
       </div>
     </div>
