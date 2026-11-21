@@ -26,6 +26,22 @@ export type RankingQuery = {
   year: number;
 };
 
+/** Short names for the home Rankingi chips. Order follows RANKING_IDS. */
+export const HOME_RANKING_CHIP_LABELS: Record<RankingId, string> = {
+  hity: "Hity tygodnia",
+  zyskujace: "Zyskuj\u0105ce",
+  klasyki: "Klasyki",
+  nowosci: "Nowo\u015bci miesi\u0105ca",
+  specjale: "Top specjali roku",
+  standuperzy: "Standuperzy",
+  programy: "Pe\u0142ne programy",
+  formaty: "Top format\u00f3w",
+};
+
+export function homeRankingSeeAllHref(id: RankingId): string {
+  return `/rankingi?ranking=${id}`;
+}
+
 export const RANKING_LABELS: Record<RankingId, string> = {
   hity: "Hity tygodnia",
   zyskujace: "Zyskuj\u0105ce",

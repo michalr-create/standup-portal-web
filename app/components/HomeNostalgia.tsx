@@ -11,7 +11,7 @@ export default async function HomeNostalgia() {
       <div className="max-w-6xl mx-auto">
         <SectionHead
           title="Nostalgia"
-          sub={"Specjale starsze ni\u017c 5 lat"}
+          sub={"P\u00f3\u0142ka dnia"}
           linkHref="/nostalgia"
           linkText={"Zobacz wszystkie \u2192"}
         />

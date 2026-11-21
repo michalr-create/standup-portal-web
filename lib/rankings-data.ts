@@ -4,6 +4,8 @@ import { supabase } from "@/lib/supabase";
 import {
   MIN_PERCENT_BASE,
   MONTH_DAYS,
+  HOME_RANKING_CHIP_LABELS,
+  RANKING_IDS,
   RANKING_LABELS,
   RANKING_LIMIT,
   RANKING_REVALIDATE_SECONDS,
@@ -24,6 +26,7 @@ import {
   type PersonRef,
   type PersonSpecialsRank,
   type PersonViewsRank,
+  type RankingId,
   type RankingQuery,
   type RankingScope,
   type ShowEpisode,
@@ -723,6 +726,26 @@ export type HomeRankingPreview = {
   label: string;
   entries: RankedVideo[];
 };
+
+export type HomeRankingBoard =
+  | { id: RankingId; label: string; kind: "videos"; pending: boolean; entries: RankedVideo[] }
+  | { id: RankingId; label: string; kind: "people"; people: RankingPersonCard[] }
+  | { id: RankingId; label: string; kind: "shows"; shows: ShowRank[] };
+
+/** Every public ranking, in chip order, so the home switcher can change lists without a navigation. */
+export async function getHomeRankingBoards(): Promise<HomeRankingBoard[]> {
+  const year = currentUtcYear();
+  const pages = await Promise.all(
+    RANKING_IDS.map((id) => getRanking({ ranking: id, scope: "all", year })),
+  );
+  return RANKING_IDS.map((id, index) => {
+    const data = pages[index]!;
+    const label = HOME_RANKING_CHIP_LABELS[id];
+    if (data.kind === "people") return { id, label, kind: "people", people: data.people };
+    if (data.kind === "shows") return { id, label, kind: "shows", shows: data.shows };
+    return { id, label, kind: "videos", pending: data.pending, entries: data.entries };
+  });
+}
 
 /** Top of Hity tygodnia when gain rows exist, otherwise top of Klasyki. */
 export async function getHomeRanking(limit = RANKING_LIMIT): Promise<HomeRankingPreview> {

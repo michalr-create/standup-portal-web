@@ -55,6 +55,42 @@ export function nostalgiaCookieAssignment(ids: number[]): string {
   return `${NOSTALGIA_COOKIE}=${nostalgiaCookieValue(ids)}; Path=/; Max-Age=${NOSTALGIA_COOKIE_MAX_AGE}; SameSite=Lax`;
 }
 
+/** Calendar date in Europe/Warsaw, `YYYY-MM-DD`. The nostalgia shelf is fixed for this day. */
+export function warsawDateKey(now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Warsaw",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  if (!year || !month || !day) return "1970-01-01";
+  return `${year}-${month}-${day}`;
+}
+
+/** Stable 32-bit seed for one Warsaw date. */
+export function nostalgiaDaySeed(dateKey: string): number {
+  let hash = 2166136261;
+  const input = `nostalgia:${dateKey}`;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let next = Math.imul(state ^ (state >>> 15), 1 | state);
+    next = (next + Math.imul(next ^ (next >>> 7), 61 | next)) ^ next;
+    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function shuffle<T>(items: T[], random: () => number): T[] {
   const copy = items.slice();
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -84,6 +120,20 @@ export function pickNostalgiaShelf<T extends { id: number }>(
   const picked = shuffle(fresh, random);
   if (picked.length >= count) return picked.slice(0, count);
   return [...picked, ...shuffle(stale, random)].slice(0, Math.min(count, pool.length));
+}
+
+/**
+ * One shuffle for the Warsaw day. Sorting by id first keeps the result
+ * independent of the pool's fetch order. A shorter count is a prefix of a
+ * longer one for the same date.
+ */
+export function dailyNostalgiaPick<T extends { id: number }>(
+  pool: readonly T[],
+  count: number,
+  dateKey: string,
+): T[] {
+  const ordered = pool.slice().sort((a, b) => a.id - b.id);
+  return pickNostalgiaShelf(ordered, [], count, mulberry32(nostalgiaDaySeed(dateKey)));
 }
 
 export function nostalgiaHits<T extends { id: number; viewCount: number | null }>(

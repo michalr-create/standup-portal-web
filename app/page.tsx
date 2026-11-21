@@ -107,8 +107,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      <HomeRankings />
-
       {/* SPECJALE */}
       {specjalItems.length > 0 && (
         <section className="band">
@@ -118,8 +116,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-
-      <HomeNostalgia />
 
       {/* FORMATY */}
       {activeShows.length > 0 && (
@@ -161,6 +157,10 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <HomeNostalgia />
+
+      <HomeRankings />
     </>
   );
 }
