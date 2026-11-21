@@ -25,7 +25,13 @@ import {
   HOME_NOWE_SHORTS_CATEGORY_ID,
   HOME_NOWE_SHORTS_URL_MATCH,
 } from "@/lib/home-nowe";
-import { SEARCH_CANDIDATE_LIMIT, SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
+import { SEARCH_RESULT_LIMIT, dedupeSearchItems } from "@/lib/search";
+import {
+  SPECJALE_SEARCH_SLUG,
+  SPECJALE_TAG_SLUG,
+  buildSearchFacets,
+  type SearchFacet,
+} from "@/lib/search-filters";
 import { supabase } from "@/lib/supabase";
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { PUBLIC_LISTING_PAGE_SIZE } from "@/lib/category-browse";
@@ -1382,49 +1388,235 @@ export async function getDefaultShowsForPerson(personId: number): Promise<{
 // =================================================================
 // QUERY: wyszukiwanie globalne
 // =================================================================
-export async function searchAll(q: string): Promise<{
-  people: Person[];
-  items: Item[];
-  shows: Show[];
-}> {
-  const term = `%${q.trim()}%`;
+const SEARCH_ENTITY_LIMIT = 10;
+const SEARCH_SHOW_SCAN = 200;
 
-  const [peopleRes, itemsRes, showsRes] = await Promise.all([
+const SEARCH_SHOW_COLUMNS =
+  "id, name, slug, description, photo_url, category_id, youtube_channel_url, spotify_show_url, apple_podcasts_url, website_url";
+
+type ShowSearchRow = {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  photo_url: string | null;
+  category_id: number | null;
+  youtube_channel_url: string | null;
+  spotify_show_url: string | null;
+  apple_podcasts_url: string | null;
+  website_url: string | null;
+};
+
+export type SearchAllResult = {
+  people: Person[];
+  shows: Show[];
+  items: Item[];
+  itemTotal: number;
+  facets: SearchFacet[];
+  wszystkoCount: number;
+  categories: { slug: string }[];
+};
+
+type TitleMatchFilter = {
+  categoryId?: number;
+  tagId?: number;
+};
+
+type TitleQuery = {
+  eq: (column: string, value: unknown) => TitleQuery;
+  is: (column: string, value: null) => TitleQuery;
+  ilike: (column: string, value: string) => TitleQuery;
+  order: (column: string, options: { ascending: boolean }) => TitleQuery;
+  range: (from: number, to: number) => PromiseLike<{
+    data: unknown;
+    error: { code?: string; message?: string } | null;
+    count: number | null;
+  }>;
+  then: PromiseLike<{
+    data: unknown;
+    error: { message?: string } | null;
+    count: number | null;
+  }>["then"];
+};
+
+function applyTitleFilter<Q>(query: Q, pattern: string, filter: TitleMatchFilter): Q {
+  let next = query as unknown as TitleQuery;
+  next = next.eq("status", "approved").is("merged_into_id", null).ilike("title", pattern);
+  if (filter.categoryId != null) next = next.eq("category_id", filter.categoryId);
+  if (filter.tagId != null) next = next.eq("content_tags.tag_id", filter.tagId);
+  return next as unknown as Q;
+}
+
+async function countTitleMatches(pattern: string, filter: TitleMatchFilter): Promise<number> {
+  const selected = filter.tagId != null
+    ? supabase.from("content_items").select("id, content_tags!inner(tag_id)", { count: "exact", head: true })
+    : supabase.from("content_items").select("id", { count: "exact", head: true });
+  const { count, error } = await applyTitleFilter(selected, pattern, filter);
+  if (error) {
+    console.error("Blad liczenia wyszukiwania:", error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+async function pageTitleMatches(
+  pattern: string,
+  filter: TitleMatchFilter,
+  limit: number,
+  offset: number,
+): Promise<{ rows: ContentItemRow[]; total: number }> {
+  const selected = filter.tagId != null
+    ? supabase.from("content_items").select(`${ITEM_COLUMNS}, content_tags!inner(tag_id)`, { count: "exact" })
+    : supabase.from("content_items").select(ITEM_COLUMNS, { count: "exact" });
+  const { data, error, count } = await applyTitleFilter(selected, pattern, filter)
+    .order("published_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error?.code === "PGRST103") {
+    return { rows: [], total: await countTitleMatches(pattern, filter) };
+  }
+  if (error || !data) {
+    console.error("Blad wyszukiwania wpisow:", error);
+    return { rows: [], total: 0 };
+  }
+
+  const rows = (data as Array<ContentItemRow & { content_tags?: unknown }>).map((row) => {
+    const { content_tags: _tags, ...item } = row;
+    return item;
+  });
+  return { rows, total: count ?? 0 };
+}
+
+function showCountsByCategory(rows: readonly { category_id: number | null }[]): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const row of rows) {
+    if (row.category_id == null) continue;
+    counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export async function searchAll(
+  q: string,
+  options?: { categorySlug?: string | null; page?: number; pageSize?: number },
+): Promise<SearchAllResult> {
+  const term = q.trim();
+  const pageSize = Number.isFinite(options?.pageSize)
+    ? Math.max(1, Math.floor(options?.pageSize ?? SEARCH_RESULT_LIMIT))
+    : SEARCH_RESULT_LIMIT;
+  const page = Number.isFinite(options?.page) ? Math.max(1, Math.floor(options?.page ?? 1)) : 1;
+  const requested = options?.categorySlug?.trim().toLowerCase() ?? "";
+  const empty: SearchAllResult = {
+    people: [],
+    shows: [],
+    items: [],
+    itemTotal: 0,
+    facets: [],
+    wszystkoCount: 0,
+    categories: [],
+  };
+  if (!term) return empty;
+
+  const pattern = `%${escapeIlike(term)}%`;
+  const [categories, specialTagRes] = await Promise.all([
+    getAllCategories(),
     supabase
-      .from("people")
-      .select("id, name, slug, bio, photo_url, role")
-      .ilike("name", term)
-      .eq("is_active", true)
-      .limit(10),
-    supabase
-      .from("content_items")
-      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
-      .eq("status", "approved")
-      .is("merged_into_id", null)
-      .ilike("title", term)
-      .order("published_at", { ascending: false })
-      .limit(SEARCH_CANDIDATE_LIMIT),
-    supabase
-      .from("shows")
-      .select("id, name, slug, description, photo_url, category_id, youtube_channel_url, spotify_show_url, apple_podcasts_url, website_url")
-      .ilike("name", term)
-      .eq("is_active", true)
-      .limit(10),
+      .from("tags")
+      .select("id")
+      .eq("slug", SPECJALE_TAG_SLUG)
+      .neq("tag_type", "person")
+      .maybeSingle(),
   ]);
 
+  const known = categories.some((category) => category.slug === requested);
+  const specjale = requested === SPECJALE_SEARCH_SLUG;
+  const applied = known || specjale ? requested : "";
+  const activeCategory = known ? categories.find((category) => category.slug === applied) ?? null : null;
+  const specialTagId = specialTagRes.data?.id ?? null;
+  const itemFilter: TitleMatchFilter = specjale
+    ? { tagId: specialTagId ?? -1 }
+    : activeCategory
+      ? { categoryId: activeCategory.id }
+      : {};
+
+  const offset = (page - 1) * pageSize;
+  const peoplePromise = applied
+    ? supabase
+      .from("people")
+      .select("id", { count: "exact", head: true })
+      .ilike("name", pattern)
+      .eq("is_active", true)
+    : supabase
+      .from("people")
+      .select("id, name, slug, bio, photo_url, role", { count: "exact" })
+      .ilike("name", pattern)
+      .eq("is_active", true)
+      .order("name")
+      .limit(SEARCH_ENTITY_LIMIT);
+  const [peopleRes, showsRes, itemTotal, specjaleCount, categoryItemCounts, itemPage] = await Promise.all([
+    peoplePromise,
+    supabase
+      .from("shows")
+      .select(SEARCH_SHOW_COLUMNS, { count: "exact" })
+      .ilike("name", pattern)
+      .eq("is_active", true)
+      .order("name")
+      .limit(SEARCH_SHOW_SCAN),
+    countTitleMatches(pattern, {}),
+    specialTagId == null ? Promise.resolve(0) : countTitleMatches(pattern, { tagId: specialTagId }),
+    Promise.all(categories.map((category) => countTitleMatches(pattern, { categoryId: category.id }))),
+    specjale && specialTagId == null
+      ? Promise.resolve({ rows: [] as ContentItemRow[], total: 0 })
+      : pageTitleMatches(pattern, itemFilter, pageSize, offset),
+  ]);
+
+  if (peopleRes.error) console.error("Blad wyszukiwania osob:", peopleRes.error);
+  if (showsRes.error) console.error("Blad wyszukiwania formatow:", showsRes.error);
+
+  const showRows = (showsRes.data ?? []) as ShowSearchRow[];
+  const showsByCategory = showCountsByCategory(showRows);
+  const categoryMeta = new Map(categories.map((category) => [category.id, category]));
+  const toShow = (row: ShowSearchRow): Show => {
+    const category = row.category_id != null ? categoryMeta.get(row.category_id) : null;
+    return {
+      ...row,
+      category_name: category?.name ?? null,
+      category_slug: category?.slug ?? null,
+    };
+  };
+
+  const visibleShows = (activeCategory
+    ? showRows.filter((row) => row.category_id === activeCategory.id)
+    : showRows
+  ).slice(0, SEARCH_ENTITY_LIMIT).map(toShow);
+
+  const { wszystkoCount, facets } = buildSearchFacets({
+    categories: categories.map((category, index) => ({
+      slug: category.slug,
+      name: category.name,
+      displayOrder: category.display_order,
+      itemCount: categoryItemCounts[index] ?? 0,
+      showCount: showsByCategory.get(category.id) ?? 0,
+    })),
+    specjaleCount,
+    peopleCount: peopleRes.count ?? 0,
+    showsCount: showsRes.count ?? showRows.length,
+    itemCount: itemTotal,
+  });
+
   const items = await hydrateItems(
-    dedupeSearchItems(itemsRes.data || []).slice(0, SEARCH_RESULT_LIMIT),
+    dedupeSearchItems(itemPage.rows).slice(0, pageSize),
   );
-  const shows = (showsRes.data || []).map((s: { id: number; name: string; slug: string; description: string | null; photo_url: string | null; category_id: number | null; youtube_channel_url: string | null; spotify_show_url: string | null; apple_podcasts_url: string | null; website_url: string | null }) => ({
-    ...s,
-    category_name: null,
-    category_slug: null,
-  }));
 
   return {
-    people: (peopleRes.data || []) as Person[],
+    people: applied ? [] : ((peopleRes.data ?? []) as unknown as Person[]),
+    shows: specjale ? [] : visibleShows,
     items,
-    shows,
+    itemTotal: itemPage.total,
+    facets,
+    wszystkoCount,
+    categories: categories.map((category) => ({ slug: category.slug })),
   };
 }
 

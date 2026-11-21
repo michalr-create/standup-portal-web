@@ -44,7 +44,8 @@ test("showCategoryBadge stays on by default and single-category listings turn it
   }
 
   const search = source("szukaj/page.tsx");
-  assert.match(search, /<ItemsBrowser items=\{items\} highlight=\{query\} \/>/);
+  assert.match(search, /<ItemsBrowser items=\{items\} highlight=\{query\} showCategoryBadge=\{showItemCategory\} \/>/);
+  assert.match(search, /const showItemCategory = !kategoria \|\| kategoria === SPECJALE_SEARCH_SLUG/);
   assert.doesNotMatch(search, /showCategoryBadge=\{false\}/);
 
   assert.equal(existsSync(new URL("../components/HomeVideoGrid.tsx", import.meta.url)), false);
