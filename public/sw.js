@@ -1,7 +1,12 @@
 /*
  * Push-only service worker.
+ * sw-version: 2
  * There is no fetch handler and no cache. ResumeRefresh and the in-app Back
  * stack (the player history entry) stay in the page.
+ *
+ * Android paints `badge` as a white alpha mask in the status bar. The colour
+ * app icon stays on `icon` for the notification shade. A payload may override
+ * either path; both must stay on this origin.
  */
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -33,17 +38,26 @@ function safeUrl(value) {
   return "/ulubione";
 }
 
+const DEFAULT_ICON = "/favicon-192.png";
+const DEFAULT_BADGE = "/icons/badge-96.png";
+
+function sameOriginPath(value, fallback) {
+  if (typeof value === "string" && value.startsWith("/") && !value.startsWith("//")) return value;
+  return fallback;
+}
+
 self.addEventListener("push", (event) => {
   const payload = payloadOf(event);
   const title = typeof payload.title === "string" && payload.title.trim() ? payload.title.trim() : "parska";
   const body = typeof payload.body === "string" ? payload.body : "";
-  const icon = typeof payload.icon === "string" && payload.icon.startsWith("/") ? payload.icon : "/favicon-192.png";
+  const icon = sameOriginPath(payload.icon, DEFAULT_ICON);
+  const badge = sameOriginPath(payload.badge, DEFAULT_BADGE);
   const url = safeUrl(payload.url);
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
       icon,
-      badge: icon,
+      badge,
       data: { url },
     }),
   );

@@ -58,11 +58,28 @@ export type PushMessage = {
   title: string;
   body: string;
   icon: string;
+  /** Monochrome status-bar mask. Omitted payloads use PUSH_BADGE at send time. */
+  badge?: string;
   url: string;
   refIds: string[];
 };
 
+/** Colour app icon, same file as the PWA manifest. Shown large in the shade. */
 export const PUSH_ICON = "/favicon-192.png";
+/** White "p." on transparency. Android uses this alpha as the status-bar mask. */
+export const PUSH_BADGE = "/icons/badge-96.png";
+
+/** JSON the service worker reads. Title and body are unchanged; badge is the mask. */
+export function notificationPayload(message: Pick<PushMessage, "title" | "body" | "icon" | "url" | "badge">) {
+  return {
+    title: message.title,
+    body: message.body,
+    icon: message.icon || PUSH_ICON,
+    badge: message.badge || PUSH_BADGE,
+    url: message.url,
+  };
+}
+
 export const CURSOR_ID = "dispatch";
 export const DISPATCH_BATCH_CAP = 200;
 export const DISPATCH_BUDGET_MS = 45_000;
