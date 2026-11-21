@@ -5,9 +5,12 @@ import {
   ACCOUNT_SECTION_PREVIEW,
   FAVORITE_FEED_DEFAULT,
   FAVORITE_FEED_MAX,
+  WATCH_LATER_HOME_LIMIT,
   accountPreview,
   clampFavoriteFeedLimit,
+  homeWatchLaterIds,
   mergeFavoriteFeed,
+  orderWatchLaterItems,
 } from "./favorite-feed.ts";
 
 test("favorite feed limit stays in range and defaults when the caller omits it", () => {
@@ -41,6 +44,25 @@ test("newest items from every favorite person and show survive, duplicates do no
     [4, 3],
   );
   assert.deepEqual(mergeFavoriteFeed([prolific], 0), []);
+});
+
+test("the home watch-later row keeps newest-first order and the shared row cap", () => {
+  assert.equal(WATCH_LATER_HOME_LIMIT, FAVORITE_FEED_DEFAULT);
+  const saved = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 8, 0, -3, "7"];
+  assert.deepEqual(homeWatchLaterIds(saved), [20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9]);
+  assert.deepEqual(homeWatchLaterIds([4, 4, 1], 2), [4, 1]);
+  assert.deepEqual(homeWatchLaterIds([]), []);
+
+  const cards = [
+    { id: 9, title: "older" },
+    { id: 4, title: "removed" },
+    { id: 20, title: "newest" },
+  ];
+  assert.deepEqual(
+    orderWatchLaterItems(cards, [20, 9]).map((item) => item.id),
+    [20, 9],
+  );
+  assert.deepEqual(orderWatchLaterItems(cards, []), []);
 });
 
 test("account sections collapse to five until the reader asks for the rest", () => {

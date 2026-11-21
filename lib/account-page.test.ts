@@ -54,14 +54,24 @@ test("cards no longer offer Zgłoś błąd", () => {
   }
 });
 
-test("watch later is Do obejrzenia and the home row is signed-in only", () => {
+test("watch later is Do obejrzenia and the home row follows the saved list", () => {
   assert.match(later, /Usuń z listy Do obejrzenia/);
   assert.match(later, />\s*\{on \? "Usuń z listy Do obejrzenia" : "Do obejrzenia"\}/);
   assert.doesNotMatch(later, /Później/);
-  assert.match(home, /<WatchLaterSection \/>/);
-  assert.match(homeLater, /library\.signedIn/);
-  assert.match(homeLater, /WATCH_LATER_HOME_LIMIT/);
-  assert.match(homeLater, /href="\/ulubione#do-obejrzenia"/);
+  const nowe = home.indexOf("{/* NOWE */}");
+  const watch = home.indexOf("<WatchLaterSection");
+  const ulubione = home.indexOf("{/* ULUBIONE */}");
+  assert.ok(nowe !== -1 && watch > nowe && ulubione > watch);
+  assert.match(homeLater, /SectionHead/);
+  assert.match(homeLater, /title="Do obejrzenia"/);
+  assert.match(homeLater, /Zobacz wszystkie/);
+  assert.match(homeLater, /linkHref="\/ulubione#do-obejrzenia"/);
+  assert.match(homeLater, /homeWatchLaterIds\(library\.later\)/);
+  assert.match(homeLater, /orderWatchLaterItems/);
+  assert.match(homeLater, /<ScrollRow items=\{items\} \/>/);
+  assert.match(homeLater, /className="band"/);
+  assert.match(homeLater, /if \(items\.length === 0\) return null/);
+  assert.doesNotMatch(homeLater, /library\.signedIn/);
   assert.match(favorites, /polubie\{"\\u0144"\}/);
   assert.doesNotMatch(favorites, /\\u0119/);
 });
