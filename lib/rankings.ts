@@ -6,6 +6,11 @@ export const WEEKLY_DAYS = 7;
 export const MONTH_DAYS = 30;
 export const MIN_PERCENT_BASE = 20_000;
 export const RANKING_REVALIDATE_SECONDS = 3600;
+/**
+ * Vercel Data Cache keeps unstable_cache entries across deploys for the
+ * revalidate window. v1 stored the pre-migration specials count (Pacześ = 12).
+ */
+export const RANKING_CACHE_KEY = "ranking-page-v2";
 
 export const RANKING_IDS = [
   "hity",
@@ -333,6 +338,15 @@ export function rankPeopleBySpecials(items: PersonSpecialSource[], limit: number
     .sort((a, b) => b.specialCount - a.specialCount || a.name.localeCompare(b.name, "pl"))
     .slice(0, limit)
     .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+/** Keep the RPC order and counts. Programs are only the expandable part lists. */
+export function attachSpecialPrograms<T extends { id: number }>(
+  ranked: readonly T[],
+  grouped: readonly PersonSpecialsRank[],
+): Array<T & { programs: SpecialProgram[] | undefined }> {
+  const byId = new Map(grouped.map((row) => [row.id, row.programs]));
+  return ranked.map((row) => ({ ...row, programs: byId.get(row.id) }));
 }
 
 export type ShowEpisode = {
