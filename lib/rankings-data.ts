@@ -4,14 +4,18 @@ import { supabase } from "@/lib/supabase";
 import {
   MIN_PERCENT_BASE,
   MONTH_DAYS,
+  RANKING_LABELS,
   RANKING_LIMIT,
   RANKING_REVALIDATE_SECONDS,
   WEEKLY_DAYS,
+  currentUtcYear,
+  homeRankingLabel,
   percentHeading,
   qualifiesForPeopleViews,
   rankPeopleBySpecials,
   rankPeopleByViews,
   rankShows,
+  selectHomeRanking,
   topByViewCount,
   utcYear,
   videoDetail,
@@ -710,18 +714,32 @@ const rankingPage = unstable_cache(
   { revalidate: RANKING_REVALIDATE_SECONDS },
 );
 
-const homeWeekly = unstable_cache(
-  () => loadRankingUncached({ ranking: "hity", scope: "all", year: 0 }),
-  ["ranking-home-hits"],
-  { revalidate: RANKING_REVALIDATE_SECONDS },
-);
-
 export function getRanking(query: RankingQuery): Promise<RankingPageData> {
   return rankingPage(query.ranking, query.scope, query.year);
 }
 
-export async function getHomeWeeklyHits(limit = 5): Promise<{ heading: string; entries: RankedVideo[] } | null> {
-  const data = await homeWeekly();
-  if (data.kind !== "videos" || data.pending || data.entries.length === 0) return null;
-  return { heading: data.heading, entries: data.entries.slice(0, limit) };
+export type HomeRankingPreview = {
+  kind: "hity" | "klasyki";
+  label: string;
+  entries: RankedVideo[];
+};
+
+/** Top of Hity tygodnia when gain rows exist, otherwise top of Klasyki. */
+export async function getHomeRanking(limit = RANKING_LIMIT): Promise<HomeRankingPreview> {
+  const year = currentUtcYear();
+  const weekly = await getRanking({ ranking: "hity", scope: "all", year });
+  const weeklyEntries = weekly.kind === "videos" ? weekly.entries : [];
+  const pending = weekly.kind !== "videos" || weekly.pending;
+  const kind = selectHomeRanking({ pending, entryCount: weeklyEntries.length });
+  if (kind === "hity") {
+    return {
+      kind,
+      label: homeRankingLabel(kind, weekly.kind === "videos" ? weekly.heading : ""),
+      entries: weeklyEntries.slice(0, limit),
+    };
+  }
+  const classics = await getRanking({ ranking: "klasyki", scope: "all", year });
+  const entries = classics.kind === "videos" ? classics.entries.slice(0, limit) : [];
+  const heading = classics.kind === "videos" ? classics.heading : RANKING_LABELS.klasyki;
+  return { kind, label: homeRankingLabel(kind, heading), entries };
 }

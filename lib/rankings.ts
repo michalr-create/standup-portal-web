@@ -111,6 +111,23 @@ export function weeklyHeading(days: number, ready: boolean): string {
   return `${RANKING_LABELS.hity} ${viewsWindowPhrase(days)}`;
 }
 
+export type HomeRankingKind = "hity" | "klasyki";
+
+/**
+ * Home shows the weekly cumulative gain list when that window has rows.
+ * An empty or not-yet-ready gain ranking falls back to all-time classics
+ * so the Rankingi section still has something to render.
+ */
+export function selectHomeRanking(weekly: { pending: boolean; entryCount: number }): HomeRankingKind {
+  if (!weekly.pending && weekly.entryCount > 0) return "hity";
+  return "klasyki";
+}
+
+export function homeRankingLabel(kind: HomeRankingKind, heading: string): string {
+  const trimmed = heading.trim();
+  return trimmed || RANKING_LABELS[kind];
+}
+
 export function percentHeading(days: number, ready: boolean): string {
   if (!ready) return RANKING_LABELS.zyskujace;
   return `${RANKING_LABELS.zyskujace} ${viewsWindowPhrase(days)}`;

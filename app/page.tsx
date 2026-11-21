@@ -11,36 +11,11 @@ import ScrollRow from "./components/ScrollRow";
 import FavoritesSection from "./components/FavoritesSection";
 import WatchLaterSection from "./components/WatchLaterSection";
 import FormatCard from "./components/FormatCard";
-import HomeWeeklyHits from "./components/HomeWeeklyHits";
+import SectionHead from "./components/SectionHead";
+import HomeRankings from "./components/HomeRankings";
+import HomeNostalgia from "./components/HomeNostalgia";
 
 export const revalidate = 120;
-
-
-function SectionHead({ title, sub, linkHref, linkText }: { title: string; sub?: string; linkHref?: string; linkText?: string }) {
-  return (
-    <div className="flex items-end justify-between mb-5 md:mb-6 gap-6 flex-wrap">
-      <div className="flex items-baseline gap-4 flex-wrap">
-        <h2 className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}>
-          {title}<span className="dot-accent">.</span>
-        </h2>
-        {sub && (
-          <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-            {sub}
-          </span>
-        )}
-      </div>
-      {linkHref && (
-        <Link
-          href={linkHref}
-          className="mono text-xs uppercase pb-0.5 transition-colors hover:text-white"
-          style={{ color: "var(--paper-dim)", letterSpacing: ".14em", borderBottom: "1px solid var(--line-2)" }}
-        >
-          {linkText}
-        </Link>
-      )}
-    </div>
-  );
-}
 
 function nowyLabel(n: number): string {
   if (n === 1) return "nowy";
@@ -132,7 +107,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <HomeWeeklyHits />
+      <HomeRankings />
 
       {/* SPECJALE */}
       {specjalItems.length > 0 && (
@@ -143,6 +118,8 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <HomeNostalgia />
 
       {/* FORMATY */}
       {activeShows.length > 0 && (
