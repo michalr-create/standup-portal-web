@@ -7,7 +7,6 @@ import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import CardByline from "./CardByline";
-import ReportMaterialLink from "./ReportMaterialLink";
 import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
@@ -95,7 +94,6 @@ function ScrollCard({
         <WatchLaterButton itemId={item.id} title={item.title} />
       </div>
       <CardByline item={item} className="mt-1" />
-      <ReportMaterialLink itemId={item.id} title={item.title} />
     </article>
   );
 }

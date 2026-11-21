@@ -4,8 +4,22 @@ export const REPORT_DAILY_LIMIT = 10;
 export const REPORT_MESSAGE_MAX = 2000;
 export const REPORT_URL_MAX = 500;
 
-export const REPORT_KINDS = ["missing_video", "wrong_meta", "new_open_mic"] as const;
+export const REPORT_KINDS = [
+  "missing_video",
+  "missing_event",
+  "new_open_mic",
+  "missing_person",
+  "wrong_meta",
+] as const;
 export type ReportKind = (typeof REPORT_KINDS)[number];
+
+/** Account form: something the catalog does not have yet. */
+export const MISSING_REPORT_KINDS: readonly ReportKind[] = [
+  "missing_video",
+  "missing_event",
+  "new_open_mic",
+  "missing_person",
+];
 
 export const REPORT_STATUSES = ["new", "accepted", "dismissed"] as const;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
@@ -28,8 +42,10 @@ export type ReportDecision = { ok: true; row: ReportRow } | { ok: false; error: 
 
 const KIND_LABELS: Record<ReportKind, string> = {
   missing_video: "Brakujący film",
+  missing_event: "Brakujący występ",
+  new_open_mic: "Brakujący open mic",
+  missing_person: "Brakujący standuper",
   wrong_meta: "Błędny tag, osoba lub format",
-  new_open_mic: "Nowy open mic",
 };
 
 export function reportKindLabel(kind: string): string {
@@ -98,13 +114,13 @@ export function validateContentReport(input: ReportDraft): ReportDecision {
     return { ok: true, row: { kind: "wrong_meta", url: null, contentItemId, message: message.value } };
   }
 
-  if (input.kind === "new_open_mic") {
+  if (input.kind === "new_open_mic" || input.kind === "missing_event" || input.kind === "missing_person") {
     const message = messageOf(input.message, true);
     if ("error" in message) return { ok: false, error: message.error };
     const rawUrl = (input.url ?? "").trim();
     const url = rawUrl ? httpUrl(rawUrl) : null;
-    if (rawUrl && !url) return { ok: false, error: "Link do open micu musi zaczynać się od http:// albo https://." };
-    return { ok: true, row: { kind: "new_open_mic", url, contentItemId: null, message: message.value } };
+    if (rawUrl && !url) return { ok: false, error: "Link musi zaczynać się od http:// albo https://." };
+    return { ok: true, row: { kind: input.kind, url, contentItemId: null, message: message.value } };
   }
 
   return { ok: false, error: "Wybierz rodzaj zgłoszenia." };

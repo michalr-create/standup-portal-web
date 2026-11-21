@@ -32,16 +32,33 @@ test("favorites API adds upcoming events for the slugs it already receives", () 
   assert.doesNotMatch(fn, /SERVICE/);
   assert.doesNotMatch(helper, /SERVICE/);
   assert.match(data, /from "@\/lib\/supabase"/);
+
+  assert.match(route, /getUpcomingEventsInCity\(city\)/);
+  assert.match(route, /city_events: await cityPromise/);
+  const cityStart = data.indexOf("export async function getUpcomingEventsInCity");
+  assert.ok(cityStart > 0);
+  const cityNext = data.indexOf("\nexport async function ", cityStart + 10);
+  const cityFn = data.slice(cityStart, cityNext === -1 ? undefined : cityNext);
+  assert.match(cityFn, /normalizeHomeCity/);
+  assert.match(cityFn, /\.eq\("city", normalized\)/);
+  assert.match(cityFn, /withCoPerformers/);
+  assert.match(cityFn, /CITY_UPCOMING_LIMIT/);
+  assert.doesNotMatch(cityFn, /SERVICE/);
 });
 
 test("ulubione renders tours only from the stored person list", () => {
   const page = readFileSync(new URL("../app/ulubione/page.tsx", import.meta.url), "utf8");
   const section = readFileSync(new URL("../app/ulubione/FavoriteTours.tsx", import.meta.url), "utf8");
-  assert.match(page, /personSlugs\.length > 0 && \(/);
+  assert.match(page, /personSlugs\.length > 0 \|\| homeCity/);
   assert.match(page, /eventsForFavoritePeople\(data\.upcoming_events, personSlugs\)/);
+  assert.match(page, /mergeAccountUpcoming/);
+  assert.match(page, /onCityChange=\{setHomeCity\}/);
+  assert.match(page, /city: homeCity/);
   assert.match(section, /Grają wkrótce/);
   assert.match(section, /Brak ogłoszonych dat u ulubionych/);
-  assert.match(section, /href="\/trasy"/);
+  assert.match(section, /"\/trasy"/);
+  assert.match(section, /Pokaż wszystkie/);
+  assert.match(section, /ACCOUNT_SECTION_PREVIEW/);
   assert.match(section, /eventPeople\(event\)/);
   assert.match(section, /standuperProfileHref\(person\.slug\)/);
   assert.match(section, /trasyHref\(\{ osoba: event\.person\.slug \}\)/);

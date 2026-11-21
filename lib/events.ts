@@ -744,6 +744,31 @@ export function eventsForFavoritePeople<T extends FavoriteUpcomingEvent>(
   return matched.slice(0, favoriteResultLimit(limit));
 }
 
+/** Favorite dates plus dates in the saved city. Same id once, soonest first. */
+export function mergeAccountUpcoming<T extends FavoriteUpcomingEvent>(
+  groups: readonly (readonly T[])[],
+  now = new Date(),
+): T[] {
+  const cutoff = now.getTime();
+  const seen = new Set<number>();
+  const matched: T[] = [];
+  for (const group of groups) {
+    for (const event of group) {
+      if (event == null || typeof event.id !== "number" || seen.has(event.id)) continue;
+      if (event.status !== "on_sale" && event.status !== "sold_out") continue;
+      const time = new Date(event.starts_at).getTime();
+      if (Number.isNaN(time) || time < cutoff) continue;
+      seen.add(event.id);
+      matched.push(event);
+    }
+  }
+  matched.sort((a, b) => {
+    const delta = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    return delta !== 0 ? delta : a.id - b.id;
+  });
+  return matched;
+}
+
 export function pickFavoriteUpcomingEvents(
   events: readonly TourEvent[],
   slugs: readonly string[],

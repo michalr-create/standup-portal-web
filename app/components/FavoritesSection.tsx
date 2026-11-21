@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { FAVORITE_FEED_DEFAULT } from "@/lib/favorite-feed";
 import ScrollRow from "./ScrollRow";
 import { useLibrary } from "./LibraryProvider";
 import type { Item } from "@/lib/data";
@@ -32,7 +33,7 @@ export default function FavoritesSection() {
     fetch("/api/favorites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ person_slugs: personSlugs, show_slugs: showSlugs }),
+      body: JSON.stringify({ person_slugs: personSlugs, show_slugs: showSlugs, limit: FAVORITE_FEED_DEFAULT }),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -60,7 +61,7 @@ export default function FavoritesSection() {
               Twoje ulubione<span className="dot-accent">.</span>
             </h2>
             <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-              Na podstawie Twoich polubi{"\u0119\u0144"}
+              Na podstawie Twoich polubie{"\u0144"}
             </span>
           </div>
           <Link

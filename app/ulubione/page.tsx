@@ -1,23 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { signOut } from "@/app/auth/actions";
 import HeartButton from "@/app/components/HeartButton";
 import VideoModal from "@/app/components/VideoModal";
 import CardByline from "@/app/components/CardByline";
 import { useLibrary } from "@/app/components/LibraryProvider";
 import WatchLaterButton from "@/app/components/WatchLaterButton";
-import ReportMaterialLink from "@/app/components/ReportMaterialLink";
 import { useWatchHistory } from "@/app/hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
 import ContentCardAction from "@/app/components/ContentCardAction";
 import PaidBadge from "@/app/components/PaidBadge";
 import ThumbDuration from "@/app/components/ThumbDuration";
+import ReportForm from "@/app/zglos/ReportForm";
 import AccountPlaces from "./AccountPlaces";
 import FavoriteTours from "./FavoriteTours";
 import PushNotifications from "./PushNotifications";
-import { eventsForFavoritePeople, type FavoriteUpcomingEvent } from "@/lib/events";
+import { eventsForFavoritePeople, mergeAccountUpcoming, type FavoriteUpcomingEvent } from "@/lib/events";
+import { ACCOUNT_SECTION_PREVIEW, FAVORITE_FEED_MAX, accountPreview } from "@/lib/favorite-feed";
+import { MISSING_REPORT_KINDS } from "@/lib/content-report";
+
+const logoutClass =
+  "inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
 
 type FavDetail = { slug: string; name: string };
 type ApiResponse = {
@@ -25,6 +31,7 @@ type ApiResponse = {
   people: FavDetail[];
   shows: FavDetail[];
   upcoming_events: FavoriteUpcomingEvent[];
+  city_events: FavoriteUpcomingEvent[];
 };
 
 export default function UlubionePage() {
@@ -34,12 +41,16 @@ export default function UlubionePage() {
   const personKey = personSlugs.join("\n");
   const showKey = showSlugs.join("\n");
   const laterKey = library.later.join(",");
-  const [data, setData] = useState<ApiResponse>({ items: [], people: [], shows: [], upcoming_events: [] });
+  const [homeCity, setHomeCity] = useState("");
+  const [data, setData] = useState<ApiResponse>({ items: [], people: [], shows: [], upcoming_events: [], city_events: [] });
   const [laterItems, setLaterItems] = useState<Item[]>([]);
   const [laterLoadedKey, setLaterLoadedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [latestExpandedFor, setLatestExpandedFor] = useState<string | null>(null);
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
   const { watched, markWatched } = useWatchHistory();
+  const slugKeyRef = useRef<string | null>(null);
+  const cityRef = useRef(homeCity);
 
   const handleClick = (item: Item) => {
     const target = resolveContentOpen(item);
@@ -56,18 +67,24 @@ export default function UlubionePage() {
     const ps = personKey ? personKey.split("\n") : [];
     const ss = showKey ? showKey.split("\n") : [];
 
-    if (ps.length === 0 && ss.length === 0) {
-      setData({ items: [], people: [], shows: [], upcoming_events: [] });
+    const slugsChanged = slugKeyRef.current !== `${personKey}\n${showKey}`;
+    slugKeyRef.current = `${personKey}\n${showKey}`;
+    const cityChanged = cityRef.current !== homeCity;
+    cityRef.current = homeCity;
+
+    if (ps.length === 0 && ss.length === 0 && !homeCity) {
+      setData({ items: [], people: [], shows: [], upcoming_events: [], city_events: [] });
       setLoading(false);
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
+    if (slugsChanged) setLoading(true);
+    if (cityChanged) setData((current) => ({ ...current, city_events: [] }));
     fetch("/api/favorites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ person_slugs: ps, show_slugs: ss }),
+      body: JSON.stringify({ person_slugs: ps, show_slugs: ss, city: homeCity, limit: FAVORITE_FEED_MAX }),
     })
       .then((r) => r.json())
       .then((d: ApiResponse) => {
@@ -77,6 +94,7 @@ export default function UlubionePage() {
           people: d?.people ?? [],
           shows: d?.shows ?? [],
           upcoming_events: Array.isArray(d?.upcoming_events) ? d.upcoming_events : [],
+          city_events: Array.isArray(d?.city_events) ? d.city_events : [],
         });
         setLoading(false);
       })
@@ -86,7 +104,7 @@ export default function UlubionePage() {
     return () => {
       cancelled = true;
     };
-  }, [library.ready, personKey, showKey]);
+  }, [library.ready, personKey, showKey, homeCity]);
 
   useEffect(() => {
     if (!library.ready) return;
@@ -120,46 +138,69 @@ export default function UlubionePage() {
 
   const hasAny = personSlugs.length > 0 || showSlugs.length > 0;
   const hasLater = library.later.length > 0;
-  const upcomingEvents = eventsForFavoritePeople(data.upcoming_events, personSlugs);
+  const upcomingEvents = mergeAccountUpcoming([
+    eventsForFavoritePeople(data.upcoming_events, personSlugs),
+    data.city_events,
+  ]);
+  const latestSignature = data.items.map((item) => item.id).join(",");
+  const showAllLatest = latestExpandedFor === latestSignature;
+  const latestVisible = accountPreview(data.items, showAllLatest);
 
   return (
     <>
     <div className="band">
       <div className="max-w-5xl mx-auto">
-        <header className="mb-10">
-          <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-            {!library.ready ? "Ulubione" : library.signedIn ? "Na koncie" : "Lokalnie w przeglądarce"}
+        <header className="mb-10 flex items-start justify-between gap-4">
+          <div>
+            <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
+              {!library.ready ? "Ulubione" : library.signedIn ? "Na koncie" : "Lokalnie w przeglądarce"}
+            </div>
+            <h1 className="font-black m-0 leading-none mb-2" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
+              Ulubione<span className="dot-accent">.</span>
+            </h1>
+            <p className="m-0" style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
+              {!library.ready ? (
+                "Ładowanie…"
+              ) : library.signedIn ? (
+                "Zapisane na koncie. Te same listy na każdym urządzeniu."
+              ) : (
+                <>
+                  Zapisane w tej przeglądarce.{" "}
+                  <Link href="/zaloguj?next=/ulubione" className="font-bold" style={{ color: "var(--coral)" }}>
+                    Zaloguj się
+                  </Link>
+                  , żeby mieć ulubione, obejrzane i listę „Do obejrzenia” też na innych urządzeniach.
+                </>
+              )}
+            </p>
           </div>
-          <h1 className="font-black m-0 leading-none mb-2" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
-            Ulubione<span className="dot-accent">.</span>
-          </h1>
-          <p style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
-            {!library.ready ? (
-              "Ładowanie…"
-            ) : library.signedIn ? (
-              "Zapisane na koncie. Te same listy na każdym urządzeniu."
-            ) : (
-              <>
-                Zapisane w tej przeglądarce.{" "}
-                <Link href="/zaloguj?next=/ulubione" className="font-bold" style={{ color: "var(--coral)" }}>
-                  Zaloguj się
-                </Link>
-                , żeby mieć ulubione, obejrzane i listę „później” też na innych urządzeniach.
-              </>
-            )}{" "}
-            <Link href="/zglos?rodzaj=brak" className="font-bold" style={{ color: "var(--coral)" }}>
-              Zgłoś brakujący film
-            </Link>
-          </p>
+          {library.signedIn && (
+            <form action={signOut} className="m-0">
+              <button
+                type="submit"
+                className={logoutClass}
+                style={{ color: "var(--paper)", background: "transparent", border: "1px solid var(--line-2)" }}
+              >
+                Wyloguj
+              </button>
+            </form>
+          )}
         </header>
 
-        <AccountPlaces />
+        <AccountPlaces onCityChange={setHomeCity} />
         <PushNotifications />
 
+        {library.ready && (hasAny || hasLater) && (
+          <div className="mb-8 flex flex-wrap gap-3">
+            <Link href="/standuperzy" className="chip">Dodaj standupera</Link>
+            <Link href="/formaty" className="chip">Dodaj format</Link>
+          </div>
+        )}
+
         {hasLater && (
-          <section className="mb-10" aria-labelledby="na-pozniej">
-            <h2 id="na-pozniej" className="font-black mb-4" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
-              Do obejrzenia później
+          <section className="mb-10 scroll-mt-28" aria-labelledby="do-obejrzenia">
+            <h2 id="do-obejrzenia" className="font-black mb-4" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
+              Do obejrzenia
               <span className="mono text-xs font-normal ml-3" style={{ color: "var(--paper-mute)", letterSpacing: ".1em" }}>
                 {library.later.length}
               </span>
@@ -198,7 +239,6 @@ export default function UlubionePage() {
                       </ContentCardAction>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <WatchLaterButton itemId={item.id} title={item.title} />
-                        <ReportMaterialLink itemId={item.id} title={item.title} />
                       </div>
                       <CardByline item={item} />
                     </article>
@@ -207,6 +247,10 @@ export default function UlubionePage() {
               </div>
             )}
           </section>
+        )}
+
+        {!hasAny && Boolean(homeCity) && (
+          <FavoriteTours loading={loading} events={upcomingEvents} city={homeCity} />
         )}
 
         {!hasAny && !hasLater && !loading && library.ready && (
@@ -264,8 +308,8 @@ export default function UlubionePage() {
               </section>
             )}
 
-            {personSlugs.length > 0 && (
-              <FavoriteTours loading={loading} events={upcomingEvents} />
+            {(personSlugs.length > 0 || homeCity) && (
+              <FavoriteTours loading={loading} events={upcomingEvents} city={homeCity} />
             )}
 
             {/* Obserwowane formaty */}
@@ -301,7 +345,7 @@ export default function UlubionePage() {
             {/* Najnowsze treści */}
             <section>
               <h2 className="font-black mb-6" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
-                Najnowsze treści
+                Najnowsze treści w Ulubione
               </h2>
               {loading ? (
                 <div className="text-sm" style={{ color: "var(--paper-mute)" }}>
@@ -313,7 +357,7 @@ export default function UlubionePage() {
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {data.items.map((item) => {
+                  {latestVisible.map((item) => {
                     const isWatched = watched.has(item.url);
                     return (
                       <article key={item.id} className="group vcard relative text-left w-full min-w-0">
@@ -363,15 +407,40 @@ export default function UlubionePage() {
                           <WatchLaterButton itemId={item.id} title={item.title} />
                         </div>
                         <CardByline item={item} />
-                        <ReportMaterialLink itemId={item.id} title={item.title} />
                       </article>
                     );
                   })}
                 </div>
               )}
+              {!loading && data.items.length > ACCOUNT_SECTION_PREVIEW && !showAllLatest && (
+                <button
+                  type="button"
+                  className="mt-4 inline-flex min-h-11 items-center text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                  style={{ color: "var(--coral)", background: "transparent", border: 0 }}
+                  onClick={() => setLatestExpandedFor(latestSignature)}
+                >
+                  Pokaż wszystkie
+                </button>
+              )}
             </section>
           </>
         )}
+
+        <section className="mt-14" aria-labelledby="zglos-brakujace">
+          <h2 id="zglos-brakujace" className="font-black mb-2" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
+            Zgłoś brakujące
+            <span className="dot-accent">.</span>
+          </h2>
+          <p className="mb-4 max-w-xl text-sm" style={{ color: "var(--paper-dim)" }}>
+            Filmu, występu, open micu albo standupera nie ma na portalu. Wybierz rodzaj i podaj link albo krótki opis.
+          </p>
+          <ReportForm
+            kinds={MISSING_REPORT_KINDS}
+            initialKind="missing_video"
+            contentItemId={null}
+            returnPath="/ulubione"
+          />
+        </section>
       </div>
     </div>
     {modal && (
