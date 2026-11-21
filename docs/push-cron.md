@@ -13,7 +13,9 @@ Kolejność:
    - `VAPID_SUBJECT` (`mailto:kontakt@parska.pl`)
    - `PUSH_DISPATCH_SECRET` (długa losowa wartość)
    - już używane: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`
-2. Zastosuj ręcznie `supabase/migrations/20261121170000_user_accounts_stage3_push.sql`.
+2. Zastosuj ręcznie `supabase/migrations/20261121170000_user_accounts_stage3_push.sql`,
+   a potem `supabase/migrations/20261121210000_notification_prefs_notify_shorts.sql`
+   (Shorty, `notify_shorts`, domyślnie wyłączone).
 3. Wdróż portal. Dopiero potem włącz crona, inaczej job trafi w starą wersję.
 4. Włącz w panelu Supabase rozszerzenia `pg_cron` i `pg_net` (pg_net jest już używane przez rewalidację).
 5. Wklej SQL poniżej w edytorze SQL.

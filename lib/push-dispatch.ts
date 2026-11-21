@@ -1,18 +1,26 @@
 import { LISTED_EVENT_STATUSES, formatEventWhen, trasyHref } from "./events.ts";
+import { HOME_NOWE_SHORTS_CATEGORY_ID } from "./home-nowe.ts";
 import { normalizeHomeCity } from "./home-city.ts";
 
 /** One logical notification. At most one content push and one event push per user per run. */
 export type PushKind = "new_content" | "new_event" | "event_reminder";
 
+/** categories.id for Shorts (slug "shorts"). */
+export const PUSH_SHORTS_CATEGORY_ID = HOME_NOWE_SHORTS_CATEGORY_ID;
+
 export type PushPrefs = {
   newContentFavorites: boolean;
+  /** Shorts from favourites. Off unless the account turns Shorty on. */
+  notifyShorts: boolean;
   eventsHomeCity: boolean;
   eventsFavorites: boolean;
   eventReminders: boolean;
 };
 
+/** No stored row: content and event switches on, Shorty off. */
 export const DEFAULT_PUSH_PREFS: PushPrefs = {
   newContentFavorites: true,
+  notifyShorts: false,
   eventsHomeCity: true,
   eventsFavorites: true,
   eventReminders: true,
@@ -31,6 +39,8 @@ export type ContentCandidate = {
   url: string;
   showId: number | null;
   personIds: readonly number[];
+  /** null when the row has no category. Shorts are category id 4. */
+  categoryId: number | null;
 };
 
 export type EventCandidate = {
@@ -118,10 +128,22 @@ export function isUpcoming(startsAt: string, nowMs: number): boolean {
   return Number.isFinite(starts) && starts > nowMs;
 }
 
+export function isShortContent(item: Pick<ContentCandidate, "categoryId">): boolean {
+  return item.categoryId === PUSH_SHORTS_CATEGORY_ID;
+}
+
+/**
+ * Favourite person or show, then the switch for that kind of material.
+ * Shorts ignore the general content switch and require Shorty. Anything else
+ * requires the general switch and is never treated as a short.
+ */
 export function contentMatches(item: ContentCandidate, user: PushUser): boolean {
-  if (!user.prefs.newContentFavorites) return false;
-  if (item.showId != null && user.showIds.has(item.showId)) return true;
-  return item.personIds.some((id) => user.personIds.has(id));
+  const favorite =
+    (item.showId != null && user.showIds.has(item.showId)) ||
+    item.personIds.some((id) => user.personIds.has(id));
+  if (!favorite) return false;
+  if (isShortContent(item)) return user.prefs.notifyShorts;
+  return user.prefs.newContentFavorites;
 }
 
 export function eventMatches(event: EventCandidate, user: PushUser, nowMs: number): boolean {
@@ -267,6 +289,7 @@ export function prefsFromRow(row: object | null): PushPrefs {
   const record = row as Record<string, unknown>;
   return {
     newContentFavorites: record.new_content_favorites !== false,
+    notifyShorts: record.notify_shorts === true,
     eventsHomeCity: record.events_home_city !== false,
     eventsFavorites: record.events_favorites !== false,
     eventReminders: record.event_reminders !== false,
@@ -277,18 +300,20 @@ export function parsePushPrefs(body: unknown): PushPrefs | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;
   const record = body as Record<string, unknown>;
   const newContentFavorites = record.newContentFavorites;
+  const notifyShorts = record.notifyShorts;
   const eventsHomeCity = record.eventsHomeCity;
   const eventsFavorites = record.eventsFavorites;
   const eventReminders = record.eventReminders;
   if (
     typeof newContentFavorites !== "boolean" ||
+    typeof notifyShorts !== "boolean" ||
     typeof eventsHomeCity !== "boolean" ||
     typeof eventsFavorites !== "boolean" ||
     typeof eventReminders !== "boolean"
   ) {
     return null;
   }
-  return { newContentFavorites, eventsHomeCity, eventsFavorites, eventReminders };
+  return { newContentFavorites, notifyShorts, eventsHomeCity, eventsFavorites, eventReminders };
 }
 
 export function parsePushSubscription(body: unknown): { endpoint: string; p256dh: string; auth: string } | null {
@@ -413,6 +438,8 @@ export function planUserNotifications(input: {
     messages.push(reminderMessage(event));
   }
 
+  // Checked here, at send time, so a short still waiting in this cursor window
+  // (including a retry of a deferred run) is dropped for accounts that have not opted in.
   const freshContent = input.content.filter(
     (item) => contentMatches(item, input.user) && !input.sent.has(sentKey("new_content", String(item.id))),
   );

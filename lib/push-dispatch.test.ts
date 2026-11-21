@@ -7,17 +7,21 @@ import {
   aggregateEvents,
   batchWatermark,
   classifyPushResult,
+  PUSH_SHORTS_CATEGORY_ID,
   contentMatches,
   decideCursor,
   eventMatches,
   isNewContentRow,
   isNewEventRow,
   isReminderDue,
+  isShortContent,
   nextCursorIso,
   parsePushEndpoint,
+  parsePushPrefs,
   parsePushSubscription,
   planUserNotifications,
   polishCount,
+  prefsFromRow,
   reminderAllowed,
   safePushUrl,
   sentKey,
@@ -54,6 +58,7 @@ function content(overrides: Partial<ContentCandidate> = {}): ContentCandidate {
     url: "https://www.youtube.com/watch?v=abc",
     showId: null,
     personIds: [7],
+    categoryId: null,
     ...overrides,
   };
 }
@@ -81,6 +86,90 @@ test("content matches a favorite person or a favorite show, and the switch can t
   assert.equal(contentMatches(content({ personIds: [9], showId: 3 }), reader), true);
   assert.equal(contentMatches(content({ personIds: [9], showId: 4 }), reader), false);
   assert.equal(contentMatches(content(), user({ prefs: prefs({ newContentFavorites: false }) })), false);
+});
+
+test("shorts stay out of the batch unless Shorty is on, including ones still waiting to send", () => {
+  assert.equal(PUSH_SHORTS_CATEGORY_ID, 4);
+  const short = content({ id: 4, title: "Klip", categoryId: PUSH_SHORTS_CATEGORY_ID });
+  const special = content({ id: 5, title: "Wentyl", categoryId: 1 });
+  const reader = user();
+  assert.equal(DEFAULT_PUSH_PREFS.notifyShorts, false);
+  assert.equal(isShortContent(short), true);
+  assert.equal(isShortContent(special), false);
+  assert.equal(isShortContent(content({ categoryId: null })), false);
+  assert.equal(contentMatches(short, reader), false);
+  assert.equal(contentMatches(special, reader), true);
+  assert.equal(contentMatches(short, user({ prefs: prefs({ notifyShorts: true }) })), true);
+  assert.equal(
+    contentMatches(short, user({ prefs: prefs({ notifyShorts: true }), personIds: new Set([1]), showIds: new Set() })),
+    false,
+  );
+  assert.equal(
+    contentMatches(content({ categoryId: PUSH_SHORTS_CATEGORY_ID, personIds: [9], showId: 3 }), user({ prefs: prefs({ notifyShorts: true }) })),
+    true,
+  );
+  assert.equal(
+    contentMatches(short, user({ prefs: prefs({ newContentFavorites: false, notifyShorts: true }) })),
+    true,
+  );
+  assert.equal(
+    contentMatches(special, user({ prefs: prefs({ newContentFavorites: false, notifyShorts: true }) })),
+    false,
+  );
+
+  const pending = planUserNotifications({
+    user: reader,
+    content: [short, special],
+    events: [],
+    reminders: [],
+    sent: new Set(),
+    nowMs: NOW,
+  });
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].kind, "new_content");
+  assert.deepEqual(pending[0].refIds, ["5"]);
+  assert.equal(pending[0].title, "Nowy materiał: Wentyl");
+
+  const onlyQueuedShorts = planUserNotifications({
+    user: reader,
+    content: [short, content({ id: 8, title: "Drugi klip", categoryId: PUSH_SHORTS_CATEGORY_ID })],
+    events: [],
+    reminders: [],
+    sent: new Set(),
+    nowMs: NOW,
+  });
+  assert.deepEqual(onlyQueuedShorts, []);
+
+  const opted = planUserNotifications({
+    user: user({ prefs: prefs({ notifyShorts: true }) }),
+    content: [short, special],
+    events: [],
+    reminders: [],
+    sent: new Set(),
+    nowMs: NOW,
+  });
+  assert.equal(opted.length, 1);
+  assert.deepEqual(opted[0].refIds, ["4", "5"]);
+  assert.equal(opted[0].title, "2 nowe materiały od Twoich ulubionych");
+});
+
+test("a missing prefs row leaves Shorty off and a stored true opts in", () => {
+  assert.equal(prefsFromRow(null).notifyShorts, false);
+  assert.equal(prefsFromRow(null).newContentFavorites, true);
+  assert.equal(prefsFromRow({ new_content_favorites: true }).notifyShorts, false);
+  assert.equal(prefsFromRow({ notify_shorts: true }).notifyShorts, true);
+  assert.equal(prefsFromRow({ notify_shorts: false }).notifyShorts, false);
+  assert.equal(parsePushPrefs({ newContentFavorites: true, eventsHomeCity: true, eventsFavorites: true, eventReminders: true }), null);
+  assert.deepEqual(
+    parsePushPrefs({
+      newContentFavorites: true,
+      notifyShorts: false,
+      eventsHomeCity: true,
+      eventsFavorites: true,
+      eventReminders: true,
+    }),
+    prefs(),
+  );
 });
 
 test("one new item names it, several collapse into one push to /ulubione", () => {
@@ -361,6 +450,9 @@ test("dispatch route is the secret-protected service-role scan and does not send
   assert.match(run, /acquire_push_lease/);
   assert.match(run, /notification_log/);
   assert.match(run, /failure_count/);
+  assert.match(run, /notify_shorts/);
+  assert.match(run, /category_id/);
+  assert.doesNotMatch(run, /\.neq\(\s*"category_id"/);
   assert.match(admin, /SUPABASE_SERVICE_KEY/);
   assert.doesNotMatch(route, /ANON_KEY/);
   assert.doesNotMatch(run, /ANON_KEY/);
@@ -371,4 +463,9 @@ test("dispatch route is the secret-protected service-role scan and does not send
   assert.match(testRoute, /getCurrentUser/);
   assert.doesNotMatch(testRoute, /notification_log/);
   assert.doesNotMatch(testRoute, /ANON_KEY/);
+
+  const prefsRoute = readFileSync(new URL("../app/api/push/prefs/route.ts", import.meta.url), "utf8");
+  assert.match(prefsRoute, /notify_shorts: prefs\.notifyShorts/);
+  assert.match(prefsRoute, /notifyShorts: prefs\.notifyShorts/);
+  assert.match(prefsRoute, /select\("new_content_favorites, notify_shorts,/);
 });
