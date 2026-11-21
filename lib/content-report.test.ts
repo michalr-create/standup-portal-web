@@ -60,6 +60,30 @@ test("a wrong tag needs the material and a note, and a new open mic needs a desc
   assert.equal(validateContentReport({ kind: "ocena", message: "nie" }).ok, false);
 });
 
+test("a missing show or stand-up comedian needs a description and may include a link", () => {
+  const show = validateContentReport({
+    kind: "missing_event",
+    message: "  Giza w Toruniu, marzec ",
+    url: "https://example.com/bilety",
+    contentItemId: 4,
+  });
+  assert.equal(show.ok, true);
+  if (show.ok) {
+    assert.equal(show.row.kind, "missing_event");
+    assert.equal(show.row.message, "Giza w Toruniu, marzec");
+    assert.equal(show.row.url, "https://example.com/bilety");
+    assert.equal(show.row.contentItemId, null);
+  }
+  assert.equal(validateContentReport({ kind: "missing_event", message: "   " }).ok, false);
+  const person = validateContentReport({ kind: "missing_person", message: "Ada Nowak" });
+  assert.equal(person.ok, true);
+  if (person.ok) {
+    assert.equal(person.row.kind, "missing_person");
+    assert.equal(person.row.url, null);
+  }
+  assert.equal(validateContentReport({ kind: "missing_person", message: "Ada", url: "notaurl" }).ok, false);
+});
+
 test("the daily cap is ten and the window starts at Warsaw midnight", () => {
   assert.equal(REPORT_DAILY_LIMIT, 10);
   assert.equal(reportLimitReached(9), false);

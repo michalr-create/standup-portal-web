@@ -29,3 +29,21 @@ test("reports are own-row inserts, admin can read and change status, and the day
   assert.match(sql, /set search_path = ''/);
   assert.doesNotMatch(sql, /grant [^;]* to anon;/);
 });
+
+test("missing shows and stand-up comedians extend the same report checks", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20261121180000_content_reports_missing_kinds.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /drop constraint if exists content_reports_kind_check/);
+  assert.match(sql, /drop constraint if exists content_reports_shape_check/);
+  assert.match(sql, /'missing_video'/);
+  assert.match(sql, /'wrong_meta'/);
+  assert.match(sql, /'new_open_mic'/);
+  assert.match(sql, /'missing_event'/);
+  assert.match(sql, /'missing_person'/);
+  assert.match(sql, /kind = 'missing_event' and content_item_id is null and char_length\(btrim\(message\)\) > 0/);
+  assert.match(sql, /kind = 'missing_person' and content_item_id is null and char_length\(btrim\(message\)\) > 0/);
+  assert.doesNotMatch(sql, /create table/i);
+  assert.doesNotMatch(sql, /grant [^;]* to anon;/);
+});

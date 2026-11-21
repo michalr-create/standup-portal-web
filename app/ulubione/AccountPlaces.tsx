@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { listCities, loadMyReminders, readHomeCity, saveHomeCity, setReminder, type ReminderRow } from "@/app/konto/place-actions";
 import CityCombobox from "@/app/components/CityCombobox";
@@ -10,7 +10,9 @@ import { getBrowserSupabase } from "@/lib/supabase-browser";
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
 
-export default function AccountPlaces() {
+export default function AccountPlaces({ onCityChange }: { onCityChange?: (city: string) => void }) {
+  const onCityChangeRef = useRef(onCityChange);
+  onCityChangeRef.current = onCityChange;
   const [signedIn, setSignedIn] = useState(false);
   const [ready, setReady] = useState(false);
   const [cities, setCities] = useState<string[]>([]);
@@ -27,13 +29,16 @@ export default function AccountPlaces() {
         if (cancelled) return;
         setSignedIn(Boolean(userId));
         if (!userId) {
+          onCityChangeRef.current?.("");
           setReady(true);
           return;
         }
         void Promise.all([readHomeCity(), listCities(), loadMyReminders()]).then(([home, names, saved]) => {
           if (cancelled) return;
           const options = home && !names.includes(home) ? [home, ...names] : names;
-          setCity(home ?? "");
+          const savedCity = home ?? "";
+          setCity(savedCity);
+          onCityChangeRef.current?.(savedCity);
           setCities(options);
           setReminders(saved.ok ? saved.reminders : []);
           if (!saved.ok) setError(saved.error);
@@ -51,12 +56,16 @@ export default function AccountPlaces() {
     const previous = city;
     setCity(next);
     setError(null);
+    onCityChangeRef.current?.(next);
     void saveHomeCity(next || null).then((result) => {
       if (result.ok) {
-        setCity(result.city ?? "");
+        const saved = result.city ?? "";
+        setCity(saved);
+        onCityChangeRef.current?.(saved);
         return;
       }
       setCity(previous);
+      onCityChangeRef.current?.(previous);
       setError(result.error);
     });
   };
