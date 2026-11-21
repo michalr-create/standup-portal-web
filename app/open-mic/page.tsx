@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import OpenMicCard from "./OpenMicCard";
 import OpenMicDates from "./OpenMicDates";
 import OpenMicFilters from "./OpenMicFilters";
+import HomeCityRedirect from "@/app/components/HomeCityRedirect";
+import { hasBlankCityParam } from "@/lib/home-city";
 import { getOpenMicCatalog } from "@/lib/open-mic-data";
 import {
   buildOpenMicView,
@@ -69,7 +71,9 @@ function Notice({
 }
 
 export default async function OpenMicPage({ searchParams }: Props) {
-  const parsed = parseOpenMicSearchParams(await searchParams);
+  const raw = await searchParams;
+  const explicitAllCities = hasBlankCityParam(raw);
+  const parsed = parseOpenMicSearchParams(raw);
   if (parsed.redirectHref) redirect(parsed.redirectHref);
 
   const now = new Date();
@@ -115,7 +119,12 @@ export default async function OpenMicPage({ searchParams }: Props) {
           </Link>
         </header>
 
-        {catalog.ok && view.catalogCount > 0 && <OpenMicFilters filters={parsed.filters} cities={view.cities} />}
+        {catalog.ok && view.catalogCount > 0 && (
+          <>
+            <HomeCityRedirect pathname="/open-mic" cities={view.cities} />
+            <OpenMicFilters filters={parsed.filters} cities={view.cities} explicitAllCities={explicitAllCities} />
+          </>
+        )}
 
         {!catalog.ok ? (
           <Notice eyebrow="open mic" title="Coś poszło nie tak">
@@ -130,7 +139,7 @@ export default async function OpenMicPage({ searchParams }: Props) {
         ) : view.cycles.length === 0 ? (
           <Notice eyebrow="filtry" title="Brak wyników">
             <p className="m-0">Żaden open mic nie pasuje do tych filtrów.</p>
-            <Link href="/open-mic" className="mt-6 inline-flex min-h-11 items-center font-black" style={{ color: "var(--coral)" }}>
+            <Link href="/open-mic?miasto=" className="mt-6 inline-flex min-h-11 items-center font-black" style={{ color: "var(--coral)" }}>
               Wyczyść filtry
             </Link>
           </Notice>

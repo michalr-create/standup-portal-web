@@ -15,7 +15,7 @@ test("open mic city filter is a combobox and the other filters stay selects", ()
   assert.equal(filters.match(/<select/g)?.length, 2);
   assert.match(filters, /Dzień tygodnia/);
   assert.match(filters, /Język/);
-  assert.match(filters, /href="\/open-mic"/);
+  assert.match(filters, /href="\/open-mic\?miasto="/);
   assert.match(filters, /Wyczyść filtry/);
   assert.doesNotMatch(filters, /value=\{filters\.miasto\}/);
 });
