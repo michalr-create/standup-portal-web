@@ -1,10 +1,89 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import HeartButton from "@/app/components/HeartButton";
+import PendingLink from "@/app/components/PendingLink";
 import ThumbDuration from "@/app/components/ThumbDuration";
 import { DEFAULT_GRID_CLASS } from "@/app/components/itemsBrowserLayout";
 import type { RankingPersonCard } from "@/lib/rankings-data";
-import type { ShowRank } from "@/lib/rankings";
+import type { ShowRank, SpecialProgram } from "@/lib/rankings";
 import { formatViews, odcinekLabel } from "@/lib/view-count";
+
+function RankingPrograms({ programs }: { programs: SpecialProgram[] }) {
+  const [open, setOpen] = useState(false);
+  const [partKey, setPartKey] = useState<string | null>(null);
+  return (
+    <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--line)" }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="mono text-[12px] font-bold uppercase"
+        style={{ color: "var(--paper-dim)", letterSpacing: ".08em" }}
+      >
+        {open ? "Ukryj programy" : "Poka\u017c programy"}
+      </button>
+      {open && (
+        <ol className="mt-2 flex list-none flex-col gap-1 p-0">
+          {programs.map((program) => {
+            const multi = program.parts.length > 1;
+            const partsOpen = partKey === program.key;
+            return (
+              <li key={program.key}>
+                {multi ? (
+                  <button
+                    type="button"
+                    aria-expanded={partsOpen}
+                    onClick={() => setPartKey(partsOpen ? null : program.key)}
+                    className="text-left text-sm font-bold"
+                  >
+                    {program.name}
+                    <span className="mono ml-2 font-medium" style={{ color: "var(--paper-dim)" }}>
+                      {program.parts.length} {"cz\u0119\u015bci"}
+                    </span>
+                  </button>
+                ) : (
+                  <ProgramPartLink part={program.parts[0]} label={program.name} />
+                )}
+                {multi && partsOpen && (
+                  <ol className="mb-1 mt-1 flex list-none flex-col gap-1 p-0 pl-4">
+                    {program.parts.map((part) => (
+                      <li key={part.id}>
+                        <ProgramPartLink
+                          part={part}
+                          label={`${part.partNumber ?? ""}${part.partNumber != null ? ". " : ""}${part.title}`}
+                        />
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function ProgramPartLink({
+  part,
+  label,
+}: {
+  part: SpecialProgram["parts"][number] | undefined;
+  label: string;
+}) {
+  if (!part) return null;
+  if (!part.url) {
+    return <span className="text-sm" style={{ color: "var(--paper-dim)" }}>{label}</span>;
+  }
+  return (
+    <a href={part.url} target="_blank" rel="noopener noreferrer" className="text-sm hover:underline">
+      {label}
+    </a>
+  );
+}
 
 export function RankingPeople({ people }: { people: RankingPersonCard[] }) {
   if (people.length === 0) return null;
@@ -13,37 +92,45 @@ export function RankingPeople({ people }: { people: RankingPersonCard[] }) {
       {people.map((person) => (
         <li key={person.id}>
           <div
-            className="flex items-center gap-3 sm:gap-4 rounded-2xl px-3 py-3 sm:px-4"
+            className="rounded-2xl px-3 py-3 sm:px-4 transition-[background,border-color,box-shadow] duration-150 has-[[data-link-pending=true]]:border-[var(--coral)] has-[[data-link-pending=true]]:bg-[var(--ink-3)] has-[[data-link-pending=true]]:shadow-[inset_0_0_0_1px_var(--coral)]"
             style={{ background: "var(--ink-2)", border: "1px solid var(--line)" }}
           >
-            <span
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-black"
-              style={{ background: "var(--coral)", color: "var(--ink)", fontSize: "14px" }}
-            >
-              <span className="sr-only">{"Miejsce "}</span>
-              {person.rank}
-            </span>
-            <Link href={"/standuper/" + person.slug} className="flex min-w-0 flex-1 items-center gap-3">
-              <span
-                className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full font-black"
-                style={{ background: "var(--ink-3)", color: "var(--paper)" }}
+            <div className="flex items-center gap-3 sm:gap-4">
+              <PendingLink
+                href={"/standuper/" + person.slug}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl active:bg-[var(--ink-4)]"
               >
-                {person.photoUrl ? (
-                  <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  person.name.slice(0, 1)
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate font-extrabold" style={{ letterSpacing: "-.01em" }}>
-                  {person.name}
+                <span
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-black"
+                  style={{ background: "var(--coral)", color: "var(--ink)", fontSize: "14px" }}
+                >
+                  <span className="sr-only">{"Miejsce "}</span>
+                  {person.rank}
                 </span>
-                <span className="mono mt-0.5 block text-[13px]" style={{ color: "var(--paper-dim)" }}>
-                  {person.metricLabel}
+                <span
+                  className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full font-black"
+                  style={{ background: "var(--ink-3)", color: "var(--paper)" }}
+                >
+                  {person.photoUrl ? (
+                    <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    person.name.slice(0, 1)
+                  )}
                 </span>
-              </span>
-            </Link>
-            <HeartButton type="person" slug={person.slug} name={person.name} size={16} />
+                <span className="min-w-0">
+                  <span className="block truncate font-extrabold" style={{ letterSpacing: "-.01em" }}>
+                    {person.name}
+                  </span>
+                  <span className="mono mt-0.5 block text-[13px]" style={{ color: "var(--paper-dim)" }}>
+                    {person.metricLabel}
+                  </span>
+                </span>
+              </PendingLink>
+              <HeartButton type="person" slug={person.slug} name={person.name} size={16} />
+            </div>
+            {person.programs && person.programs.length > 0 && (
+              <RankingPrograms programs={person.programs} />
+            )}
           </div>
         </li>
       ))}

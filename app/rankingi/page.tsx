@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import RankingCards from "@/app/components/RankingCards";
 import { getRanking } from "@/lib/rankings-data";
 import {
@@ -7,6 +8,7 @@ import {
   RANKING_IDS,
   RANKING_LABELS,
   currentUtcYear,
+  legacyRankingRedirect,
   parseRankingQuery,
   rankingHref,
   type RankingId,
@@ -18,17 +20,17 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Rankingi Top 10 \u2014 parska.",
-  description: "Hity tygodnia, klasyki, nowo\u015bci i najch\u0119tniej ogl\u0105dani standuperzy.",
+  description: "Hity tygodnia, trenduj\u0105ce, klasyki, nowo\u015bci i najch\u0119tniej ogl\u0105dani standuperzy.",
 };
 
 const NOTES: Record<RankingId, string> = {
   hity: "Przyrost od najstarszego pomiaru w oknie.",
-  zyskujace: `Minimum ${formatViews(MIN_PERCENT_BASE)} na starcie okna.`,
+  trendujace: `Minimum ${formatViews(MIN_PERCENT_BASE)} na starcie okna.`,
   klasyki: "Bez Shorts i bez scalonych duplikat\u00f3w.",
   nowosci: "Opublikowane w ostatnich 30 dniach.",
   specjale: "Pe\u0142ne programy z tagiem Special.",
   standuperzy: "Suma wy\u015bwietle\u0144 standup\u00f3w i specjali.",
-  programy: "Materia\u0142y z tagiem Special.",
+  programy: "Materia\u0142y z tagiem Special. Cz\u0119\u015bci jednego programu licz\u0105 si\u0119 jako jeden.",
   formaty: "Suma wy\u015bwietle\u0144 odcink\u00f3w.",
 };
 
@@ -40,6 +42,8 @@ type Props = {
 
 export default async function RankingiPage({ searchParams }: Props) {
   const params = await searchParams;
+  const legacyHref = legacyRankingRedirect(params);
+  if (legacyHref) redirect(legacyHref);
   const query = parseRankingQuery(params);
   const currentYear = currentUtcYear();
   const data = await getRanking(query);
@@ -58,7 +62,7 @@ export default async function RankingiPage({ searchParams }: Props) {
             Rankingi Top 10<span className="dot-accent">.</span>
           </h1>
           <p className="mt-3 max-w-2xl" style={{ color: "var(--paper-dim)", fontSize: "17px" }}>
-            {"Zestawienia z liczby wy\u015bwietle\u0144. Hity i zyskuj\u0105ce licz\u0105 przyrost, reszta \u2014 stan na dzi\u015b."}
+            {"Zestawienia z liczby wy\u015bwietle\u0144. Hity i trenduj\u0105ce licz\u0105 przyrost, reszta \u2014 stan na dzi\u015b."}
           </p>
         </header>
 

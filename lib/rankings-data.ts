@@ -26,6 +26,7 @@ import {
   type PersonRef,
   type PersonSpecialsRank,
   type PersonViewsRank,
+  type SpecialProgram,
   type RankingId,
   type RankingQuery,
   type RankingScope,
@@ -50,6 +51,8 @@ export type RankingPersonCard = {
   slug: string;
   photoUrl: string | null;
   metricLabel: string;
+  /** Present on Najwięcej pełnych programów. Parts of one program are already ordered. */
+  programs?: SpecialProgram[];
 };
 
 export type VideoRanking = {
@@ -471,7 +474,7 @@ async function fallbackPeopleSpecials(): Promise<PersonSpecialsRank[]> {
   for (let index = 0; index < ids.length; index += 150) {
     let query = supabase
       .from("content_items")
-      .select("id, categories(slug), content_tags(tags(tag_type, slug, person_id, people(id, name, slug, photo_url, is_active)))")
+      .select("id, title, url, thumbnail_url, published_at, show_id, categories(slug), content_tags(tags(tag_type, slug, person_id, people(id, name, slug, photo_url, is_active)))")
       .in("id", ids.slice(index, index + 150))
       .eq("status", "approved")
       .is("merged_into_id", null)
@@ -484,7 +487,15 @@ async function fallbackPeopleSpecials(): Promise<PersonSpecialsRank[]> {
       if (id == null) continue;
       const parsed = peopleFromRow(row);
       if (parsed.categorySlug === "shorts" || !parsed.isSpecial) continue;
-      sources.push({ id, people: parsed.people });
+      sources.push({
+        id,
+        title: typeof row.title === "string" ? row.title : "",
+        showId: asInt(row.show_id),
+        publishedAt: typeof row.published_at === "string" ? row.published_at : null,
+        url: typeof row.url === "string" ? row.url : null,
+        thumbnailUrl: typeof row.thumbnail_url === "string" ? row.thumbnail_url : null,
+        people: parsed.people,
+      });
     }
   }
   return rankPeopleBySpecials(sources, RANKING_LIMIT);
@@ -504,12 +515,12 @@ function personCards(rows: Array<PersonViewsRank | PersonSpecialsRank>, mode: "v
       : "specialCount" in row
         ? `${row.specialCount} ${programLabel(row.specialCount)}`
         : "",
+    programs: "programs" in row ? row.programs : undefined,
   }));
 }
 
-async function peopleFromRpc(mode: "views" | "specials"): Promise<RankingPersonCard[] | "missing"> {
-  if (mode === "views") {
-    const result = await rpc<{
+async function peopleFromRpc(): Promise<RankingPersonCard[] | "missing"> {
+  const result = await rpc<{
       person_id: number;
       name: string;
       slug: string;
@@ -531,28 +542,6 @@ async function peopleFromRpc(mode: "views" | "specials"): Promise<RankingPersonC
         metricLabel: formatViews(viewCount),
       }];
     });
-  }
-  const result = await rpc<{
-    person_id: number;
-    name: string;
-    slug: string;
-    photo_url: string | null;
-    special_count: number;
-  }>("ranking_people_specials", { p_limit: RANKING_LIMIT });
-  if (result.missing) return "missing";
-  return result.rows.flatMap((row, index) => {
-    const id = asInt(row.person_id);
-    const specialCount = asInt(row.special_count);
-    if (id == null || specialCount == null || !row.slug || !row.name) return [];
-    return [{
-      rank: index + 1,
-      id,
-      name: row.name,
-      slug: row.slug,
-      photoUrl: row.photo_url,
-      metricLabel: `${specialCount} ${programLabel(specialCount)}`,
-    }];
-  });
 }
 
 async function fallbackShows(): Promise<ShowRank[]> {
@@ -633,7 +622,7 @@ async function loadRankingUncached(query: RankingQuery): Promise<RankingPageData
         years: [],
       };
     }
-    case "zyskujace": {
+    case "trendujace": {
       const ranked = await weeklyFromRpc("all", "percent", RANKING_LIMIT);
       if (ranked !== "missing") return ranked;
       return {
@@ -682,7 +671,7 @@ async function loadRankingUncached(query: RankingQuery): Promise<RankingPageData
       };
     }
     case "standuperzy": {
-      const people = await peopleFromRpc("views");
+      const people = await peopleFromRpc();
       return {
         kind: "people",
         heading: "Najch\u0119tniej ogl\u0105dani standuperzy",
@@ -690,11 +679,12 @@ async function loadRankingUncached(query: RankingQuery): Promise<RankingPageData
       };
     }
     case "programy": {
-      const people = await peopleFromRpc("specials");
+      // Count in the app so multi-part specials collapse before the SQL
+      // migration is applied. ranking_people_specials still over-counts until then.
       return {
         kind: "people",
         heading: "Najwi\u0119cej pe\u0142nych program\u00f3w",
-        people: people === "missing" ? personCards(await fallbackPeopleSpecials(), "specials") : people,
+        people: personCards(await fallbackPeopleSpecials(), "specials"),
       };
     }
     case "formaty": {

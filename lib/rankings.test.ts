@@ -8,6 +8,7 @@ import {
   describeViewsWindow,
   isWithinPastDays,
   parseRankingQuery,
+  legacyRankingRedirect,
   percentHeading,
   qualifiesForPeopleViews,
   rankPeopleBySpecials,
@@ -54,7 +55,8 @@ test("window phrase follows the Polish day forms used on the page", () => {
   assert.equal(viewsWindowPhrase(7), "za ostatnie 7 dni");
   assert.equal(weeklyHeading(3, true), "Hity tygodnia za ostatnie 3 dni");
   assert.equal(weeklyHeading(1, false), "Hity tygodnia");
-  assert.equal(percentHeading(2, true), "Zyskuj\u0105ce za ostatnie 2 dni");
+  assert.equal(percentHeading(2, true), "Trenduj\u0105ce za ostatnie 2 dni");
+  assert.equal(percentHeading(1, false), "Trenduj\u0105ce");
   assert.equal(PENDING_RANKING_MESSAGE, "Ranking ruszy jutro.");
 });
 
@@ -68,6 +70,12 @@ test("ranking query defaults to weekly hits and keeps a valid year", () => {
   });
   assert.deepEqual(parseRankingQuery({ ranking: "specjale", rok: "1990" }, now).ranking, "specjale");
   assert.equal(parseRankingQuery({ rok: "1800" }, now).year, 2026);
+  assert.equal(parseRankingQuery({ ranking: "zyskujace" }, now).ranking, "trendujace");
+  assert.equal(parseRankingQuery({ ranking: "trendujace" }, now).ranking, "trendujace");
+  assert.equal(legacyRankingRedirect({ ranking: "zyskujace" }, now), "/rankingi?ranking=trendujace");
+  assert.equal(legacyRankingRedirect({ ranking: "trendujace" }, now), null);
+  assert.equal(legacyRankingRedirect({}, now), null);
+  assert.equal(rankingHref({ ranking: "trendujace" }, 2026), "/rankingi?ranking=trendujace");
   assert.equal(rankingHref({ ranking: "hity", scope: "all" }, 2026), "/rankingi");
   assert.equal(
     rankingHref({ ranking: "hity", scope: "standup_special" }, 2026),
@@ -130,6 +138,17 @@ test("specials and shows sort by the public totals", () => {
   ], 10);
   assert.equal(specials[0]?.specialCount, 2);
   assert.equal(specials[1]?.slug, "bar");
+  const paczes = { id: 7, name: "Pacze\u015b", slug: "rafal-paczes", photoUrl: null };
+  const benshi = rankPeopleBySpecials([
+    { id: 18, title: "Rafa\u0142 Pacze\u015b - \"Nowa Kuchnia\" (program BENSHI 1/5)", showId: null, publishedAt: "2025-07-11T13:01:34Z", people: [paczes] },
+    { id: 17, title: "Rafa\u0142 Pacze\u015b - \"Kamper\" (program BENSHI 2/5)", showId: null, publishedAt: "2025-07-11T13:02:04Z", people: [paczes] },
+    { id: 19, title: "Rafa\u0142 Pacze\u015b - \"Czarna\" (program BENSHI 3/5)", showId: null, publishedAt: "2025-07-11T13:00:55Z", people: [paczes] },
+    { id: 21, title: "Rafa\u0142 Pacze\u015b - \"Gortat\" (program BENSHI 4/5)", showId: null, publishedAt: "2025-07-11T13:00:11Z", people: [paczes] },
+    { id: 20, title: "Rafa\u0142 Pacze\u015b - \"Restauracja, Pandemia, MC Duda\" (program BENSHI 5/5)", showId: null, publishedAt: "2025-07-11T13:00:23Z", people: [paczes] },
+    { id: 946, title: "Rafa\u0142 Pacze\u015b - \"BANG\" (2018) (ca\u0142e nagranie)", showId: null, publishedAt: "2018-05-14T00:00:00Z", people: [paczes] },
+  ], 10);
+  assert.equal(benshi[0]?.specialCount, 2);
+  assert.deepEqual(benshi[0]?.programs.find((program) => program.name === "Benshi")?.parts.map((part) => part.partNumber), [1, 2, 3, 4, 5]);
   const shows = rankShows(
     [
       { id: 1, showId: 7, viewCount: 10, publishedAt: "2020-01-01T00:00:00.000Z", thumbnailUrl: "old", durationSeconds: 1 },
@@ -161,7 +180,7 @@ test("home ranking stays on the page and falls back to classics", () => {
     RANKING_IDS.map((id) => HOME_RANKING_CHIP_LABELS[id]),
     [
       "Hity tygodnia",
-      "Zyskuj\u0105ce",
+      "Trenduj\u0105ce",
       "Klasyki",
       "Nowo\u015bci miesi\u0105ca",
       "Top specjali roku",
@@ -173,6 +192,7 @@ test("home ranking stays on the page and falls back to classics", () => {
   assert.equal(homeRankingSeeAllHref("hity"), "/rankingi?ranking=hity");
   assert.equal(homeRankingSeeAllHref("klasyki"), "/rankingi?ranking=klasyki");
   assert.equal(homeRankingSeeAllHref("formaty"), "/rankingi?ranking=formaty");
+  assert.equal(homeRankingSeeAllHref("trendujace"), "/rankingi?ranking=trendujace");
 
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   const section = readFileSync(new URL("../app/components/HomeRankings.tsx", import.meta.url), "utf8");
@@ -209,6 +229,24 @@ test("nav and both pages link the new sections", () => {
   assert.match(layout, /href: "\/nostalgia", label: "Nostalgia"/);
   assert.match(ranking, /Ranking ruszy jutro/);
   assert.match(ranking, /Standup i specjale/);
+  assert.match(ranking, /legacyRankingRedirect/);
+  assert.match(ranking, /trenduj/);
+  assert.doesNotMatch(ranking, /zyskuj/i);
+  const lists = readFileSync(new URL("../app/rankingi/RankingLists.tsx", import.meta.url), "utf8");
+  const pending = readFileSync(new URL("../app/components/PendingLink.tsx", import.meta.url), "utf8");
+  const loading = readFileSync(new URL("../app/standuper/[slug]/loading.tsx", import.meta.url), "utf8");
+  const labels = readFileSync(new URL("./rankings.ts", import.meta.url), "utf8");
+  assert.match(labels, /trendujace: "Trenduj/);
+  assert.match(labels, /zyskujace: "trendujace"/);
+  assert.doesNotMatch(labels, /Zyskuj/);
+  assert.match(lists, /PendingLink/);
+  assert.match(lists, /data-link-pending/);
+  assert.match(lists, /programy/);
+  assert.match(pending, /useLinkStatus/);
+  assert.match(pending, /prefetch=\{true\}/);
+  assert.match(pending, /data-link-pending/);
+  assert.match(loading, /aria-busy="true"/);
+  assert.match(loading, /adowanie profilu/);
   assert.match(nostalgia, /Nostalgiczne hity/);
   assert.match(nostalgia, /czasu warszawskiego/);
   assert.doesNotMatch(nostalgia, /NostalgiaReroll/);

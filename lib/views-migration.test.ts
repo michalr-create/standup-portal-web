@@ -53,6 +53,17 @@ test("other rankings skip shorts and merged rows, and the worker owns later snap
   assert.match(sql, /function public\.ranking_specials_year/);
   assert.match(sql, /function public\.ranking_people_views/);
   assert.match(sql, /function public\.ranking_people_specials/);
+  const parts = readFileSync(
+    new URL("../supabase/migrations/20261121210000_program_parts_and_profile_indexes.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(parts, /show_default_people_person_id_idx/);
+  assert.match(parts, /events_person_listed_starts_idx/);
+  assert.match(parts, /content_items_show_approved_published_idx/);
+  assert.match(parts, /function public\.program_part_keys/);
+  assert.match(parts, /count\(distinct program_key\)/);
+  assert.match(parts, /program BENSHI/);
+  assert.doesNotMatch(parts, /apply_migration/);
   assert.match(sql, /function public\.ranking_shows/);
   assert.match(sql, /security definer/);
   assert.match(sql, /revoke all on function public\.capture_content_view_snapshots\(date\) from public, anon, authenticated/);
