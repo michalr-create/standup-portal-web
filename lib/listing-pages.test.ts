@@ -51,7 +51,7 @@ test("format episodes page with the full total and clamp instead of a 999 cap", 
   assert.match(page, /few: "odcinki"/);
   assert.match(page, /many: "odcink\\u00f3w"/);
   const countAt = page.indexOf("listingCountLabel");
-  const gridAt = page.indexOf("<ItemsBrowser");
+  const gridAt = page.indexOf("<ProgramCatalog");
   assert.ok(countAt > 0 && gridAt > countAt);
   assert.match(page, /if \(!show\) notFound\(\)/);
   assert.doesNotMatch(page, /getItemsByShowSlug/);

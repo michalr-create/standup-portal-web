@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getShowBySlug, getShowEpisodesPage } from "@/lib/data";
-import ItemsBrowser from "@/app/components/ItemsBrowser";
+import ProgramCatalog from "@/app/components/ProgramCatalog";
 import HeartButton from "@/app/components/HeartButton";
 import Pager from "@/app/components/Pager";
 import {
@@ -90,7 +90,7 @@ export default async function FormatPage({ params, searchParams }: Props) {
             })}
           </span>
         </div>
-        <ItemsBrowser items={episodes.items} />
+        <ProgramCatalog items={episodes.items} />
         <Pager
           page={parsed.page}
           total={episodes.total}

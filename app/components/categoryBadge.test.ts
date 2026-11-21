@@ -37,8 +37,10 @@ test("showCategoryBadge stays on by default and single-category listings turn it
   }
 
   const profile = source("standuper/[slug]/page.tsx");
-  const cards = profile.match(/<ItemsBrowser\b[^]*?\/>/g) ?? [];
+  const cards = profile.match(/<ProgramCatalog\b[^]*?\/>/g) ?? [];
   assert.equal(cards.length, 3);
+  const catalog = source("components/ProgramCatalog.tsx");
+  assert.match(catalog, /showCategoryBadge=\{showCategoryBadge\}/);
   for (const card of cards) {
     assert.match(card, /showCategoryBadge=\{false\}/);
   }

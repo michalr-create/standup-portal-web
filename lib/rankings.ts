@@ -1,3 +1,4 @@
+import { collapseBy, parseProgramPart } from "./program-parts.ts";
 import { formatGain, formatGainPct, formatViews } from "./view-count.ts";
 
 export const RANKING_LIMIT = 10;
@@ -8,7 +9,7 @@ export const RANKING_REVALIDATE_SECONDS = 3600;
 
 export const RANKING_IDS = [
   "hity",
-  "zyskujace",
+  "trendujace",
   "klasyki",
   "nowosci",
   "specjale",
@@ -29,7 +30,7 @@ export type RankingQuery = {
 /** Short names for the home Rankingi chips. Order follows RANKING_IDS. */
 export const HOME_RANKING_CHIP_LABELS: Record<RankingId, string> = {
   hity: "Hity tygodnia",
-  zyskujace: "Zyskuj\u0105ce",
+  trendujace: "Trenduj\u0105ce",
   klasyki: "Klasyki",
   nowosci: "Nowo\u015bci miesi\u0105ca",
   specjale: "Top specjali roku",
@@ -44,7 +45,7 @@ export function homeRankingSeeAllHref(id: RankingId): string {
 
 export const RANKING_LABELS: Record<RankingId, string> = {
   hity: "Hity tygodnia",
-  zyskujace: "Zyskuj\u0105ce",
+  trendujace: "Trenduj\u0105ce",
   klasyki: "Klasyki wszech czas\u00f3w",
   nowosci: "Nowo\u015bci miesi\u0105ca",
   specjale: "Top specjali roku",
@@ -54,6 +55,11 @@ export const RANKING_LABELS: Record<RankingId, string> = {
 };
 
 const RANKING_SET = new Set<string>(RANKING_IDS);
+
+/** Retired public slugs. Parsed as the new id and redirected to the canonical URL. */
+const LEGACY_RANKING_SLUGS: Record<string, RankingId> = {
+  zyskujace: "trendujace",
+};
 
 function firstParam(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -69,7 +75,8 @@ export function parseRankingQuery(
   now: Date = new Date(),
 ): RankingQuery {
   const rankingRaw = firstParam(params.ranking);
-  const ranking: RankingId = RANKING_SET.has(rankingRaw) ? (rankingRaw as RankingId) : "hity";
+  const alias = LEGACY_RANKING_SLUGS[rankingRaw];
+  const ranking: RankingId = alias ?? (RANKING_SET.has(rankingRaw) ? (rankingRaw as RankingId) : "hity");
   const scope: RankingScope = firstParam(params.zakres) === "standup" ? "standup_special" : "all";
   const current = currentUtcYear(now);
   const yearRaw = firstParam(params.rok);
@@ -90,6 +97,15 @@ export function rankingHref(
   }
   const qs = params.toString();
   return qs ? `/rankingi?${qs}` : "/rankingi";
+}
+
+/** Canonical /rankingi URL when the query uses a retired slug such as zyskujace. */
+export function legacyRankingRedirect(
+  params: Record<string, string | string[] | undefined>,
+  now: Date = new Date(),
+): string | null {
+  if (!LEGACY_RANKING_SLUGS[firstParam(params.ranking)]) return null;
+  return rankingHref(parseRankingQuery(params, now), currentUtcYear(now));
 }
 
 /**
@@ -145,8 +161,8 @@ export function homeRankingLabel(kind: HomeRankingKind, heading: string): string
 }
 
 export function percentHeading(days: number, ready: boolean): string {
-  if (!ready) return RANKING_LABELS.zyskujace;
-  return `${RANKING_LABELS.zyskujace} ${viewsWindowPhrase(days)}`;
+  if (!ready) return RANKING_LABELS.trendujace;
+  return `${RANKING_LABELS.trendujace} ${viewsWindowPhrase(days)}`;
 }
 
 export const PENDING_RANKING_MESSAGE = "Ranking ruszy jutro.";
@@ -245,27 +261,75 @@ export function rankPeopleByViews(items: PersonViewSource[], limit: number): Per
 
 export type PersonSpecialSource = {
   id: number;
+  title?: string;
+  showId?: number | null;
+  publishedAt?: string | null;
+  url?: string | null;
+  thumbnailUrl?: string | null;
   people: PersonRef[];
+};
+
+export type SpecialProgramPart = {
+  id: number;
+  title: string;
+  partNumber: number | null;
+  publishedAt: string | null;
+  url: string | null;
+  thumbnailUrl: string | null;
+};
+
+export type SpecialProgram = {
+  key: string;
+  name: string;
+  parts: SpecialProgramPart[];
 };
 
 export type PersonSpecialsRank = PersonRef & {
   rank: number;
   specialCount: number;
+  programs: SpecialProgram[];
 };
 
 export function rankPeopleBySpecials(items: PersonSpecialSource[], limit: number): PersonSpecialsRank[] {
-  const map = new Map<number, PersonSpecialsRank>();
+  const buckets = new Map<number, { person: PersonRef; items: PersonSpecialSource[] }>();
   for (const item of items) {
     const seen = new Set<number>();
     for (const person of item.people) {
       if (seen.has(person.id)) continue;
       seen.add(person.id);
-      const current = map.get(person.id);
-      if (current) current.specialCount += 1;
-      else map.set(person.id, { ...person, rank: 0, specialCount: 1 });
+      const bucket = buckets.get(person.id);
+      if (bucket) bucket.items.push(item);
+      else buckets.set(person.id, { person, items: [item] });
     }
   }
-  return [...map.values()]
+  return [...buckets.values()]
+    .map(({ person, items: owned }) => {
+      const unique = [...new Map(owned.map((item) => [item.id, item])).values()]
+        .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "") || a.id - b.id);
+      const groups = collapseBy(unique, (item) => ({
+        id: item.id,
+        title: item.title ?? "",
+        showId: item.showId ?? null,
+        publishedAt: item.publishedAt ?? null,
+      }));
+      return {
+        ...person,
+        rank: 0,
+        specialCount: groups.length,
+        programs: groups.map((group) => ({
+          key: group.key,
+          name: group.name,
+          parts: group.parts.map((part) => ({
+            id: part.id,
+            title: part.title ?? "",
+            partNumber: parseProgramPart(part.title ?? "", part.showId ?? null).partNumber,
+            publishedAt: part.publishedAt ?? null,
+            url: part.url ?? null,
+            thumbnailUrl: part.thumbnailUrl ?? null,
+          })),
+        })),
+      };
+    })
     .sort((a, b) => b.specialCount - a.specialCount || a.name.localeCompare(b.name, "pl"))
     .slice(0, limit)
     .map((row, index) => ({ ...row, rank: index + 1 }));

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import {
   eventFacets,
@@ -36,6 +37,7 @@ import { supabase } from "@/lib/supabase";
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { PUBLIC_LISTING_PAGE_SIZE } from "@/lib/category-browse";
 import { mergeShowEpisodes, pageShowEpisodes } from "@/lib/show-episodes";
+import { collapseBy } from "@/lib/program-parts";
 import { normalizeHomeCity } from "@/lib/home-city";
 import { paidExternalUrl } from "@/lib/youtube";
 
@@ -92,6 +94,28 @@ export type Category = {
   display_order: number;
 };
 
+const HYDRATE_CHUNK = 200;
+
+async function rowsIn<T>(
+  ids: number[],
+  load: (chunk: number[]) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const chunks: number[][] = [];
+  for (let index = 0; index < ids.length; index += HYDRATE_CHUNK) {
+    chunks.push(ids.slice(index, index + HYDRATE_CHUNK));
+  }
+  const batches = await Promise.all(chunks.map(async (chunk) => {
+    const { data, error } = await load(chunk);
+    if (error) {
+      console.error("Blad hydratacji:", error.message);
+      return [] as T[];
+    }
+    return data ?? [];
+  }));
+  return batches.flat();
+}
+
 // =================================================================
 // HELPER: hydratacja item (dodanie show, kategorii, person tagów)
 // =================================================================
@@ -114,29 +138,20 @@ async function hydrateItems(rawItems: {
   const showIds = Array.from(new Set(rawItems.map((i) => i.show_id).filter((id): id is number => id !== null)));
   const categoryIds = Array.from(new Set(rawItems.map((i) => i.category_id).filter((id): id is number => id !== null)));
 
-  // Pobierz shows
-  const { data: shows } = showIds.length > 0
-    ? await supabase.from("shows").select("id, name, slug").in("id", showIds)
-    : { data: [] };
-
-  // Pobierz categories
-  const { data: categories } = categoryIds.length > 0
-    ? await supabase.from("categories").select("id, name, slug").in("id", categoryIds)
-    : { data: [] };
-
-  // Pobierz tagi person dla tych itemów
-  const { data: contentTags } = await supabase
-    .from("content_tags")
-    .select("content_item_id, tag_id, tags!inner(id, person_id, tag_type)")
-    .in("content_item_id", itemIds)
-    .eq("tags.tag_type", "person");
-
-  // Pobierz tagi non-person (topic, format, event) dla tych itemów
-  const { data: nonPersonTagsData } = await supabase
-    .from("content_tags")
-    .select("content_item_id, tags!inner(id, name, slug, tag_type)")
-    .in("content_item_id", itemIds)
-    .neq("tags.tag_type", "person");
+  const [shows, categories, contentTags, nonPersonTagsData] = await Promise.all([
+    rowsIn(showIds, (chunk) => supabase.from("shows").select("id, name, slug").in("id", chunk)),
+    rowsIn(categoryIds, (chunk) => supabase.from("categories").select("id, name, slug").in("id", chunk)),
+    rowsIn(itemIds, (chunk) => supabase
+      .from("content_tags")
+      .select("content_item_id, tag_id, tags!inner(id, person_id, tag_type)")
+      .in("content_item_id", chunk)
+      .eq("tags.tag_type", "person")),
+    rowsIn(itemIds, (chunk) => supabase
+      .from("content_tags")
+      .select("content_item_id, tags!inner(id, name, slug, tag_type)")
+      .in("content_item_id", chunk)
+      .neq("tags.tag_type", "person")),
+  ]);
 
   // Pobierz person z tagów
 type CtRow = {
@@ -160,14 +175,12 @@ type NpCtRow = {
       })
   ));
 
-  const { data: people } = personIds.length > 0
-    ? await supabase.from("people").select("id, name, slug").in("id", personIds)
-    : { data: [] };
+  const people = await rowsIn(personIds, (chunk) => supabase.from("people").select("id, name, slug").in("id", chunk));
 
   // Mapy do szybkiego lookupu
   const showsMap = new Map((shows || []).map((s) => [s.id, s]));
   const categoriesMap = new Map((categories || []).map((c) => [c.id, c]));
-  const peopleMap = new Map((people || []).map((p) => [p.id, p]));
+  const peopleMap = new Map(people.map((p) => [p.id, p]));
 
 // Map: item_id -> lista person
   const itemPeopleMap = new Map<number, { name: string; slug: string }[]>();
@@ -352,46 +365,139 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
   return hydrateItems(merged.slice(0, limit));
 }
 
-// =================================================================
-// QUERY: zatwierdzone wpisy w których występuje dana person (przez tag)
-// =================================================================
-export async function getItemsByPersonSlug(slug: string, limit = 100): Promise<Item[]> {
-  // Najpierw znajdź tag person dla tego slug
-  const { data: tag } = await supabase
-    .from("tags")
-    .select("id")
-    .eq("slug", slug)
-    .eq("tag_type", "person")
-    .maybeSingle();
+const PROFILE_REVALIDATE_SECONDS = 120;
 
-  if (!tag) return [];
+type Embedded<T> = T | T[] | null | undefined;
 
-  // Potem znajdź content_item_id-y które mają ten tag
-  const { data: ctRows } = await supabase
-    .from("content_tags")
-    .select("content_item_id")
-    .eq("tag_id", tag.id);
-
-  const itemIds = (ctRows || []).map((row) => row.content_item_id);
-  if (itemIds.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
-    .eq("status", "approved")
-    .is("merged_into_id", null)
-    .in("id", itemIds)
-    .order("published_at", { ascending: false })
-    .limit(limit);
-
-  if (error || !data) return [];
-  return hydrateItems(data);
+function oneEmbedded<T>(value: Embedded<T>): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+function manyEmbedded<T>(value: Embedded<T>): T[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+const PERSON_ITEM_SELECT = [
+  "content_items!inner(",
+  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid,",
+  "shows(name, slug),",
+  "categories(name, slug),",
+  "content_tags(tags(name, slug, tag_type, person_id, people(name, slug)))",
+  ")",
+].join(" ");
+
+type PersonItemTag = {
+  name?: string;
+  slug?: string;
+  tag_type?: string;
+  person_id?: number | null;
+  people?: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
+};
+
+type PersonItemRow = {
+  id: number;
+  title: string;
+  url: string;
+  thumbnail_url: string | null;
+  published_at: string | null;
+  source_id: number;
+  show_id: number | null;
+  category_id: number | null;
+  episode_group_id: string | null;
+  duration_seconds: number | null;
+  is_paid: boolean | null;
+  shows?: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
+  categories?: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
+  content_tags?: { tags?: PersonItemTag | PersonItemTag[] | null }[] | null;
+};
+
+function itemFromPersonRow(row: PersonItemRow): Item | null {
+  if (!row || typeof row.id !== "number" || !row.title || !row.url) return null;
+  const show = oneEmbedded(row.shows);
+  const category = oneEmbedded(row.categories);
+  const people: { name: string; slug: string }[] = [];
+  const tags: { name: string; slug: string; tag_type: string }[] = [];
+  const seenPeople = new Set<string>();
+  for (const link of row.content_tags ?? []) {
+    for (const tag of manyEmbedded(link.tags)) {
+      if (tag.tag_type === "person") {
+        const person = oneEmbedded(tag.people);
+        if (!person?.name || !person.slug || seenPeople.has(person.slug)) continue;
+        seenPeople.add(person.slug);
+        people.push({ name: person.name, slug: person.slug });
+        continue;
+      }
+      if (tag.name && tag.slug && tag.tag_type) {
+        tags.push({ name: tag.name, slug: tag.slug, tag_type: tag.tag_type });
+      }
+    }
+  }
+  return {
+    id: row.id,
+    title: row.title,
+    url: row.url,
+    thumbnail_url: row.thumbnail_url,
+    published_at: row.published_at,
+    source_id: row.source_id,
+    show_id: row.show_id,
+    category_id: row.category_id,
+    episode_group_id: row.episode_group_id,
+    duration_seconds: row.duration_seconds,
+    is_paid: row.is_paid === true,
+    showName: show?.name || null,
+    showSlug: show?.slug || null,
+    categoryName: category?.name || null,
+    categorySlug: category?.slug || null,
+    people,
+    tags,
+  };
+}
+
+async function loadItemsByPersonSlug(slug: string, limit: number): Promise<Item[]> {
+  const { data, error } = await supabase
+    .from("content_tags")
+    .select(`${PERSON_ITEM_SELECT}, tags!inner(slug)`)
+    .eq("tags.slug", slug)
+    .eq("tags.tag_type", "person")
+    .eq("content_items.status", "approved")
+    .is("content_items.merged_into_id", null)
+    .limit(limit);
+
+  if (error || !data) {
+    if (error) console.error("Blad pobierania profilu:", error.message);
+    return [];
+  }
+
+  const items: Item[] = [];
+  const seen = new Set<number>();
+  for (const row of data as { content_items?: PersonItemRow | PersonItemRow[] | null }[]) {
+    const item = itemFromPersonRow(oneEmbedded(row.content_items) as PersonItemRow);
+    if (!item || seen.has(item.id)) continue;
+    seen.add(item.id);
+    items.push(item);
+  }
+  items.sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? "") || b.id - a.id);
+  return items;
+}
+
+const itemsByPersonSlug = unstable_cache(
+  async (slug: string, limit: number) => loadItemsByPersonSlug(slug, limit),
+  ["items-by-person-slug"],
+  { revalidate: PROFILE_REVALIDATE_SECONDS },
+);
+
 // =================================================================
-// QUERY: dane person po slugu
+// QUERY: zatwierdzone wpisy w których występuje dana person (przez tag)
+// One nested read instead of tag → ids → items → hydrate.
 // =================================================================
-export async function getPersonBySlug(slug: string): Promise<Person | null> {
+export function getItemsByPersonSlug(slug: string, limit = 100): Promise<Item[]> {
+  const size = Number.isFinite(limit) ? Math.min(999, Math.max(1, Math.floor(limit))) : 100;
+  return itemsByPersonSlug(slug, size);
+}
+
+async function loadPersonBySlug(slug: string): Promise<Person | null> {
   const { data } = await supabase
     .from("people")
     .select("id, name, slug, bio, photo_url, role")
@@ -399,6 +505,19 @@ export async function getPersonBySlug(slug: string): Promise<Person | null> {
     .maybeSingle();
 
   return data || null;
+}
+
+const personBySlug = unstable_cache(
+  async (slug: string) => loadPersonBySlug(slug),
+  ["person-by-slug"],
+  { revalidate: PROFILE_REVALIDATE_SECONDS },
+);
+
+// =================================================================
+// QUERY: dane person po slugu
+// =================================================================
+export function getPersonBySlug(slug: string): Promise<Person | null> {
+  return personBySlug(slug);
 }
 
 // =================================================================
@@ -902,12 +1021,17 @@ export async function getItemsByCategorySlugPage(
 const EPISODE_STAMP_PAGE = 1000;
 const EPISODE_STAMP_CAP = 100;
 
-type EpisodeStampRow = { id: number; published_at: string | null };
+type EpisodeStampRow = {
+  id: number;
+  published_at: string | null;
+  title: string | null;
+  show_id: number | null;
+};
 
 function episodeStampQuery(shortsCatId: number | null) {
   let query = supabase
     .from("content_items")
-    .select("id, published_at")
+    .select("id, title, published_at, show_id")
     .eq("status", "approved")
     .neq("content_type", "short")
     .is("merged_into_id", null)
@@ -971,10 +1095,16 @@ export async function getShowEpisodesPage(
   if (!byShow || !bySource) return { items: [], total: 0 };
 
   const merged = mergeShowEpisodes(byShow, bySource);
-  const window = pageShowEpisodes(merged, offset, limit);
+  const slots = collapseBy(merged, (row) => ({
+    id: row.id,
+    title: row.title ?? "",
+    showId: row.show_id,
+    publishedAt: row.published_at,
+  }));
+  const window = pageShowEpisodes(slots, offset, limit);
   if (window.episodes.length === 0) return { items: [], total: window.total };
 
-  const ids = window.episodes.map((episode) => episode.id);
+  const ids = window.episodes.flatMap((slot) => slot.parts.map((part) => part.id));
   const { data, error } = await supabase.from("content_items").select(ITEM_COLUMNS).in("id", ids);
   if (error || !data) {
     console.error("Blad pobierania odcinkow:", error);
@@ -1361,7 +1491,7 @@ export async function getTagBrowse(tagSlug: string, query: CategoryBrowseQuery =
 // =================================================================
 // QUERY: formaty gdzie dana osoba jest domyslnym standuperem
 // =================================================================
-export async function getDefaultShowsForPerson(personId: number): Promise<{
+async function loadDefaultShowsForPerson(personId: number): Promise<{
   show: Show;
   totalCount: number;
   latestDate: string | null;
@@ -1408,6 +1538,16 @@ export async function getDefaultShowsForPerson(personId: number): Promise<{
     latestDate: latestMap.get(s.id) || null,
     latestThumbnail: thumbnailMap.get(s.id) || null,
   }));
+}
+
+const defaultShowsForPerson = unstable_cache(
+  async (personId: number) => loadDefaultShowsForPerson(personId),
+  ["default-shows-for-person"],
+  { revalidate: PROFILE_REVALIDATE_SECONDS },
+);
+
+export function getDefaultShowsForPerson(personId: number) {
+  return defaultShowsForPerson(personId);
 }
 
 // =================================================================

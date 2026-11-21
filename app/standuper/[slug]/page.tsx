@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson, getUpcomingEventsForPerson } from "@/lib/data";
 import type { Item, Show } from "@/lib/data";
-import ItemsBrowser from "@/app/components/ItemsBrowser";
+import ProgramCatalog from "@/app/components/ProgramCatalog";
 import HeartButton from "@/app/components/HeartButton";
 import { materialLabel, profileCountLabel, sortByDateDesc } from "@/lib/standuper-profile";
+import { collapseBy } from "@/lib/program-parts";
 import { notFound } from "next/navigation";
 import ProfileTour from "./ProfileTour";
 
@@ -30,6 +31,15 @@ function groupItems(items: Item[]): Map<string, Item[]> {
     map.set(key, sortByDateDesc(list, (item) => item.published_at));
   }
   return map;
+}
+
+function programSlots(items: Item[]): number {
+  return collapseBy(items, (item) => ({
+    id: item.id,
+    title: item.title,
+    showId: item.show_id,
+    publishedAt: item.published_at,
+  })).length;
 }
 
 function odcinekLabel(n: number): string {
@@ -102,12 +112,14 @@ function ShowCard({ show, totalCount, latestDate, latestThumbnail }: {
 
 export default async function StanduperPage({ params }: Props) {
   const { slug } = await params;
-  const person = await getPersonBySlug(slug);
+  const now = new Date();
+  const personPromise = getPersonBySlug(slug);
+  const itemsPromise = getItemsByPersonSlug(slug, 999);
+  const person = await personPromise;
   if (!person) notFound();
 
-  const now = new Date();
   const [items, defaultShows, tourEvents] = await Promise.all([
-    getItemsByPersonSlug(slug, 999),
+    itemsPromise,
     getDefaultShowsForPerson(person.id),
     getUpcomingEventsForPerson(person.id, now),
   ]);
@@ -116,7 +128,7 @@ export default async function StanduperPage({ params }: Props) {
   const otherItems = items.filter((i) => !i.show_id || !defaultShowIds.has(i.show_id));
   const grouped = groupItems(otherItems);
   const shows = sortByDateDesc(defaultShows, (row) => row.latestDate);
-  const videoCount = VISIBLE_VIDEO_KEYS.reduce((n, key) => n + (grouped.get(key)?.length ?? 0), 0);
+  const videoCount = VISIBLE_VIDEO_KEYS.reduce((n, key) => n + programSlots(grouped.get(key) ?? []), 0);
   const formatCount = shows.length;
 
   const hasFormatyItems = formatCount > 0 || (grouped.get("formaty") ?? []).length > 0;
@@ -170,10 +182,10 @@ export default async function StanduperPage({ params }: Props) {
                   {label}<span className="dot-accent">.</span>
                 </h2>
                 <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".14em" }}>
-                  {sectionItems.length} {materialLabel(sectionItems.length)}
+                  {programSlots(sectionItems)} {materialLabel(programSlots(sectionItems))}
                 </span>
               </div>
-              <ItemsBrowser items={sectionItems} showCategoryBadge={false} />
+              <ProgramCatalog items={sectionItems} showCategoryBadge={false} />
             </section>
           );
         })}
@@ -194,7 +206,7 @@ export default async function StanduperPage({ params }: Props) {
               </div>
             )}
             {(grouped.get("formaty") ?? []).length > 0 && (
-              <ItemsBrowser items={grouped.get("formaty")!} showCategoryBadge={false} />
+              <ProgramCatalog items={grouped.get("formaty")!} showCategoryBadge={false} />
             )}
           </section>
         )}
@@ -210,10 +222,10 @@ export default async function StanduperPage({ params }: Props) {
                   {label}<span className="dot-accent">.</span>
                 </h2>
                 <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".14em" }}>
-                  {sectionItems.length} {materialLabel(sectionItems.length)}
+                  {programSlots(sectionItems)} {materialLabel(programSlots(sectionItems))}
                 </span>
               </div>
-              <ItemsBrowser items={sectionItems} showCategoryBadge={false} />
+              <ProgramCatalog items={sectionItems} showCategoryBadge={false} />
             </section>
           );
         })}
