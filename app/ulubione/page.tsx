@@ -8,6 +8,7 @@ import VideoModal from "@/app/components/VideoModal";
 import CardByline from "@/app/components/CardByline";
 import { useLibrary } from "@/app/components/LibraryProvider";
 import WatchLaterButton from "@/app/components/WatchLaterButton";
+import AdminMaterialActions from "@/app/components/AdminMaterialActions";
 import { useWatchHistory } from "@/app/hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
@@ -239,6 +240,7 @@ export default function UlubionePage() {
                       </ContentCardAction>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <WatchLaterButton itemId={item.id} title={item.title} />
+                        <AdminMaterialActions itemId={item.id} inline />
                       </div>
                       <CardByline item={item} />
                     </article>
@@ -406,6 +408,7 @@ export default function UlubionePage() {
                         <div className="mt-2">
                           <WatchLaterButton itemId={item.id} title={item.title} />
                         </div>
+                        <AdminMaterialActions itemId={item.id} />
                         <CardByline item={item} />
                       </article>
                     );

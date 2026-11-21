@@ -11,6 +11,7 @@ import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
 import WatchLaterButton from "./WatchLaterButton";
+import AdminMaterialActions from "./AdminMaterialActions";
 
 function ScrollCard({
   item,
@@ -93,6 +94,7 @@ function ScrollCard({
       <div className="mt-2">
         <WatchLaterButton itemId={item.id} title={item.title} />
       </div>
+      <AdminMaterialActions itemId={item.id} />
       <CardByline item={item} className="mt-1" />
     </article>
   );
