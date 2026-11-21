@@ -257,6 +257,8 @@ test("nav and both pages link the new sections", () => {
   assert.match(labels, /zyskujace: "trendujace"/);
   assert.doesNotMatch(labels, /Zyskuj/);
   assert.match(lists, /PendingLink/);
+  assert.doesNotMatch(lists, /name\.slice\(0,\s*1\)/);
+  assert.match(lists, /function personPhoto/);
   assert.match(lists, /data-link-pending/);
   assert.match(lists, /programy/);
   assert.match(pending, /useLinkStatus/);

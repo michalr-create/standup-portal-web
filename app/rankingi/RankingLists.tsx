@@ -67,6 +67,11 @@ function RankingPrograms({ programs }: { programs: SpecialProgram[] }) {
   );
 }
 
+function personPhoto(url: string | null): string | null {
+  const trimmed = url?.trim() ?? "";
+  return trimmed || null;
+}
+
 function ProgramPartLink({
   part,
   label,
@@ -89,7 +94,9 @@ export function RankingPeople({ people }: { people: RankingPersonCard[] }) {
   if (people.length === 0) return null;
   return (
     <ol className="list-none p-0 m-0 flex flex-col gap-3">
-      {people.map((person) => (
+      {people.map((person) => {
+        const photo = personPhoto(person.photoUrl);
+        return (
         <li key={person.id}>
           <div
             className="rounded-2xl px-3 py-3 sm:px-4 transition-[background,border-color,box-shadow] duration-150 has-[[data-link-pending=true]]:border-[var(--coral)] has-[[data-link-pending=true]]:bg-[var(--ink-3)] has-[[data-link-pending=true]]:shadow-[inset_0_0_0_1px_var(--coral)]"
@@ -107,17 +114,15 @@ export function RankingPeople({ people }: { people: RankingPersonCard[] }) {
                   <span className="sr-only">{"Miejsce "}</span>
                   {person.rank}
                 </span>
-                <span
-                  className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full font-black"
-                  style={{ background: "var(--ink-3)", color: "var(--paper)" }}
-                >
-                  {person.photoUrl ? (
-                    <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    person.name.slice(0, 1)
-                  )}
-                </span>
-                <span className="min-w-0">
+                {photo && (
+                  <span
+                    className="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 overflow-hidden rounded-full"
+                    style={{ background: "var(--ink-3)" }}
+                  >
+                    <img src={photo} alt="" className="h-full w-full object-cover" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
                   <span className="block truncate font-extrabold" style={{ letterSpacing: "-.01em" }}>
                     {person.name}
                   </span>
@@ -126,14 +131,17 @@ export function RankingPeople({ people }: { people: RankingPersonCard[] }) {
                   </span>
                 </span>
               </PendingLink>
-              <HeartButton type="person" slug={person.slug} name={person.name} size={16} />
+              <span className="shrink-0">
+                <HeartButton type="person" slug={person.slug} name={person.name} size={16} />
+              </span>
             </div>
             {person.programs && person.programs.length > 0 && (
               <RankingPrograms programs={person.programs} />
             )}
           </div>
         </li>
-      ))}
+        );
+      })}
     </ol>
   );
 }
