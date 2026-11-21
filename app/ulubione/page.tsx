@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { signOut } from "@/app/auth/actions";
 import HeartButton from "@/app/components/HeartButton";
+import SignOutButton from "@/app/components/SignOutButton";
 import VideoModal from "@/app/components/VideoModal";
 import CardByline from "@/app/components/CardByline";
 import { useLibrary } from "@/app/components/LibraryProvider";
@@ -176,15 +176,10 @@ export default function UlubionePage() {
             </p>
           </div>
           {library.signedIn && (
-            <form action={signOut} className="m-0">
-              <button
-                type="submit"
-                className={logoutClass}
-                style={{ color: "var(--paper)", background: "transparent", border: "1px solid var(--line-2)" }}
-              >
-                Wyloguj
-              </button>
-            </form>
+            <SignOutButton
+              className={logoutClass}
+              style={{ color: "var(--paper)", background: "transparent", border: "1px solid var(--line-2)" }}
+            />
           )}
         </header>
 

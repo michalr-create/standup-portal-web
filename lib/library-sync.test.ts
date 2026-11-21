@@ -10,6 +10,7 @@ import {
 } from "./library-sync.ts";
 import {
   LIBRARY_STORAGE_KEYS,
+  clearAccountLibrary,
   memoryStore,
   readLibrary,
   readSyncedUser,
@@ -132,4 +133,30 @@ test("localStorage round-trip keeps the existing keys and the sync marker", () =
   assert.equal(readSyncedUser(store), USER_A);
   writeSyncedUser(store, "not-a-user");
   assert.equal(readSyncedUser(store), USER_A);
+});
+
+test("logout clears an account cache and leaves anonymous lists in place", () => {
+  const anonymous = memoryStore();
+  writeLibrary(anonymous, {
+    ...emptyLibrary(),
+    people: ["lokalny"],
+    watched: ["https://youtu.be/local"],
+  });
+  assert.equal(clearAccountLibrary(anonymous), false);
+  assert.deepEqual(readLibrary(anonymous).people, ["lokalny"]);
+  assert.equal(readSyncedUser(anonymous), null);
+
+  const account = memoryStore();
+  writeLibrary(account, {
+    ...emptyLibrary(),
+    people: ["konto"],
+    shows: ["konto-format"],
+    watched: ["https://youtu.be/remote"],
+    later: [2],
+  });
+  writeSyncedUser(account, USER_A);
+  assert.equal(clearAccountLibrary(account), true);
+  assert.deepEqual(readLibrary(account), emptyLibrary());
+  assert.equal(readSyncedUser(account), null);
+  assert.equal(account.getItem(LIBRARY_STORAGE_KEYS.syncedUser), null);
 });

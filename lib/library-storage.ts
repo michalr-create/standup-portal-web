@@ -18,6 +18,7 @@ export const LIBRARY_STORAGE_KEYS = {
 export type KeyValueStore = {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 };
 
 const USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -66,6 +67,19 @@ export function writeSyncedUser(store: KeyValueStore, userId: string): void {
   store.setItem(LIBRARY_STORAGE_KEYS.syncedUser, userId.toLowerCase());
 }
 
+/**
+ * The sync marker means these lists were copied from an account.
+ * Logout drops them so the next signed-out visit does not keep that account,
+ * and the next login does not treat them as this browser's anonymous lists.
+ * Lists with no marker were saved while signed out and stay.
+ */
+export function clearAccountLibrary(store: KeyValueStore): boolean {
+  if (!readSyncedUser(store)) return false;
+  writeLibrary(store, emptyLibrary());
+  store.removeItem(LIBRARY_STORAGE_KEYS.syncedUser);
+  return true;
+}
+
 export function memoryStore(seed: Record<string, string> = {}): KeyValueStore & { data: Map<string, string> } {
   const data = new Map(Object.entries(seed));
   return {
@@ -75,6 +89,9 @@ export function memoryStore(seed: Record<string, string> = {}): KeyValueStore & 
     },
     setItem(key, value) {
       data.set(key, value);
+    },
+    removeItem(key) {
+      data.delete(key);
     },
   };
 }

@@ -12,8 +12,8 @@ const favorites = readFileSync(new URL("../app/components/FavoritesSection.tsx",
 test("Konto opens the account and the account page can sign out", () => {
   assert.match(auth, /<Link href="\/ulubione"[\s\S]*?>\s*Konto\s*<\/Link>/);
   assert.doesNotMatch(auth, /aria-haspopup/);
-  assert.match(page, /signOut/);
-  assert.match(page, /Wyloguj/);
+  assert.match(page, /<SignOutButton/);
+  assert.doesNotMatch(page, /auth\/actions/);
 });
 
 test("followed people and shows still link to the directories", () => {

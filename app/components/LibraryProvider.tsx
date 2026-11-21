@@ -27,6 +27,7 @@ import {
 } from "@/lib/library-sync";
 import { favoritePersonSlugs } from "@/lib/events";
 import {
+  clearAccountLibrary,
   libraryOrEmpty,
   readLibrary,
   readSyncedUser,
@@ -116,15 +117,23 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       const supabase = getBrowserSupabase();
 
-      const run = (userId: string | null) => {
+      const run = (userId: string | null, event: string) => {
         if (cancelled) return;
         const id = ++runId.current;
         const currentStore = browserStore();
-        const local = libraryOrEmpty(currentStore);
         if (!userId) {
           signedInRef.current = false;
           setSignedIn(false);
-          commit(local);
+          // INITIAL_SESSION covers a hard reload after the sign-out route.
+          // SIGNED_OUT covers a session that ends in this tab. Other null
+          // events must not wipe a cache that a later session event still needs.
+          const sessionEnded = event === "INITIAL_SESSION" || event === "SIGNED_OUT";
+          if (currentStore && sessionEnded && clearAccountLibrary(currentStore)) {
+            snapshotRef.current = emptyLibrary();
+            setSnapshot(emptyLibrary());
+          } else {
+            commit(libraryOrEmpty(currentStore));
+          }
           setReady(true);
           return;
         }
@@ -190,9 +199,9 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
         })();
       };
 
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
         const userId = session?.user.id ?? null;
-        setTimeout(() => run(userId), 0);
+        setTimeout(() => run(userId, event), 0);
       });
       unsubscribe = () => data.subscription.unsubscribe();
     });
