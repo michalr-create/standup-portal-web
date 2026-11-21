@@ -13,6 +13,7 @@ import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
 import WatchLaterButton from "./WatchLaterButton";
+import AdminMaterialActions from "./AdminMaterialActions";
 import {
   DEFAULT_GRID_CLASS,
   DEFAULT_THUMB_ASPECT,
@@ -135,6 +136,7 @@ export default function ItemsBrowser({
               <div className="mt-2">
                 <WatchLaterButton itemId={item.id} title={item.title} />
               </div>
+              <AdminMaterialActions itemId={item.id} />
               <CardByline item={item} />
               <ReportMaterialLink itemId={item.id} title={item.title} />
             </article>

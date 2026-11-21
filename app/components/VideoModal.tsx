@@ -37,6 +37,7 @@ import {
 } from "@/lib/sleep-timer";
 import { bindVideoHistory } from "@/lib/video-history";
 import WatchLaterButton from "./WatchLaterButton";
+import AdminMaterialActions from "./AdminMaterialActions";
 import ReportMaterialLink from "./ReportMaterialLink";
 import { PLAYER_SESSION_END_EVENT } from "@/lib/resume-refresh";
 import {
@@ -1021,6 +1022,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <WatchLaterButton itemId={item.id} title={item.title} />
             <ReportMaterialLink itemId={item.id} title={item.title} />
+            <AdminMaterialActions itemId={item.id} inline />
           </div>
           <PlayerTools key={`meta-${videoId}`} {...toolProps} showHint />
         </div>

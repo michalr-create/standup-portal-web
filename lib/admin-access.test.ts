@@ -66,7 +66,7 @@ test("admin entry points use the allowlist helper", () => {
   assert.match(layout, /forbidden\(/);
   assert.match(layout, /redirect\("\/admin\/login"\)/);
 
-  for (const file of ["actions.ts", "actions-sources.ts", "actions-fetch.ts"]) {
+  for (const file of ["actions.ts", "actions-sources.ts", "actions-fetch.ts", "viewer-actions.ts", "material/actions.ts"]) {
     const source = readFileSync(new URL(`../app/admin/${file}`, import.meta.url), "utf8");
     assert.match(source, /import \{ requireAuth \} from "@\/lib\/admin-auth"/);
     assert.doesNotMatch(source, /async function requireAuth/);

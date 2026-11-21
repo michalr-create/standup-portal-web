@@ -8,6 +8,8 @@ import MobileDrawer from "./components/MobileDrawer";
 import InstallButton, { InstallBand, InstallProvider } from "./components/InstallButton";
 import NavSearch from "./components/NavSearch";
 import AuthStatus from "./components/AuthStatus";
+import AdminModeProvider from "./components/AdminMode";
+import AdminNavLink from "./components/AdminNavLink";
 import LibraryProvider from "./components/LibraryProvider";
 import ResumeRefresh from "./components/ResumeRefresh";
 
@@ -69,6 +71,7 @@ export default async function RootLayout({
       <body>
         <ResumeRefresh />
         <LibraryProvider>
+        <AdminModeProvider>
         {/* NAV */}
         <nav
           className="sticky top-0 z-40 overflow-x-clip"
@@ -110,6 +113,7 @@ export default async function RootLayout({
 
               <NavSearch />
               <InstallButton />
+              <AdminNavLink />
               <AuthStatus />
               <MobileDrawer
                 navLinks={navLinks}
@@ -211,6 +215,7 @@ export default async function RootLayout({
             <span>{"Agregator tre\u015bci. Wszystkie prawa nale\u017c\u0105 do tw\u00f3rc\u00f3w."}</span>
           </div>
         </footer>
+        </AdminModeProvider>
         </LibraryProvider>
       </body>
     </html>

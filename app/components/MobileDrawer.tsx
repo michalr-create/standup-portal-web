@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { containTab } from "@/lib/focus-trap";
 import AuthStatus from "./AuthStatus";
+import AdminNavLink from "./AdminNavLink";
 
 type NavLink = { href: string; label: string };
 
@@ -186,6 +187,7 @@ export default function MobileDrawer({ navLinks, tourLink, shows }: Props) {
 
             <div className="mb-2" style={{ borderBottom: "1px solid var(--line)" }}>
               <AuthStatus variant="drawer" onNavigate={close} />
+              <AdminNavLink variant="drawer" onNavigate={close} />
             </div>
 
             <nav aria-label="G\u0142\u00f3wne">
