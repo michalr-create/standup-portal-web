@@ -1,6 +1,6 @@
 /*
  * Push-only service worker.
- * sw-version: 2
+ * sw-version: 3
  * There is no fetch handler and no cache. ResumeRefresh and the in-app Back
  * stack (the player history entry) stay in the page.
  *
@@ -69,22 +69,43 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(openOrFocus(target));
 });
 
+function sameSite(url, origin) {
+  try {
+    return new URL(url).origin === origin;
+  } catch {
+    return false;
+  }
+}
+
 async function openOrFocus(target) {
-  const absolute = new URL(target, self.location.origin).href;
-  const sameOrigin = absolute.startsWith(self.location.origin);
+  const origin = self.location.origin;
+  let absolute;
+  try {
+    absolute = new URL(target, origin).href;
+  } catch {
+    return;
+  }
   const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-  for (const client of windows) {
+  const parska = windows.filter((client) => sameSite(client.url, origin));
+  for (const client of parska) {
     if (client.url === absolute && "focus" in client) return client.focus();
   }
-  if (sameOrigin) {
-    for (const client of windows) {
-      if (typeof client.navigate === "function" && "focus" in client) {
-        try {
-          await client.focus();
-          return await client.navigate(absolute);
-        } catch {
-          break;
-        }
+  // Same-origin targets (including /?film=) reuse a parska window.
+  // https YouTube URLs from notifications already delivered stay a new window.
+  if (sameSite(absolute, origin)) {
+    const focused = [];
+    const rest = [];
+    for (const client of parska) {
+      if (client.focused) focused.push(client);
+      else rest.push(client);
+    }
+    for (const client of focused.concat(rest)) {
+      if (typeof client.navigate !== "function" || !("focus" in client)) continue;
+      try {
+        await client.focus();
+        return await client.navigate(absolute);
+      } catch {
+        // This window refused. Try the next parska window, then a new one.
       }
     }
   }

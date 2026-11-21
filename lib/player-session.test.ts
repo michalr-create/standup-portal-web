@@ -7,6 +7,7 @@ import {
   WAKE_LOCK_OFF_LABEL,
   createWakeLockSession,
   nextPlaybackEnded,
+  showPlayFallback,
   openYoutubeWatch,
   openYoutubeWatchInDocument,
   playerHint,
@@ -40,6 +41,20 @@ test("playback end follows the real ended state, not pause", () => {
   assert.equal(nextPlaybackEnded(true, 2, true), true);
   assert.equal(nextPlaybackEnded(true, 1, true), false);
   assert.equal(nextPlaybackEnded(false, null, false), false);
+});
+
+test("blocked autoplay shows a play control only once the player is idle", () => {
+  const ready = { frameReady: true, seenPlaying: false, playerState: -1 as number | null, settled: true, dismissed: false };
+  assert.equal(showPlayFallback(ready), true);
+  assert.equal(showPlayFallback({ ...ready, playerState: 5 }), true);
+  assert.equal(showPlayFallback({ ...ready, playerState: 2 }), true);
+  assert.equal(showPlayFallback({ ...ready, playerState: 1 }), false);
+  assert.equal(showPlayFallback({ ...ready, playerState: 3 }), false);
+  assert.equal(showPlayFallback({ ...ready, playerState: null }), false);
+  assert.equal(showPlayFallback({ ...ready, seenPlaying: true }), false);
+  assert.equal(showPlayFallback({ ...ready, settled: false }), false);
+  assert.equal(showPlayFallback({ ...ready, frameReady: false }), false);
+  assert.equal(showPlayFallback({ ...ready, dismissed: true }), false);
 });
 
 test("labels stay honest about what the controls do", () => {

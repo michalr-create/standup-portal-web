@@ -1,4 +1,5 @@
 import { LISTED_EVENT_STATUSES, formatEventWhen, trasyHref } from "./events.ts";
+import { contentPlayerPath } from "./film-link.ts";
 import { HOME_NOWE_SHORTS_CATEGORY_ID } from "./home-nowe.ts";
 import { normalizeHomeCity } from "./home-city.ts";
 
@@ -41,6 +42,8 @@ export type ContentCandidate = {
   personIds: readonly number[];
   /** null when the row has no category. Shorts are category id 4. */
   categoryId: number | null;
+  /** Paid rows keep the external url. The in-app player is for free YouTube videos. */
+  isPaid: boolean;
 };
 
 export type EventCandidate = {
@@ -380,7 +383,7 @@ export function aggregateContent(items: readonly ContentCandidate[]): PushMessag
       title: clipText(title ? `Nowy materiał: ${title}` : "Nowy materiał"),
       body: "",
       icon: PUSH_ICON,
-      url: safePushUrl(ordered[0].url, "/ulubione"),
+      url: contentPlayerPath(ordered[0]) ?? safePushUrl(ordered[0].url, "/ulubione"),
       refIds,
     };
   }

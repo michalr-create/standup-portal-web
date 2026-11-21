@@ -98,7 +98,14 @@ test("the service worker shows the payload and opens or focuses the url without 
   assert.match(sw, /payload\.badge/);
   assert.match(sw, /\/favicon-192\.png/);
   assert.match(sw, /\/icons\/badge-96\.png/);
-  assert.match(sw, /sw-version: 2/);
+  assert.match(sw, /sw-version: 3/);
+  assert.match(sw, /const DEFAULT_ICON = "\/favicon-192.png"/);
+  assert.match(sw, /const DEFAULT_BADGE = "\/icons\/badge-96.png"/);
+  assert.match(sw, /sameOriginPath\(payload\.icon, DEFAULT_ICON\)/);
+  assert.match(sw, /sameOriginPath\(payload\.badge, DEFAULT_BADGE\)/);
+  assert.match(sw, /client\.focused/);
+  assert.match(sw, /client\.navigate/);
+  assert.match(sw, /new URL\(url\)\.origin === origin/);
   assert.doesNotMatch(sw, /badge:\s*icon/);
   assert.match(sw, /payload\.url/);
   assert.match(sw, /addEventListener\("notificationclick"/);

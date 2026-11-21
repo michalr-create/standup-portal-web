@@ -45,6 +45,28 @@ export function nextPlaybackEnded(prevEnded: boolean, playerState: number | null
   return prevEnded;
 }
 
+/** How long to wait after the iframe is up before treating a stalled player as blocked autoplay. */
+export const PLAY_FALLBACK_SETTLE_MS = 1400;
+
+/**
+ * Unmuted autoplay can be rejected when the notification click's gesture
+ * does not reach the iframe. Show a play control only after we know the
+ * player is sitting idle. Buffering and playing stay clear. No player
+ * message at all stays clear, so YouTube's own button remains the fallback.
+ */
+export function showPlayFallback(input: {
+  frameReady: boolean;
+  seenPlaying: boolean;
+  playerState: number | null;
+  settled: boolean;
+  dismissed: boolean;
+}): boolean {
+  if (!input.frameReady || !input.settled || input.seenPlaying || input.dismissed) return false;
+  if (input.playerState == null) return false;
+  if (input.playerState === 1 || input.playerState === 3) return false;
+  return input.playerState === -1 || input.playerState === 2 || input.playerState === 5;
+}
+
 // https watch URL, not youtube://. The custom scheme errors when the app is
 // missing and can navigate the portal away. A normal watch link keeps the
 // modal open; Android App Links and iOS hand it to the YouTube app when the OS allows it.

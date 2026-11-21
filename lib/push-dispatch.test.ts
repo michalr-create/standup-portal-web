@@ -62,6 +62,7 @@ function content(overrides: Partial<ContentCandidate> = {}): ContentCandidate {
     showId: null,
     personIds: [7],
     categoryId: null,
+    isPaid: false,
     ...overrides,
   };
 }
@@ -178,8 +179,16 @@ test("a missing prefs row leaves Shorty off and a stored true opts in", () => {
 test("one new item names it, several collapse into one push to /ulubione", () => {
   const one = aggregateContent([content({ id: 4, title: "Parkowanie" })]);
   assert.equal(one?.title, "Nowy materiał: Parkowanie");
-  assert.equal(one?.url, "https://www.youtube.com/watch?v=abc");
+  assert.equal(one?.url, "/?film=4&v=abc&zrodlo=push");
   assert.deepEqual(one?.refIds, ["4"]);
+  assert.equal(
+    aggregateContent([content({ id: 4, isPaid: true })])?.url,
+    "https://www.youtube.com/watch?v=abc",
+  );
+  assert.equal(
+    aggregateContent([content({ id: 4, url: "https://open.spotify.com/episode/abc" })])?.url,
+    "https://open.spotify.com/episode/abc",
+  );
 
   const many = aggregateContent([
     content({ id: 3, title: "C" }),
