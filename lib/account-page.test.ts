@@ -46,6 +46,7 @@ test("cards no longer offer Zgłoś błąd", () => {
     "../app/components/ItemsBrowser.tsx",
     "../app/components/ScrollRow.tsx",
     "../app/components/VideoModal.tsx",
+    "../app/components/RankingCards.tsx",
   ]) {
     const source = readFileSync(new URL(file, import.meta.url), "utf8");
     assert.doesNotMatch(source, /Zgłoś błąd/);

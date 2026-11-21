@@ -8,7 +8,6 @@ import { DEFAULT_GRID_CLASS } from "./itemsBrowserLayout";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import CardByline from "./CardByline";
-import ReportMaterialLink from "./ReportMaterialLink";
 import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
@@ -162,7 +161,6 @@ export default function RankingCards({
           <WatchLaterButton itemId={item.id} title={item.title} />
         </div>
         <CardByline item={item} />
-        <ReportMaterialLink itemId={item.id} title={item.title} />
       </article>
     );
   });
