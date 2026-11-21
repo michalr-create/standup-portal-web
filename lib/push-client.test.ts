@@ -91,6 +91,11 @@ test("the service worker shows the payload and opens or focuses the url without 
   assert.match(sw, /payload\.title/);
   assert.match(sw, /payload\.body/);
   assert.match(sw, /payload\.icon/);
+  assert.match(sw, /payload\.badge/);
+  assert.match(sw, /\/favicon-192\.png/);
+  assert.match(sw, /\/icons\/badge-96\.png/);
+  assert.match(sw, /sw-version: 2/);
+  assert.doesNotMatch(sw, /badge:\s*icon/);
   assert.match(sw, /payload\.url/);
   assert.match(sw, /addEventListener\("notificationclick"/);
   assert.match(sw, /client\.focus\(\)/);

@@ -3,8 +3,11 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   DEFAULT_PUSH_PREFS,
+  PUSH_BADGE,
+  PUSH_ICON,
   aggregateContent,
   aggregateEvents,
+  notificationPayload,
   batchWatermark,
   classifyPushResult,
   contentMatches,
@@ -98,6 +101,25 @@ test("one new item names it, several collapse into one push to /ulubione", () =>
   assert.equal(many?.url, "/ulubione");
   assert.deepEqual(many?.refIds, ["1", "2", "3"]);
   assert.equal(aggregateContent([]) , null);
+});
+
+test("the wire payload keeps the colour app icon and a separate monochrome badge", () => {
+  const message = aggregateContent([content({ id: 4, title: "Parkowanie" })]);
+  assert.ok(message);
+  assert.equal(message.icon, PUSH_ICON);
+  assert.equal(message.title, "Nowy materiał: Parkowanie");
+  const payload = notificationPayload(message);
+  assert.equal(payload.icon, "/favicon-192.png");
+  assert.equal(payload.badge, PUSH_BADGE);
+  assert.equal(payload.badge, "/icons/badge-96.png");
+  assert.equal(payload.title, message.title);
+  assert.equal(payload.body, message.body);
+  assert.equal(payload.url, message.url);
+  assert.equal(notificationPayload({ ...message, badge: "/icons/other.png" }).badge, "/icons/other.png");
+  assert.equal(notificationPayload({ ...message, icon: "/custom.png" }).icon, "/custom.png");
+
+  const send = readFileSync(new URL("./push-send.ts", import.meta.url), "utf8");
+  assert.match(send, /notificationPayload\(message\)/);
 });
 
 test("polish plurals follow 3 / 5 / 12 / 22", () => {

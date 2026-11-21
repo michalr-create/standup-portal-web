@@ -1,5 +1,5 @@
 import { sendNotification, setVapidDetails, WebPushError } from "web-push";
-import { pushTtlSeconds, type PushMessage } from "./push-dispatch.ts";
+import { notificationPayload, pushTtlSeconds, type PushMessage } from "./push-dispatch.ts";
 
 export type PushEndpoint = {
   endpoint: string;
@@ -28,12 +28,7 @@ export async function deliverPush(
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.p256dh, auth: subscription.auth },
       },
-      JSON.stringify({
-        title: message.title,
-        body: message.body,
-        icon: message.icon,
-        url: message.url,
-      }),
+      JSON.stringify(notificationPayload(message)),
       { TTL: pushTtlSeconds(message.kind), timeout: 8_000 },
     );
     return { statusCode: result.statusCode };
