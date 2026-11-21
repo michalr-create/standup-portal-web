@@ -7,7 +7,7 @@ test("session refresh is limited to account and admin paths", () => {
   for (const path of ["/admin", "/admin/login", "/zaloguj", "/auth/callback", "/ulubione", "/konto", "/konto/push", "/zglos"]) {
     assert.equal(shouldRefreshSession(path), true, path);
   }
-  for (const path of ["/", "/standup", "/formaty", "/standuperzy", "/administrator", "/ulubione-archiwum"]) {
+  for (const path of ["/", "/standup", "/formaty", "/standuperzy", "/rankingi", "/nostalgia", "/administrator", "/ulubione-archiwum"]) {
     assert.equal(shouldRefreshSession(path), false, path);
   }
 });

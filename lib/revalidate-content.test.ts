@@ -26,7 +26,7 @@ test("category slugs map to the public listing routes", () => {
   const resolved = emptyResolved();
   resolved.categorySlugs = ["roast", "wywiady"];
 
-  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/roast", "/ulubione", "/wywiady"]);
+  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/nostalgia", "/rankingi", "/roast", "/ulubione", "/wywiady"]);
 });
 
 test("show ids revalidate the format page and the formaty index", () => {
@@ -55,6 +55,8 @@ test("show ids revalidate the format page and the formaty index", () => {
     "/",
     "/format/wahanie",
     "/formaty",
+    "/nostalgia",
+    "/rankingi",
     "/specjale",
     "/standuper/abelard-giza",
     "/ulubione",
@@ -75,7 +77,7 @@ test("unknown slugs are dropped and a missing show slug still refreshes /formaty
   assert.deepEqual(refs.itemIds, [15]);
   assert.deepEqual(refs.showIds, [3]);
   assert.deepEqual(refs.categoryIds, [1]);
-  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/formaty", "/kulisy", "/ulubione"]);
+  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/formaty", "/kulisy", "/nostalgia", "/rankingi", "/ulubione"]);
 });
 
 test("content_tags payload keeps removed tag ids and the parent item", () => {
@@ -97,6 +99,8 @@ test("content_tags payload keeps removed tag ids and the parent item", () => {
   assert.deepEqual(refs.tagIds, [4]);
   assert.deepEqual(assembleContentPaths(refs, resolved), [
     "/",
+    "/nostalgia",
+    "/rankingi",
     "/specjale",
     "/standup",
     "/standuper/rafal-paczes",

@@ -14,6 +14,8 @@ const PATHS = [
   "/ulubione",
   "/trasy",
   "/specjale",
+  "/rankingi",
+  "/nostalgia",
   "/open-mic",
   "/open-mic/dodaj",
 ] as const;

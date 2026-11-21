@@ -221,6 +221,8 @@ export function assembleContentPaths(refs: RevalidateRefs, resolved: ResolvedSlu
   }
   if (tagSlugs.has("special")) paths.add("/specjale");
   paths.add("/ulubione");
+  paths.add("/rankingi");
+  paths.add("/nostalgia");
 
   return [...paths].sort();
 }

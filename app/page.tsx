@@ -10,6 +10,7 @@ import { selectHomeFormats } from "@/lib/home-shows";
 import ScrollRow from "./components/ScrollRow";
 import FavoritesSection from "./components/FavoritesSection";
 import FormatCard from "./components/FormatCard";
+import HomeWeeklyHits from "./components/HomeWeeklyHits";
 
 export const revalidate = 120;
 
@@ -126,6 +127,8 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <HomeWeeklyHits />
 
       {/* SPECJALE */}
       {specjalItems.length > 0 && (
