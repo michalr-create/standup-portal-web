@@ -80,6 +80,70 @@ a { color: inherit; text-decoration: none; }
   }
 }
 
+/*
+  Prev/next discs for ScrollRow.
+  A full-height ink gradient on the arrow button painted dark vertical bands
+  over the centered card. On Android the row's :hover sticks after a tap, and
+  :focus-visible turned that same strip opaque, so the bands stayed put while
+  the cards scrolled underneath. The disc is the only control. Touch leaves it
+  hidden (swipe still moves the row). A real hover shows it. Keyboard focus
+  outlines the button itself, never the scroller.
+*/
+.group\/scroll,
+.scroll-row,
+.band .snap-x.snap-mandatory {
+  -webkit-tap-highlight-color: transparent;
+}
+.scroll-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.scroll-arrow-left { left: 0; }
+.scroll-arrow-right { right: 0; }
+.scroll-arrow-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  background: rgba(239, 232, 220, .15);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.scroll-arrow-btn:focus {
+  outline: none;
+}
+.scroll-arrow-btn:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+@media (hover: hover) and (pointer: fine) {
+  .group\/scroll:hover .scroll-arrow-btn {
+    opacity: 1;
+    pointer-events: auto;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+}
+
 /* Dot accent */
 .dot-accent { color: var(--coral); }
 

@@ -86,6 +86,34 @@ test("phone rows center an 82vw card and desktop snap-start stays in ScrollRow",
   assert.match(scrollRow, /el\.clientWidth \* 0\.8|scrollLeftByPage/);
 });
 
+test("arrow discs do not paint tap bands over the row", () => {
+  const start = css.indexOf(".scroll-arrow {");
+  const end = css.indexOf(".dot-accent");
+  assert.ok(start > 0 && end > start);
+  const arrows = css.slice(start, end);
+  assert.match(arrows, /-webkit-tap-highlight-color:\s*transparent/);
+  assert.match(arrows, /pointer-events:\s*none/);
+  assert.match(css, /\.group\\\/scroll,\s*\n\.scroll-row/);
+  assert.match(arrows, /\.scroll-arrow-btn:focus \{\s*outline:\s*none;/);
+  assert.match(arrows, /\.scroll-arrow-btn:focus-visible \{[^}]*outline:\s*2px solid var\(--coral\)/);
+  assert.match(arrows, /@media \(hover: hover\) and \(pointer: fine\)/);
+  assert.match(arrows, /\.group\\\/scroll:hover \.scroll-arrow-btn/);
+  assert.doesNotMatch(arrows, /linear-gradient/);
+  assert.doesNotMatch(arrows, /box-shadow/);
+  assert.doesNotMatch(css, /\.scroll-row:focus/);
+  assert.doesNotMatch(css, /\.scroll-row:focus-visible/);
+  assert.doesNotMatch(css, /\.scroll-row:focus-within/);
+
+  assert.match(scrollRow, /scroll-arrow-btn/);
+  assert.match(scrollRow, /aria-label=\{label\}/);
+  assert.match(scrollRow, /label="Poprzednie"/);
+  assert.match(scrollRow, /label=\{"Nast\\u0119pne"\}/);
+  assert.doesNotMatch(scrollRow, /linear-gradient/);
+  assert.doesNotMatch(scrollRow, /group-hover\/scroll/);
+  assert.doesNotMatch(scrollRow, /focus-visible:opacity-100/);
+  assert.doesNotMatch(scrollRow, /w-12/);
+});
+
 test("Formaty and Rankingi strips still use the shared snap track", () => {
   assert.match(home, /snap-x snap-mandatory/);
   assert.match(home, /snap-start/);

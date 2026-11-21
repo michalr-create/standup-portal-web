@@ -109,21 +109,29 @@ function ScrollCard({
   );
 }
 
-const arrowBtnLeft = [
-  "absolute left-0 top-0 bottom-0 z-10 w-12",
-  "flex items-center justify-center",
-  "pointer-events-none opacity-0 transition-opacity",
-  "group-hover/scroll:pointer-events-auto group-hover/scroll:opacity-100",
-  "focus-visible:pointer-events-auto focus-visible:opacity-100",
-].join(" ");
-
-const arrowBtnRight = [
-  "absolute right-0 top-0 bottom-0 z-10 w-12",
-  "flex items-center justify-center",
-  "pointer-events-none opacity-0 transition-opacity",
-  "group-hover/scroll:pointer-events-auto group-hover/scroll:opacity-100",
-  "focus-visible:pointer-events-auto focus-visible:opacity-100",
-].join(" ");
+function ScrollArrow({
+  direction,
+  label,
+  onClick,
+}: {
+  direction: "left" | "right";
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className={`scroll-arrow scroll-arrow-${direction}`}>
+      <button type="button" aria-label={label} className="scroll-arrow-btn" onClick={onClick}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+          {direction === "left" ? (
+            <polyline points="15 18 9 12 15 6" />
+          ) : (
+            <polyline points="9 6 15 12 9 18" />
+          )}
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 export default function ScrollRow({
   items,
@@ -205,41 +213,11 @@ export default function ScrollRow({
     <>
       <div className="relative group/scroll">
         {canScrollLeft && (
-          <button
-            type="button"
-            aria-label="Poprzednie"
-            onClick={() => scroll("left")}
-            className={arrowBtnLeft}
-            style={{ background: "linear-gradient(to right, var(--ink), transparent)" }}
-          >
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-              style={{ background: "rgba(239,232,220,.15)", backdropFilter: "blur(4px)" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </div>
-          </button>
+          <ScrollArrow direction="left" label="Poprzednie" onClick={() => scroll("left")} />
         )}
 
         {canScrollRight && (
-          <button
-            type="button"
-            aria-label={"Nast\u0119pne"}
-            onClick={() => scroll("right")}
-            className={arrowBtnRight}
-            style={{ background: "linear-gradient(to left, var(--ink), transparent)" }}
-          >
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-              style={{ background: "rgba(239,232,220,.15)", backdropFilter: "blur(4px)" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 6 15 12 9 18" />
-              </svg>
-            </div>
-          </button>
+          <ScrollArrow direction="right" label={"Nast\u0119pne"} onClick={() => scroll("right")} />
         )}
 
         {/* 22px holds the compact byline heart's 44px hit slop inside this
