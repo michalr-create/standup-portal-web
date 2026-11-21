@@ -11,6 +11,8 @@ import {
   legacyRankingRedirect,
   percentHeading,
   qualifiesForPeopleViews,
+  RANKING_CACHE_KEY,
+  attachSpecialPrograms,
   rankPeopleBySpecials,
   rankPeopleByViews,
   rankShows,
@@ -149,6 +151,16 @@ test("specials and shows sort by the public totals", () => {
   ], 10);
   assert.equal(benshi[0]?.specialCount, 2);
   assert.deepEqual(benshi[0]?.programs.find((program) => program.name === "Benshi")?.parts.map((part) => part.partNumber), [1, 2, 3, 4, 5]);
+  const attached = attachSpecialPrograms(
+    [{ id: paczes.id, name: paczes.name, slug: paczes.slug, specialCount: 8 }],
+    benshi,
+  );
+  assert.equal(attached[0]?.specialCount, 8);
+  assert.deepEqual(
+    attached[0]?.programs?.find((program) => program.name === "Benshi")?.parts.map((part) => part.partNumber),
+    [1, 2, 3, 4, 5],
+  );
+  assert.equal(RANKING_CACHE_KEY, "ranking-page-v2");
   const shows = rankShows(
     [
       { id: 1, showId: 7, viewCount: 10, publishedAt: "2020-01-01T00:00:00.000Z", thumbnailUrl: "old", durationSeconds: 1 },
@@ -214,6 +226,11 @@ test("home ranking stays on the page and falls back to classics", () => {
   assert.match(board, /<RankingCards entries=\{board\.entries\} layout="strip" \/>/);
   assert.match(board, /RankingPeople/);
   assert.match(board, /RankingShows/);
+  assert.match(data, /ranking_people_specials/);
+  assert.match(data, /fallbackPeopleSpecials/);
+  assert.match(data, /attachSpecialPrograms/);
+  assert.match(data, /RANKING_CACHE_KEY/);
+  assert.doesNotMatch(data, /\["ranking-page"\]/);
   assert.match(data, /export async function getHomeRankingBoards/);
   assert.match(data, /RANKING_IDS\.map/);
   assert.match(data, /selectHomeRanking/);
@@ -240,6 +257,8 @@ test("nav and both pages link the new sections", () => {
   assert.match(labels, /zyskujace: "trendujace"/);
   assert.doesNotMatch(labels, /Zyskuj/);
   assert.match(lists, /PendingLink/);
+  assert.doesNotMatch(lists, /name\.slice\(0,\s*1\)/);
+  assert.match(lists, /function personPhoto/);
   assert.match(lists, /data-link-pending/);
   assert.match(lists, /programy/);
   assert.match(pending, /useLinkStatus/);

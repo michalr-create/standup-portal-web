@@ -14,6 +14,8 @@ import {
   homeRankingLabel,
   percentHeading,
   qualifiesForPeopleViews,
+  RANKING_CACHE_KEY,
+  attachSpecialPrograms,
   rankPeopleBySpecials,
   rankPeopleByViews,
   rankShows,
@@ -519,6 +521,53 @@ function personCards(rows: Array<PersonViewsRank | PersonSpecialsRank>, mode: "v
   }));
 }
 
+type SpecialCountRow = {
+  id: number;
+  name: string;
+  slug: string;
+  photoUrl: string | null;
+  specialCount: number;
+};
+
+async function peopleSpecialsFromRpc(): Promise<SpecialCountRow[] | "fallback"> {
+  const { data, error } = await supabase.rpc("ranking_people_specials", { p_limit: RANKING_LIMIT });
+  if (error) {
+    if (!isMissingRpc(error)) console.error("ranking_people_specials", error.message);
+    return "fallback";
+  }
+  const rows = (Array.isArray(data) ? data : []) as Array<{
+    person_id: number;
+    name: string;
+    slug: string;
+    photo_url: string | null;
+    special_count: number;
+  }>;
+  return rows.flatMap((row) => {
+    const id = asInt(row.person_id);
+    const specialCount = asInt(row.special_count);
+    if (id == null || specialCount == null || !row.slug || !row.name) return [];
+    return [{
+      id,
+      name: row.name,
+      slug: row.slug,
+      photoUrl: row.photo_url,
+      specialCount,
+    }];
+  });
+}
+
+function specialCards(rows: SpecialCountRow[], grouped: PersonSpecialsRank[]): RankingPersonCard[] {
+  return attachSpecialPrograms(rows, grouped).map((row, index) => ({
+    rank: index + 1,
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    photoUrl: row.photoUrl,
+    metricLabel: `${row.specialCount} ${programLabel(row.specialCount)}`,
+    programs: row.programs,
+  }));
+}
+
 async function peopleFromRpc(): Promise<RankingPersonCard[] | "missing"> {
   const result = await rpc<{
       person_id: number;
@@ -679,12 +728,19 @@ async function loadRankingUncached(query: RankingQuery): Promise<RankingPageData
       };
     }
     case "programy": {
-      // Count in the app so multi-part specials collapse before the SQL
-      // migration is applied. ranking_people_specials still over-counts until then.
+      // ranking_people_specials is the count. In-app grouping only fills the
+      // expandable part lists, and only if that read succeeds.
+      const [counted, grouped] = await Promise.all([
+        peopleSpecialsFromRpc(),
+        fallbackPeopleSpecials().catch((error: unknown) => {
+          console.error("ranking program lists", error);
+          return [] as PersonSpecialsRank[];
+        }),
+      ]);
       return {
         kind: "people",
         heading: "Najwi\u0119cej pe\u0142nych program\u00f3w",
-        people: personCards(await fallbackPeopleSpecials(), "specials"),
+        people: counted === "fallback" ? personCards(grouped, "specials") : specialCards(counted, grouped),
       };
     }
     case "formaty": {
@@ -703,7 +759,7 @@ async function loadRankingUncached(query: RankingQuery): Promise<RankingPageData
 const rankingPage = unstable_cache(
   async (ranking: RankingQuery["ranking"], scope: RankingQuery["scope"], year: number) =>
     loadRankingUncached({ ranking, scope, year }),
-  ["ranking-page"],
+  [RANKING_CACHE_KEY],
   { revalidate: RANKING_REVALIDATE_SECONDS },
 );
 
