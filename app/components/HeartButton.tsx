@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLibraryOptional } from "./LibraryProvider";
 
 type Props = {
   type: "person" | "show";
@@ -45,26 +46,36 @@ export default function HeartButton({
   compact = false,
   name,
 }: Props) {
-  const [active, setActive] = useState(false);
+  const library = useLibraryOptional();
+  const [storedActive, setStoredActive] = useState(false);
   const [pop, setPop] = useState(false);
+  const active = library
+    ? (type === "person" ? library.people : library.shows).includes(slug)
+    : storedActive;
 
   useEffect(() => {
+    if (library) return;
     try {
       const arr: string[] = JSON.parse(localStorage.getItem(KEYS[type]) || "[]");
-      setActive(arr.includes(slug));
+      setStoredActive(arr.includes(slug));
     } catch {}
-  }, [type, slug]);
+  }, [library, type, slug]);
 
   const toggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setPop(true);
+    setTimeout(() => setPop(false), 300);
+    if (library) {
+      library.toggleFavorite(type, slug);
+      onToggle?.();
+      return;
+    }
     try {
       const arr: string[] = JSON.parse(localStorage.getItem(KEYS[type]) || "[]");
       const next = arr.includes(slug) ? arr.filter((s) => s !== slug) : [...arr, slug];
       localStorage.setItem(KEYS[type], JSON.stringify(next));
-      setActive((prev) => !prev);
-      setPop(true);
-      setTimeout(() => setPop(false), 300);
+      setStoredActive((prev) => !prev);
       onToggle?.();
     } catch {}
   };

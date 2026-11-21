@@ -11,6 +11,7 @@ import HighlightedText from "./HighlightedText";
 import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
+import WatchLaterButton from "./WatchLaterButton";
 import {
   DEFAULT_GRID_CLASS,
   DEFAULT_THUMB_ASPECT,
@@ -130,6 +131,9 @@ export default function ItemsBrowser({
                   <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
                 </div>
               )}
+              <div className="mt-2">
+                <WatchLaterButton itemId={item.id} title={item.title} />
+              </div>
               <CardByline item={item} />
             </article>
           );

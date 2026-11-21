@@ -10,6 +10,7 @@ import CardByline from "./CardByline";
 import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
+import WatchLaterButton from "./WatchLaterButton";
 
 function ScrollCard({
   item,
@@ -89,6 +90,9 @@ function ScrollCard({
           <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
         </div>
       )}
+      <div className="mt-2">
+        <WatchLaterButton itemId={item.id} title={item.title} />
+      </div>
       <CardByline item={item} className="mt-1" />
     </article>
   );
