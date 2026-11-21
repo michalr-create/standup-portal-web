@@ -4,24 +4,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLibrary } from "@/app/components/LibraryProvider";
 import { iosNeedsHomeScreen, subscribeForPush } from "@/lib/push-client";
-import type { PushPrefs } from "@/lib/push-dispatch";
+import { DEFAULT_PUSH_PREFS, type PushPrefs } from "@/lib/push-dispatch";
 
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
-const DEFAULTS: PushPrefs = {
-  newContentFavorites: true,
-  eventsHomeCity: true,
-  eventsFavorites: true,
-  eventReminders: true,
-};
-
 type PrefKey = keyof PushPrefs;
 
 const PREF_ROWS: { key: PrefKey; label: string }[] = [
   { key: "newContentFavorites", label: "Nowe materiały ulubionych" },
+  { key: "notifyShorts", label: "Shorty" },
   { key: "eventsHomeCity", label: "Nowe występy w moim mieście" },
   { key: "eventsFavorites", label: "Nowe występy ulubionych" },
   { key: "eventReminders", label: "Przypomnienie dobę przed terminem" },
@@ -55,7 +49,7 @@ export default function PushNotifications() {
   const [unsupported, setUnsupported] = useState(false);
   const [denied, setDenied] = useState(false);
   const [endpoint, setEndpoint] = useState<string | null>(null);
-  const [prefs, setPrefs] = useState<PushPrefs>(DEFAULTS);
+  const [prefs, setPrefs] = useState<PushPrefs>(DEFAULT_PUSH_PREFS);
   const [prefsReady, setPrefsReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -82,6 +76,7 @@ export default function PushNotifications() {
         if (response.ok) {
           setPrefs({
             newContentFavorites: body.newContentFavorites !== false,
+            notifyShorts: body.notifyShorts === true,
             eventsHomeCity: body.eventsHomeCity !== false,
             eventsFavorites: body.eventsFavorites !== false,
             eventReminders: body.eventReminders !== false,
@@ -253,7 +248,7 @@ export default function PushNotifications() {
       ) : (
         <div className="flex max-w-lg flex-col gap-4">
           <p className="m-0 text-sm" style={{ color: "var(--paper-dim)" }}>
-            Nowe materiały ulubionych, nowe występy i przypomnienie około doby przed zapisanym terminem.
+            Nowe materiały ulubionych, nowe występy i przypomnienie około doby przed zapisanym terminem. Shorty tylko po włączeniu.
           </p>
           {iosBlocked ? (
             <p className="m-0 text-sm" style={{ color: "var(--paper)" }}>

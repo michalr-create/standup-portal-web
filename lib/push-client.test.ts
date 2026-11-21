@@ -73,6 +73,10 @@ test("the favorites page asks for permission only from the enable button", () =>
   assert.match(source, /onClick=\{\(\) => void enableOnThisDevice\(\)\}/);
   assert.match(source, /Wyślij testowe/);
   assert.match(source, /ekranu początkowego/);
+  assert.match(source, /label: "Shorty"/);
+  assert.match(source, /notifyShorts: body\.notifyShorts === true/);
+  assert.match(source, /DEFAULT_PUSH_PREFS/);
+  assert.doesNotMatch(source, /notifyShorts:\s*true/);
 
   const page = readFileSync(new URL("../app/ulubione/page.tsx", import.meta.url), "utf8");
   assert.match(page, /<PushNotifications \/>/);
@@ -114,4 +118,6 @@ test("the cron doc reads push_dispatch_secret from the vault every 15 minutes", 
   assert.match(doc, /VAPID_SUBJECT/);
   assert.match(doc, /PUSH_DISPATCH_SECRET/);
   assert.match(doc, /SUPABASE_SERVICE_KEY/);
+  assert.match(doc, /20261121210000_notification_prefs_notify_shorts\.sql/);
+  assert.match(doc, /notify_shorts/);
 });

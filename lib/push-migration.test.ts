@@ -66,6 +66,31 @@ test("the cursor lease is service-role only and approvals are stamped without ba
   assert.match(sql, /events_created_at_idx/);
 });
 
+test("Shorty is an owner-updated switch that defaults off", () => {
+  const shorts = readFileSync(
+    new URL("../supabase/migrations/20261121210000_notification_prefs_notify_shorts.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(shorts, /add column if not exists notify_shorts boolean not null default false/);
+  assert.match(shorts, /alter table public\.notification_prefs enable row level security/);
+  assert.match(shorts, /on public\.notification_prefs[\s\S]*for select[\s\S]*to authenticated/);
+  assert.match(shorts, /on public\.notification_prefs[\s\S]*for insert[\s\S]*with check \(\(select auth\.uid\(\)\) = user_id\)/);
+  assert.match(shorts, /on public\.notification_prefs[\s\S]*for update[\s\S]*to authenticated/);
+  assert.match(shorts, /using \(\(select auth\.uid\(\)\) = user_id\)/);
+  assert.match(shorts, /with check \(\(select auth\.uid\(\)\) = user_id\)/);
+  assert.match(shorts, /revoke all on table public\.notification_prefs from public, anon, authenticated/);
+  assert.match(shorts, /grant select, insert on table public\.notification_prefs to authenticated/);
+  assert.match(shorts, /grant update \([\s\S]*notify_shorts[\s\S]*\) on table public\.notification_prefs to authenticated/);
+  assert.match(shorts, /grant all on table public\.notification_prefs to service_role/);
+  assert.match(shorts, /new_content_favorites/);
+  assert.match(shorts, /events_home_city/);
+  assert.match(shorts, /events_favorites/);
+  assert.match(shorts, /event_reminders/);
+  assert.doesNotMatch(shorts, /grant [^;]* to anon/);
+  assert.doesNotMatch(shorts, /grant [^;]* to public/);
+  assert.doesNotMatch(shorts, /notify_shorts boolean not null default true/);
+});
+
 test("subscription writes for signed-in users stay on their own row and failure bookkeeping is not theirs", () => {
   assert.match(sql, /on public\.push_subscriptions[\s\S]*for select[\s\S]*to authenticated/);
   assert.match(sql, /on public\.push_subscriptions[\s\S]*for insert[\s\S]*with check \(\(select auth\.uid\(\)\) = user_id\)/);

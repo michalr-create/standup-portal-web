@@ -17,7 +17,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { data, error } = await supabase
     .from("notification_prefs")
-    .select("new_content_favorites, events_home_city, events_favorites, event_reminders")
+    .select("new_content_favorites, notify_shorts, events_home_city, events_favorites, event_reminders")
     .eq("user_id", user.id)
     .maybeSingle();
   if (error) {
@@ -27,6 +27,7 @@ export async function GET() {
   const prefs = prefsFromRow(data);
   return NextResponse.json({
     newContentFavorites: prefs.newContentFavorites,
+    notifyShorts: prefs.notifyShorts,
     eventsHomeCity: prefs.eventsHomeCity,
     eventsFavorites: prefs.eventsFavorites,
     eventReminders: prefs.eventReminders,
@@ -48,6 +49,7 @@ export async function PUT(req: NextRequest) {
 
   const row = {
     new_content_favorites: prefs.newContentFavorites,
+    notify_shorts: prefs.notifyShorts,
     events_home_city: prefs.eventsHomeCity,
     events_favorites: prefs.eventsFavorites,
     event_reminders: prefs.eventReminders,
@@ -70,6 +72,7 @@ export async function PUT(req: NextRequest) {
   }
   return NextResponse.json({
     newContentFavorites: prefs.newContentFavorites,
+    notifyShorts: prefs.notifyShorts,
     eventsHomeCity: prefs.eventsHomeCity,
     eventsFavorites: prefs.eventsFavorites,
     eventReminders: prefs.eventReminders,
