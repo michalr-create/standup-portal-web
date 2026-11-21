@@ -1,13 +1,26 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { searchAll } from "@/lib/data";
 import HighlightedText from "@/app/components/HighlightedText";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
+import Pager from "@/app/components/Pager";
+import { SEARCH_RESULT_LIMIT } from "@/lib/search";
+import {
+  SPECJALE_SEARCH_SLUG,
+  parseSearchParams,
+  searchClampHref,
+  searchDirectoriesOnPage,
+  searchHref,
+  unknownSearchCategoryHref,
+  wynikLabel,
+} from "@/lib/search-filters";
+import SearchCategoryChips from "./SearchCategoryChips";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string | string[]; kategoria?: string | string[]; page?: string | string[] }>;
 };
 
 const RECOVERY = [
@@ -16,18 +29,10 @@ const RECOVERY = [
   { href: "/standup", label: "Standup" },
 ] as const;
 
-function wynikLabel(n: number): string {
-  if (n === 1) return "wynik";
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "wyniki";
-  return "wyników";
-}
-
-function SearchField({ query }: { query: string }) {
+function SearchField({ query, kategoria }: { query: string; kategoria: string }) {
   return (
     <form
-      key={query}
+      key={`${query}\n${kategoria}`}
       action="/szukaj"
       method="get"
       role="search"
@@ -62,6 +67,7 @@ function SearchField({ query }: { query: string }) {
           </Link>
         ) : null}
       </div>
+      {kategoria ? <input type="hidden" name="kategoria" value={kategoria} /> : null}
       <button
         type="submit"
         className="inline-flex min-h-14 min-w-11 shrink-0 items-center justify-center rounded-2xl px-5 text-base font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--paper)]"
@@ -127,7 +133,7 @@ function Prompt({
         <p className="mx-auto mb-8 mt-4 max-w-md break-words text-base" style={{ color: "var(--paper-dim)" }}>
           {lead}
         </p>
-        <SearchField query={query} />
+        <SearchField query={query} kategoria="" />
         <RecoveryLinks />
       </div>
     </div>
@@ -135,9 +141,10 @@ function Prompt({
 }
 
 export default async function SzukajPage({ searchParams }: Props) {
-  const { q } = await searchParams;
-  const query = q?.trim() || "";
+  const parsed = parseSearchParams(await searchParams);
+  if (parsed.redirectHref) redirect(parsed.redirectHref);
 
+  const { q: query, kategoria, page } = parsed;
   if (!query) {
     return (
       <Prompt
@@ -149,10 +156,17 @@ export default async function SzukajPage({ searchParams }: Props) {
     );
   }
 
-  const { people, items, shows } = await searchAll(query);
-  const totalCount = people.length + items.length + shows.length;
+  const result = await searchAll(query, {
+    categorySlug: kategoria,
+    page,
+    pageSize: SEARCH_RESULT_LIMIT,
+  });
+  const unknown = unknownSearchCategoryHref(parsed, result.categories);
+  if (unknown) redirect(unknown);
+  const clamped = searchClampHref(parsed, result.itemTotal, SEARCH_RESULT_LIMIT);
+  if (clamped) redirect(clamped);
 
-  if (totalCount === 0) {
+  if (result.wszystkoCount === 0) {
     return (
       <Prompt
         eyebrow="Wyniki wyszukiwania"
@@ -162,6 +176,16 @@ export default async function SzukajPage({ searchParams }: Props) {
       />
     );
   }
+
+  const directories = searchDirectoriesOnPage(kategoria, page);
+  const people = directories.people ? result.people : [];
+  const shows = directories.shows ? result.shows : [];
+  const items = result.items;
+  const activeCount = kategoria
+    ? (result.facets.find((facet) => facet.slug === kategoria)?.count ?? 0)
+    : result.wszystkoCount;
+  const showItemCategory = !kategoria || kategoria === SPECJALE_SEARCH_SLUG;
+  const nothingVisible = people.length === 0 && shows.length === 0 && items.length === 0;
 
   return (
     <div className="band">
@@ -174,12 +198,23 @@ export default async function SzukajPage({ searchParams }: Props) {
             „{query}”<span className="dot-accent">.</span>
           </h1>
           <p className="mt-3 mb-6" style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
-            {totalCount} {wynikLabel(totalCount)}
+            {activeCount} {wynikLabel(activeCount)}
           </p>
           <div className="max-w-2xl">
-            <SearchField query={query} />
+            <SearchField query={query} kategoria={kategoria} />
           </div>
         </header>
+
+        <SearchCategoryChips
+          query={query}
+          active={kategoria}
+          wszystkoCount={result.wszystkoCount}
+          facets={result.facets}
+        />
+
+        {nothingVisible && (
+          <p style={{ color: "var(--paper-dim)" }}>Brak wyników w tej kategorii.</p>
+        )}
 
         {people.length > 0 && (
           <section className="mb-14">
@@ -263,7 +298,13 @@ export default async function SzukajPage({ searchParams }: Props) {
                 Filmy i odcinki<span className="dot-accent">.</span>
               </h2>
             </div>
-            <ItemsBrowser items={items} highlight={query} />
+            <ItemsBrowser items={items} highlight={query} showCategoryBadge={showItemCategory} />
+            <Pager
+              page={page}
+              total={result.itemTotal}
+              pageSize={SEARCH_RESULT_LIMIT}
+              hrefForPage={(nextPage) => searchHref({ q: query, kategoria, page: nextPage })}
+            />
           </section>
         )}
       </div>
