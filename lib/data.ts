@@ -229,6 +229,30 @@ export async function getAllApprovedItems(limit = 100): Promise<Item[]> {
   return hydrateItems(data);
 }
 
+export async function getApprovedItemsByIds(ids: number[]): Promise<Item[]> {
+  const unique: number[] = [];
+  const seen = new Set<number>();
+  for (const id of ids) {
+    if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    unique.push(id);
+    if (unique.length >= 60) break;
+  }
+  if (unique.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+    .in("id", unique)
+    .eq("status", "approved")
+    .is("merged_into_id", null);
+
+  if (error || !data) return [];
+  const items = await hydrateItems(data);
+  const order = new Map(unique.map((id, index) => [id, index]));
+  return items.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
 // =================================================================
 // QUERY: zatwierdzone wpisy w danej kategorii
 // =================================================================

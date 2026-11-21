@@ -36,6 +36,7 @@ import {
   type YtSnapshot,
 } from "@/lib/sleep-timer";
 import { bindVideoHistory } from "@/lib/video-history";
+import WatchLaterButton from "./WatchLaterButton";
 import { PLAYER_SESSION_END_EVENT } from "@/lib/resume-refresh";
 import {
   containTab,
@@ -1015,6 +1016,9 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
                 {"\u00d7"}
               </button>
             </div>
+          </div>
+          <div className="mt-3">
+            <WatchLaterButton itemId={item.id} title={item.title} />
           </div>
           <PlayerTools key={`meta-${videoId}`} {...toolProps} showHint />
         </div>

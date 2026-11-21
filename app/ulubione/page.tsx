@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import HeartButton from "@/app/components/HeartButton";
 import VideoModal from "@/app/components/VideoModal";
 import CardByline from "@/app/components/CardByline";
+import { useLibrary } from "@/app/components/LibraryProvider";
+import WatchLaterButton from "@/app/components/WatchLaterButton";
 import { useWatchHistory } from "@/app/hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
@@ -14,9 +16,6 @@ import ThumbDuration from "@/app/components/ThumbDuration";
 import FavoriteTours from "./FavoriteTours";
 import { eventsForFavoritePeople, type FavoriteUpcomingEvent } from "@/lib/events";
 
-const PERSON_KEY = "parska_fav_persons";
-const SHOW_KEY = "parska_fav_shows";
-
 type FavDetail = { slug: string; name: string };
 type ApiResponse = {
   items: Item[];
@@ -25,26 +24,19 @@ type ApiResponse = {
   upcoming_events: FavoriteUpcomingEvent[];
 };
 
-function readSlugs(key: string): string[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((slug): slug is string => typeof slug === "string");
-  } catch {
-    return [];
-  }
-}
-
 export default function UlubionePage() {
+  const library = useLibrary();
+  const personSlugs = library.people;
+  const showSlugs = library.shows;
+  const personKey = personSlugs.join("\n");
+  const showKey = showSlugs.join("\n");
+  const laterKey = library.later.join(",");
   const [data, setData] = useState<ApiResponse>({ items: [], people: [], shows: [], upcoming_events: [] });
-  const [personSlugs, setPersonSlugs] = useState<string[]>([]);
-  const [showSlugs, setShowSlugs] = useState<string[]>([]);
+  const [laterItems, setLaterItems] = useState<Item[]>([]);
+  const [laterLoadedKey, setLaterLoadedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
   const { watched, markWatched } = useWatchHistory();
-
-  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const handleClick = (item: Item) => {
     const target = resolveContentOpen(item);
@@ -57,16 +49,17 @@ export default function UlubionePage() {
   };
 
   useEffect(() => {
-    const ps = readSlugs(PERSON_KEY);
-    const ss = readSlugs(SHOW_KEY);
-    setPersonSlugs(ps);
-    setShowSlugs(ss);
+    if (!library.ready) return;
+    const ps = personKey ? personKey.split("\n") : [];
+    const ss = showKey ? showKey.split("\n") : [];
 
     if (ps.length === 0 && ss.length === 0) {
+      setData({ items: [], people: [], shows: [], upcoming_events: [] });
       setLoading(false);
       return;
     }
 
+    let cancelled = false;
     setLoading(true);
     fetch("/api/favorites", {
       method: "POST",
@@ -75,6 +68,7 @@ export default function UlubionePage() {
     })
       .then((r) => r.json())
       .then((d: ApiResponse) => {
+        if (cancelled) return;
         setData({
           items: d?.items ?? [],
           people: d?.people ?? [],
@@ -83,10 +77,46 @@ export default function UlubionePage() {
         });
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, [refreshKey]);
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [library.ready, personKey, showKey]);
+
+  useEffect(() => {
+    if (!library.ready) return;
+    const ids = laterKey ? laterKey.split(",").map((value) => Number(value)).filter((id) => id > 0) : [];
+    if (ids.length === 0) {
+      setLaterItems([]);
+      setLaterLoadedKey(laterKey);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/library-items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    })
+      .then((r) => r.json())
+      .then((body: { items?: Item[] }) => {
+        if (cancelled) return;
+        setLaterItems(Array.isArray(body?.items) ? body.items : []);
+        setLaterLoadedKey(laterKey);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLaterItems([]);
+        setLaterLoadedKey(laterKey);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [library.ready, laterKey]);
 
   const hasAny = personSlugs.length > 0 || showSlugs.length > 0;
+  const hasLater = library.later.length > 0;
   const upcomingEvents = eventsForFavoritePeople(data.upcoming_events, personSlugs);
 
   return (
@@ -95,17 +125,81 @@ export default function UlubionePage() {
       <div className="max-w-5xl mx-auto">
         <header className="mb-10">
           <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-            Lokalnie w przeglądarce
+            {!library.ready ? "Ulubione" : library.signedIn ? "Na koncie" : "Lokalnie w przeglądarce"}
           </div>
           <h1 className="font-black m-0 leading-none mb-2" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
             Ulubione<span className="dot-accent">.</span>
           </h1>
           <p style={{ color: "var(--paper-dim)", fontSize: "15px" }}>
-            Zapisane w przeglądarce · bez logowania
+            {!library.ready ? (
+              "Ładowanie…"
+            ) : library.signedIn ? (
+              "Zapisane na koncie. Te same listy na każdym urządzeniu."
+            ) : (
+              <>
+                Zapisane w tej przeglądarce.{" "}
+                <Link href="/zaloguj?next=/ulubione" className="font-bold" style={{ color: "var(--coral)" }}>
+                  Zaloguj się
+                </Link>
+                , żeby mieć ulubione, obejrzane i listę „później” też na innych urządzeniach.
+              </>
+            )}
           </p>
         </header>
 
-        {!hasAny && !loading && (
+        {hasLater && (
+          <section className="mb-10" aria-labelledby="na-pozniej">
+            <h2 id="na-pozniej" className="font-black mb-4" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
+              Do obejrzenia później
+              <span className="mono text-xs font-normal ml-3" style={{ color: "var(--paper-mute)", letterSpacing: ".1em" }}>
+                {library.later.length}
+              </span>
+            </h2>
+            {laterLoadedKey !== laterKey ? (
+              <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>Ładowanie…</p>
+            ) : laterItems.length === 0 ? (
+              <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>Te materiały nie są już dostępne.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {laterItems.map((item) => {
+                  const isWatched = watched.has(item.url);
+                  return (
+                    <article key={item.id} className="group vcard relative text-left w-full min-w-0">
+                      <ContentCardAction isPaid={item.is_paid} url={item.url} onOpen={() => handleClick(item)}>
+                        <div
+                          className="overflow-hidden relative"
+                          style={{ aspectRatio: "16/10", borderRadius: "14px", border: "1px solid var(--line)", background: "var(--ink-3)" }}
+                        >
+                          {item.thumbnail_url && (
+                            <img
+                              src={item.thumbnail_url}
+                              alt={item.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              style={{ opacity: isWatched ? 0.7 : 1 }}
+                            />
+                          )}
+                          <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
+                          {item.is_paid && <PaidBadge url={item.url} />}
+                        </div>
+                        <div className="pt-3 px-0.5">
+                          <h3 className="font-extrabold leading-tight line-clamp-2" style={{ fontSize: "16px", letterSpacing: "-.01em" }}>
+                            {item.title}
+                          </h3>
+                        </div>
+                      </ContentCardAction>
+                      <div className="mt-2">
+                        <WatchLaterButton itemId={item.id} title={item.title} />
+                      </div>
+                      <CardByline item={item} />
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {!hasAny && !hasLater && !loading && library.ready && (
           <div className="text-center py-20" style={{ color: "var(--paper-mute)" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>{"♡"}</div>
             <p className="text-lg">Nie masz jeszcze żadnych ulubionych.</p>
@@ -144,7 +238,7 @@ export default function UlubionePage() {
                       >
                         {p.name}
                       </Link>
-                      <HeartButton type="person" slug={p.slug} onToggle={refresh} />
+                      <HeartButton type="person" slug={p.slug} name={p.name} />
                     </div>
                   ))}
                   {loading && personSlugs.map((s) => (
@@ -187,7 +281,7 @@ export default function UlubionePage() {
                       >
                         {s.name}
                       </Link>
-                      <HeartButton type="show" slug={s.slug} onToggle={refresh} />
+                      <HeartButton type="show" slug={s.slug} name={s.name} />
                     </div>
                   ))}
                 </div>
@@ -255,6 +349,9 @@ export default function UlubionePage() {
                             </h4>
                           </div>
                         </ContentCardAction>
+                        <div className="mt-2">
+                          <WatchLaterButton itemId={item.id} title={item.title} />
+                        </div>
                         <CardByline item={item} />
                       </article>
                     );

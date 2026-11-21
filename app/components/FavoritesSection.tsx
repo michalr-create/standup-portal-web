@@ -3,26 +3,31 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import ScrollRow from "./ScrollRow";
+import { useLibrary } from "./LibraryProvider";
 import type { Item } from "@/lib/data";
 
-const PERSON_KEY = "parska_fav_persons";
-const SHOW_KEY = "parska_fav_shows";
-
 export default function FavoritesSection() {
+  const library = useLibrary();
   const [items, setItems] = useState<Item[]>([]);
   const [ready, setReady] = useState(false);
   const [hasFavs, setHasFavs] = useState(false);
+  const personKey = library.people.join("\n");
+  const showKey = library.shows.join("\n");
 
   useEffect(() => {
-    const personSlugs: string[] = JSON.parse(localStorage.getItem(PERSON_KEY) || "[]");
-    const showSlugs: string[] = JSON.parse(localStorage.getItem(SHOW_KEY) || "[]");
+    if (!library.ready) return;
+    const personSlugs = personKey ? personKey.split("\n") : [];
+    const showSlugs = showKey ? showKey.split("\n") : [];
 
     if (personSlugs.length === 0 && showSlugs.length === 0) {
+      setHasFavs(false);
+      setItems([]);
       setReady(true);
       return;
     }
 
     setHasFavs(true);
+    let cancelled = false;
 
     fetch("/api/favorites", {
       method: "POST",
@@ -31,11 +36,18 @@ export default function FavoritesSection() {
     })
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return;
         setItems((data.items || []) as Item[]);
         setReady(true);
       })
-      .catch(() => setReady(true));
-  }, []);
+      .catch(() => {
+        if (!cancelled) setReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [library.ready, personKey, showKey]);
 
   if (!ready || !hasFavs || items.length === 0) return null;
 
