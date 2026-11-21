@@ -50,6 +50,36 @@ a { color: inherit; text-decoration: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
 
+/*
+  Phone home rows (Nowe, Polecane, Specjale, Formaty, Nostalgia, Rankingi,
+  Do obejrzenia, Twoje ulubione). The active card snaps to the center of the
+  viewport, with a peek of the previous and next card.
+  .band side padding is 20px below 768px. The negative margin makes the
+  scroller one viewport wide so an 82vw card can sit in the middle.
+  Inline padding and the matching scroll-padding give the first and last
+  cards room to reach that center. md+ keeps fixed widths and snap-start.
+  Formaty and the Rankingi strip duplicate the track markup instead of
+  ScrollRow; the .band .snap-x rule keeps those rows on the same behavior.
+*/
+@media (max-width: 767px) {
+  .scroll-row,
+  .band .snap-x.snap-mandatory {
+    --scroll-card: 82vw;
+    --scroll-gutter: calc((100vw - var(--scroll-card)) / 2);
+    margin-inline: -20px;
+    padding-inline: var(--scroll-gutter);
+    scroll-padding-inline: var(--scroll-gutter);
+    gap: 0.75rem;
+  }
+
+  .scroll-row > .scroll-row-card,
+  .band .snap-x.snap-mandatory > .snap-start {
+    width: var(--scroll-card);
+    flex: 0 0 var(--scroll-card);
+    scroll-snap-align: center;
+  }
+}
+
 /* Dot accent */
 .dot-accent { color: var(--coral); }
 

@@ -6,6 +6,12 @@ import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
+import {
+  isCenterSnap,
+  nextScrollCardIndex,
+  scrollLeftByPage,
+  scrollLeftToCenter,
+} from "@/lib/scroll-row";
 import CardByline from "./CardByline";
 import ContentCardAction from "./ContentCardAction";
 import PaidBadge from "./PaidBadge";
@@ -27,7 +33,10 @@ function ScrollCard({
   const solePerson = item.people.length === 1 ? item.people[0] : null;
 
   return (
-    <article className="group vcard relative text-left w-72 sm:w-80 shrink-0 snap-start min-w-0">
+    <article
+      data-scroll-card
+      className="scroll-row-card group vcard relative text-left w-72 sm:w-80 shrink-0 snap-center md:snap-start min-w-0"
+    >
       <ContentCardAction isPaid={item.is_paid} url={item.url} onOpen={onClick}>
         <div
           className="overflow-hidden relative"
@@ -103,13 +112,17 @@ function ScrollCard({
 const arrowBtnLeft = [
   "absolute left-0 top-0 bottom-0 z-10 w-12",
   "flex items-center justify-center",
-  "opacity-0 group-hover/scroll:opacity-100 transition-opacity",
+  "pointer-events-none opacity-0 transition-opacity",
+  "group-hover/scroll:pointer-events-auto group-hover/scroll:opacity-100",
+  "focus-visible:pointer-events-auto focus-visible:opacity-100",
 ].join(" ");
 
 const arrowBtnRight = [
   "absolute right-0 top-0 bottom-0 z-10 w-12",
   "flex items-center justify-center",
-  "opacity-0 group-hover/scroll:opacity-100 transition-opacity",
+  "pointer-events-none opacity-0 transition-opacity",
+  "group-hover/scroll:pointer-events-auto group-hover/scroll:opacity-100",
+  "focus-visible:pointer-events-auto focus-visible:opacity-100",
 ].join(" ");
 
 export default function ScrollRow({
@@ -148,8 +161,34 @@ export default function ScrollRow({
   const scroll = (direction: "left" | "right") => {
     const el = scrollRef.current;
     if (!el) return;
-    const amount = el.clientWidth * 0.8;
-    el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
+    const cards = [...el.querySelectorAll<HTMLElement>("[data-scroll-card]")];
+    const snapAlign = cards[0] ? getComputedStyle(cards[0]).scrollSnapAlign : "start";
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    if (!isCenterSnap(snapAlign) || cards.length === 0) {
+      const left = scrollLeftByPage({
+        scrollLeft: el.scrollLeft,
+        clientWidth: el.clientWidth,
+        maxScroll,
+        direction,
+      });
+      el.scrollTo({ left, behavior: "smooth" });
+      return;
+    }
+    const port = el.getBoundingClientRect();
+    const portCenter = port.left + port.width / 2;
+    const centers = cards.map((card) => {
+      const box = card.getBoundingClientRect();
+      return box.left + box.width / 2;
+    });
+    const index = nextScrollCardIndex(centers, portCenter, direction);
+    const cardCenter = centers[index] ?? portCenter;
+    const left = scrollLeftToCenter({
+      scrollLeft: el.scrollLeft,
+      cardCenter,
+      portCenter,
+      maxScroll,
+    });
+    el.scrollTo({ left, behavior: "smooth" });
   };
 
   const handleClick = (item: Item) => {
@@ -167,6 +206,8 @@ export default function ScrollRow({
       <div className="relative group/scroll">
         {canScrollLeft && (
           <button
+            type="button"
+            aria-label="Poprzednie"
             onClick={() => scroll("left")}
             className={arrowBtnLeft}
             style={{ background: "linear-gradient(to right, var(--ink), transparent)" }}
@@ -184,6 +225,8 @@ export default function ScrollRow({
 
         {canScrollRight && (
           <button
+            type="button"
+            aria-label={"Nast\u0119pne"}
             onClick={() => scroll("right")}
             className={arrowBtnRight}
             style={{ background: "linear-gradient(to left, var(--ink), transparent)" }}
@@ -202,10 +245,12 @@ export default function ScrollRow({
         {/* 22px holds the compact byline heart's 44px hit slop inside this
             overflow-x scroller (overflow-y computes to auto and would clip it).
             The ::before hangs 1.25rem below the glyph, which sits a fraction
-            below the meta row, so pb-4 would crop the target. lg keeps pb-6. */}
+            below the meta row, so pb-4 would crop the target. lg keeps pb-6.
+            Phone centering (82vw card, snap center, side gutters) is in
+            globals.css on .scroll-row. md+ keeps w-72/w-80 and snap-start. */}
         <div
           ref={scrollRef}
-          className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-[22px] lg:pb-6 scrollbar-hide"
+          className="scroll-row flex gap-5 overflow-x-auto snap-x snap-mandatory pb-[22px] lg:pb-6 scrollbar-hide"
         >
           {items.map((item) => (
             <ScrollCard
