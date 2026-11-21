@@ -11,12 +11,14 @@ import {
   WAKE_LOCK_FAILED,
   WAKE_LOCK_TITLE,
   WAKE_LOCK_UNSUPPORTED_TITLE,
+  PLAY_FALLBACK_SETTLE_MS,
   createWakeLockSession,
   nextPlaybackEnded,
   openYoutubeWatchInDocument,
   playerHint,
   screenWakeLockSupported,
   shouldHoldWakeLock,
+  showPlayFallback,
   wakeLockButtonLabel,
 } from "@/lib/player-session";
 import {
@@ -388,8 +390,20 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   const [keepAwake, setKeepAwake] = useState(false);
   const [wakeError, setWakeError] = useState<string | null>(null);
   const [readyFor, setReadyFor] = useState<string | null>(null);
+  const [seenPlaying, setSeenPlaying] = useState(false);
+  const [playbackState, setPlaybackState] = useState<number | null>(null);
+  const [playSettled, setPlaySettled] = useState(false);
+  const [playDismissed, setPlayDismissed] = useState(false);
+  const playRetryRef = useRef<number | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const frameReady = readyFor === videoId;
+  const playPrompt = showPlayFallback({
+    frameReady,
+    seenPlaying,
+    playerState: playbackState,
+    settled: playSettled,
+    dismissed: playDismissed,
+  });
 
   const iframeSrc = embedSrc(videoId, phoneEmbed);
   const remaining = remainingSeconds(deadline, now);
@@ -580,11 +594,29 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     finishedRef.current = false;
     seenPlayingRef.current = false;
     endedRef.current = false;
+    setSeenPlaying(false);
+    setPlaybackState(null);
+    setPlaySettled(false);
+    setPlayDismissed(false);
+    if (playRetryRef.current != null) {
+      window.clearTimeout(playRetryRef.current);
+      playRetryRef.current = null;
+    }
     setKeepAwake(false);
     setWakeError(null);
     ytRef.current = EMPTY_YT_SNAPSHOT;
     clearHaltTimers();
   }, [videoId]);
+
+  useEffect(() => {
+    if (!frameReady) return;
+    const id = window.setTimeout(() => setPlaySettled(true), PLAY_FALLBACK_SETTLE_MS);
+    return () => window.clearTimeout(id);
+  }, [frameReady, videoId]);
+
+  useEffect(() => () => {
+    if (playRetryRef.current != null) window.clearTimeout(playRetryRef.current);
+  }, []);
 
   useEffect(() => () => {
     clearHaltTimers();
@@ -642,7 +674,11 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
       if (!isYouTubeOrigin(event.origin)) return;
       const payload = readYtPayload(event.data);
       ytRef.current = parseYtMessage(payload, ytRef.current);
-      if (ytRef.current.playerState === 1) seenPlayingRef.current = true;
+      if (ytRef.current.playerState === 1) {
+        seenPlayingRef.current = true;
+        setSeenPlaying(true);
+      }
+      setPlaybackState(ytRef.current.playerState);
       const endedNow = nextPlaybackEnded(endedRef.current, ytRef.current.playerState, seenPlayingRef.current);
       if (endedNow !== endedRef.current) {
         endedRef.current = endedNow;
@@ -862,6 +898,16 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     openYoutubeWatchInDocument(videoId, document);
   };
 
+  const askPlay = () => {
+    setPlayDismissed(true);
+    sendPlayerCommand("playVideo");
+    if (playRetryRef.current != null) window.clearTimeout(playRetryRef.current);
+    playRetryRef.current = window.setTimeout(() => {
+      playRetryRef.current = null;
+      if (!seenPlayingRef.current) setPlayDismissed(false);
+    }, PLAY_FALLBACK_SETTLE_MS);
+  };
+
   const onHeadingTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     if (!phoneEmbed || cover || event.touches.length !== 1) return;
     const target = event.target;
@@ -929,6 +975,11 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
               setReadyFor(videoId);
             }}
           />
+          {playPrompt && (
+            <button type="button" className="video-modal-play" onClick={askPlay} aria-label="Odtwórz">
+              <span className="video-modal-play-icon" />
+            </button>
+          )}
           <div className="video-modal-player-bar">
             <PlayerTools key={`bar-${videoId}`} {...toolProps} showHint={false} />
             <div className="video-modal-actions">

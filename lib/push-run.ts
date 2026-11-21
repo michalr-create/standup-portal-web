@@ -153,7 +153,7 @@ async function loadContent(
 ): Promise<{ items: ContentCandidate[]; stamps: string[] }> {
   const { data, error } = await client
     .from("content_items")
-    .select("id, title, url, show_id, category_id, approved_at, status, merged_into_id")
+    .select("id, title, url, show_id, category_id, is_paid, approved_at, status, merged_into_id")
     .eq("status", "approved")
     .is("merged_into_id", null)
     .gt("approved_at", cursor)
@@ -209,6 +209,7 @@ async function loadContent(
       showId: asId(row.show_id),
       personIds: [...new Set(people.get(id) ?? [])],
       categoryId: asId(row.category_id),
+      isPaid: row.is_paid === true,
     });
   }
   return { items, stamps };

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   getRecentItems,
@@ -14,6 +15,7 @@ import FormatCard from "./components/FormatCard";
 import SectionHead from "./components/SectionHead";
 import HomeRankings from "./components/HomeRankings";
 import HomeNostalgia from "./components/HomeNostalgia";
+import FilmDeepLink from "./components/FilmDeepLink";
 
 export const revalidate = 120;
 
@@ -40,6 +42,9 @@ export default async function HomePage() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <FilmDeepLink />
+      </Suspense>
       {/* HERO */}
       <header className="px-6 lg:px-10 pt-6 pb-6 md:pt-12 md:pb-10" style={{ borderBottom: "1px solid var(--line)" }}>
         <div className="max-w-6xl mx-auto">
