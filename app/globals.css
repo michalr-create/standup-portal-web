@@ -259,6 +259,35 @@ a.pager-btn:hover {
   transform: none;
 }
 
+/*
+  Cards (video grids, carousels, format tiles that share .vcard).
+  A tap focuses the button or link that wraps the thumbnail and title.
+  Android Chrome then paints the default focus outline around that whole
+  block, and VideoModal used to force the ring again when it restored
+  focus. Pointer and touch stay quiet. Keyboard :focus-visible keeps the
+  coral ring. html[data-input="pointer"] also clears the ring when the
+  engine treats a button tap as :focus-visible.
+*/
+.vcard,
+.vcard * {
+  -webkit-tap-highlight-color: transparent;
+}
+.vcard :is(a, button) {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.vcard :is(a, button):focus:not(:focus-visible) {
+  outline: none;
+}
+.vcard :is(a, button):focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+html[data-input="pointer"] .vcard :is(a, button):focus,
+html[data-input="pointer"] .vcard :is(a, button):focus-visible {
+  outline: none;
+}
+
 /* Play overlay */
 .play-overlay {
   position: absolute;

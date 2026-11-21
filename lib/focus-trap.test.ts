@@ -70,12 +70,23 @@ test("escape dismisses the top layer before closing the player", () => {
 
 test("VideoModal traps focus, starts on Zamknij, and restores the trigger", () => {
   const modal = readFileSync(new URL("../app/components/VideoModal.tsx", import.meta.url), "utf8");
+  const trap = readFileSync(new URL("./focus-trap.ts", import.meta.url), "utf8");
+  const refresh = readFileSync(new URL("../app/components/ResumeRefresh.tsx", import.meta.url), "utf8");
   assert.match(modal, /containTab\(event, root, \{ redirectUnmanaged: true \}\)/);
   assert.match(modal, /focusVisibleClose\(root\)/);
   assert.match(modal, /addEventListener\("keydown", onKeyDown, true\)/);
   assert.match(modal, /previouslyFocused\?\.isConnected/);
   assert.match(modal, /tabIndex=\{-1\}/);
   assert.match(modal, /escapeLayer\(/);
+  assert.match(modal, /const pointerOpened = openerWasPointer\(\)/);
+  assert.match(modal, /focusRestoredOpener\(previouslyFocused, pointerOpened\)/);
+  assert.doesNotMatch(modal, /focusWithRing\(previouslyFocused\)/);
+  assert.match(trap, /preventScroll: true, focusVisible: false/);
+  assert.match(trap, /function focusWithoutRing[\s\S]*el\.focus\(options\)/);
+  assert.match(trap, /focusRestoredOpener\(el: HTMLElement, pointerInitiated: boolean\)/);
+  assert.match(trap, /if \(pointerInitiated\) \{\s*focusWithoutRing\(el\);/s);
+  assert.match(trap, /documentElement\.dataset\.input = modality/);
+  assert.match(refresh, /bindInputModality\(\)/);
 });
 
 test("MobileDrawer keeps the shared trap and its capture listener", () => {

@@ -42,11 +42,13 @@ import WatchLaterButton from "./WatchLaterButton";
 import AdminMaterialActions from "./AdminMaterialActions";
 import { PLAYER_SESSION_END_EVENT } from "@/lib/resume-refresh";
 import {
+  bindInputModality,
   containTab,
   escapeLayer,
+  focusRestoredOpener,
   focusVisibleClose,
-  focusWithRing,
   isFocusableVisible,
+  openerWasPointer,
 } from "@/lib/focus-trap";
 
 type Props = {
@@ -470,6 +472,9 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     const root = dialogRef.current;
     if (!root) return;
 
+    bindInputModality();
+    const pointerOpened = openerWasPointer();
+
     const previouslyFocused =
       document.activeElement instanceof HTMLElement && !root.contains(document.activeElement)
         ? document.activeElement
@@ -516,7 +521,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
       const restoreTrigger = () => {
         if (document.querySelector(".video-modal")) return;
         if (!previouslyFocused?.isConnected) return;
-        focusWithRing(previouslyFocused);
+        focusRestoredOpener(previouslyFocused, pointerOpened);
       };
       restoreTrigger();
       queueMicrotask(restoreTrigger);
