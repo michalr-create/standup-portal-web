@@ -15,6 +15,7 @@ import {
   type TourPerson,
 } from "@/lib/events";
 import { paidExternalUrl } from "@/lib/youtube";
+import EventPlanActions from "./EventPlanActions";
 
 function ExternalIcon() {
   return (
@@ -101,7 +102,15 @@ function posterLabel(roster: readonly TourPerson[]): string {
   return roster.map((person) => person.name).filter(Boolean).join(" \u00b7 ");
 }
 
-export default function EventCard({ event, now }: { event: TourEvent; now: Date }) {
+export default function EventCard({
+  event,
+  now,
+  goingCount = 0,
+}: {
+  event: TourEvent;
+  now: Date;
+  goingCount?: number;
+}) {
   const roster = eventPeople(event);
   const solo = roster.length <= 1;
   const lead = roster[0] ?? event.person;
@@ -245,6 +254,7 @@ export default function EventCard({ event, now }: { event: TourEvent; now: Date 
             Link do biletów niedostępny
           </span>
         )}
+        <EventPlanActions eventId={event.id} startsAt={event.starts_at} goingCount={goingCount} />
       </div>
     </article>
   );

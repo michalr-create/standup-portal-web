@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   BILETY_OPTIONS,
@@ -97,14 +97,21 @@ export default function TrasyFilters({
   filters,
   facets,
   today,
+  explicitAllCities = false,
   children,
 }: {
   filters: TrasyFilters;
   facets: EventFacets;
   today: string;
+  /** `?miasto=` with an empty value: do not let a saved city fill the URL again. */
+  explicitAllCities?: boolean;
   children: ReactNode;
 }) {
   const router = useRouter();
+  const blankCity = useRef(explicitAllCities);
+  useEffect(() => {
+    blankCity.current = explicitAllCities;
+  }, [explicitAllCities]);
   const activeCount = activeTrasyFilterCount(filters);
   const cityChips = topFacetCities(facets.cities);
   // First paint follows the URL. Later chip taps update props without remounting,
@@ -123,7 +130,13 @@ export default function TrasyFilters({
   }, []);
 
   const go = (next: Partial<TrasyFilters>) => {
-    router.push(trasyHref({ ...filters, ...next }), { scroll: false });
+    const merged = { ...filters, ...next };
+    let keepBlankCity = blankCity.current;
+    if (Object.prototype.hasOwnProperty.call(next, "miasto")) {
+      keepBlankCity = next.miasto === "";
+      blankCity.current = keepBlankCity;
+    }
+    router.push(trasyHref(merged, { keepBlankCity }), { scroll: false });
   };
 
   const fieldsClass = open
@@ -248,7 +261,10 @@ export default function TrasyFilters({
           {activeCount > 0 && (
             <button
               type="button"
-              onClick={() => router.push("/trasy", { scroll: false })}
+              onClick={() => {
+                blankCity.current = true;
+                router.push(trasyHref({}, { keepBlankCity: true }), { scroll: false });
+              }}
               className="min-h-11 px-2 text-sm font-bold"
               style={{ color: "var(--coral)", background: "none", border: "none", fontFamily: "inherit" }}
             >

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CityCombobox from "@/app/components/CityCombobox";
@@ -40,14 +40,26 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export default function OpenMicFilters({
   filters,
   cities,
+  explicitAllCities = false,
 }: {
   filters: OpenMicFilters;
   cities: readonly string[];
+  explicitAllCities?: boolean;
 }) {
   const router = useRouter();
   const active = hasActiveOpenMicFilters(filters);
+  const blankCity = useRef(explicitAllCities);
+  useEffect(() => {
+    blankCity.current = explicitAllCities;
+  }, [explicitAllCities]);
   const go = (next: Partial<OpenMicFilters>) => {
-    router.push(openMicHref({ ...filters, ...next }), { scroll: false });
+    const merged = { ...filters, ...next };
+    let keepBlankCity = blankCity.current;
+    if (Object.prototype.hasOwnProperty.call(next, "miasto")) {
+      keepBlankCity = next.miasto === "";
+      blankCity.current = keepBlankCity;
+    }
+    router.push(openMicHref(merged, { keepBlankCity }), { scroll: false });
   };
 
   return (
@@ -101,7 +113,7 @@ export default function OpenMicFilters({
       </div>
       {active && (
         <Link
-          href="/open-mic"
+          href="/open-mic?miasto="
           className="inline-flex min-h-11 items-center self-start rounded-sm font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
           style={{ color: "var(--coral)" }}
         >

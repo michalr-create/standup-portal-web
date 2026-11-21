@@ -13,6 +13,7 @@ import type { Item } from "@/lib/data";
 import ContentCardAction from "@/app/components/ContentCardAction";
 import PaidBadge from "@/app/components/PaidBadge";
 import ThumbDuration from "@/app/components/ThumbDuration";
+import AccountPlaces from "./AccountPlaces";
 import FavoriteTours from "./FavoriteTours";
 import { eventsForFavoritePeople, type FavoriteUpcomingEvent } from "@/lib/events";
 
@@ -146,6 +147,8 @@ export default function UlubionePage() {
             )}
           </p>
         </header>
+
+        <AccountPlaces />
 
         {hasLater && (
           <section className="mb-10" aria-labelledby="na-pozniej">

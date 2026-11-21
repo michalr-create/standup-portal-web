@@ -29,6 +29,7 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   const youtubePath = join(dir, "youtube.cjs");
   const linkPath = join(dir, "link.cjs");
   const cardPath = join(dir, "card.cjs");
+  const plansPath = join(dir, "plans.cjs");
   const reactPath = require.resolve("react");
   const jsxPath = require.resolve("react/jsx-runtime");
   writeFileSync(comboboxPath, compile(readFileSync(new URL("./combobox.ts", import.meta.url), "utf8"), false));
@@ -52,9 +53,19 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
       "module.exports.__esModule = true;",
     ].join("\n"),
   );
+  writeFileSync(
+    plansPath,
+    [
+      `const React = require(${JSON.stringify(reactPath)});`,
+      "function EventPlanActions() { return React.createElement('div', { 'data-event-plans': '1' }); }",
+      "module.exports.default = EventPlanActions;",
+      "module.exports.__esModule = true;",
+    ].join("\n"),
+  );
   const card = compile(readFileSync(new URL("../app/trasy/EventCard.tsx", import.meta.url), "utf8"), true)
     .replaceAll('require("@/lib/events")', `require(${JSON.stringify(eventsPath)})`)
     .replaceAll('require("@/lib/youtube")', `require(${JSON.stringify(youtubePath)})`)
+    .replaceAll('require("./EventPlanActions")', `require(${JSON.stringify(plansPath)})`)
     .replaceAll('require("next/link")', `require(${JSON.stringify(linkPath)})`)
     .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
     .replaceAll('require("react")', `require(${JSON.stringify(reactPath)})`);

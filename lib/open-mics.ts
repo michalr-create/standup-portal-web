@@ -375,12 +375,16 @@ export function buildOpenMicView(
   };
 }
 
-export function openMicHref(filters: Partial<OpenMicFilters> = {}): string {
+export function openMicHref(
+  filters: Partial<OpenMicFilters> = {},
+  options?: { keepBlankCity?: boolean },
+): string {
   const params = new URLSearchParams();
   const miasto = filters.miasto?.trim() ?? "";
   const dzien = filters.dzien ?? 0;
   const jezyk = filters.jezyk ?? "";
   if (miasto) params.set("miasto", miasto);
+  else if (options?.keepBlankCity) params.set("miasto", "");
   if (isWeekday(dzien)) params.set("dzien", String(dzien));
   if (jezyk) params.set("jezyk", jezyk);
   const qs = params.toString();

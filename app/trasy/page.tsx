@@ -3,9 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import EventCard from "./EventCard";
+import EventPlansProvider from "./EventPlansProvider";
 import TrasyFilters from "./TrasyFilters";
 import Pager from "@/app/components/Pager";
-import { getTrasyListing } from "@/lib/data";
+import HomeCityRedirect from "@/app/components/HomeCityRedirect";
+import { getGoingCounts, getTrasyListing } from "@/lib/data";
+import { hasBlankCityParam } from "@/lib/home-city";
 import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "@/lib/category-browse";
 import { listingCountLabel } from "@/lib/listing-count";
 import {
@@ -89,7 +92,9 @@ function Notice({
 }
 
 export default async function TrasyPage({ searchParams }: Props) {
-  const parsed = parseTrasySearchParams(await searchParams);
+  const raw = await searchParams;
+  const explicitAllCities = hasBlankCityParam(raw);
+  const parsed = parseTrasySearchParams(raw);
   if (parsed.redirectHref) redirect(parsed.redirectHref);
 
   const now = new Date();
@@ -102,6 +107,7 @@ export default async function TrasyPage({ searchParams }: Props) {
   }
 
   const groups = groupEventsByMonth(listing.events);
+  const goingCounts = listing.ok ? await getGoingCounts(listing.events.map((event) => event.id)) : new Map<number, number>();
   const filteredView = hasActiveTrasyFilters(parsed.filters);
   const headerStatus = !listing.ok
     ? "błąd wczytywania"
@@ -148,12 +154,19 @@ export default async function TrasyPage({ searchParams }: Props) {
           </p>
         </header>
 
+        <HomeCityRedirect pathname="/trasy" cities={listing.ok ? listing.facets.cities : []} />
+
         {!listing.ok ? (
           <Notice eyebrow="trasy" title="Coś poszło nie tak">
             Nie udało się wczytać terminów. Odśwież stronę za chwilę.
           </Notice>
         ) : (
-          <TrasyFilters filters={parsed.filters} facets={listing.facets} today={warsawToday(now)}>
+          <TrasyFilters
+            filters={parsed.filters}
+            facets={listing.facets}
+            today={warsawToday(now)}
+            explicitAllCities={explicitAllCities}
+          >
             {listCount && (
               <div className="mb-5 flex items-center justify-between gap-3">
                 <span
@@ -170,7 +183,7 @@ export default async function TrasyPage({ searchParams }: Props) {
                   <>
                     <p className="m-0">Żaden nadchodzący występ nie pasuje do tych filtrów.</p>
                     <Link
-                      href="/trasy"
+                      href="/trasy?miasto="
                       className="mt-6 inline-flex min-h-11 items-center font-black"
                       style={{ color: "var(--coral)" }}
                     >
@@ -184,18 +197,25 @@ export default async function TrasyPage({ searchParams }: Props) {
                 )}
               </Notice>
             ) : (
-              <div className="flex flex-col gap-10">
-                {groups.map((group) => (
-                  <section key={group.key}>
-                    <SectionHead title={group.label} sub={`${group.events.length} ${terminLabel(group.events.length)}`} />
-                    <div className="flex flex-col gap-3">
-                      {group.events.map((event) => (
-                        <EventCard key={event.id} event={event} now={now} />
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
+              <EventPlansProvider eventIds={listing.events.map((event) => event.id)}>
+                <div className="flex flex-col gap-10">
+                  {groups.map((group) => (
+                    <section key={group.key}>
+                      <SectionHead title={group.label} sub={`${group.events.length} ${terminLabel(group.events.length)}`} />
+                      <div className="flex flex-col gap-3">
+                        {group.events.map((event) => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            now={now}
+                            goingCount={goingCounts.get(event.id) ?? 0}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </EventPlansProvider>
             )}
             {listing.total > 0 && (
               <Pager page={parsed.page} total={listing.total} pageSize={PUBLIC_LISTING_PAGE_SIZE} hrefForPage={hrefForPage} />

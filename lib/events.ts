@@ -249,7 +249,10 @@ function canonicalizeBilety(raw: string | undefined): { value: BiletyFilter; cha
   return { value: "", changed: true };
 }
 
-export function trasyHref(filters: Partial<TrasyFilters> & { page?: number } = {}): string {
+export function trasyHref(
+  filters: Partial<TrasyFilters> & { page?: number } = {},
+  options?: { keepBlankCity?: boolean },
+): string {
   const params = new URLSearchParams();
   const osoba = filters.osoba?.trim() ?? "";
   const miasto = filters.miasto?.trim() ?? "";
@@ -259,6 +262,7 @@ export function trasyHref(filters: Partial<TrasyFilters> & { page?: number } = {
   const page = filters.page ?? 1;
   if (osoba) params.set("osoba", osoba);
   if (miasto) params.set("miasto", miasto);
+  else if (options?.keepBlankCity) params.set("miasto", "");
   if (od) params.set("od", od);
   if (doDnia) params.set("do", doDnia);
   if (bilety) params.set("bilety", bilety);
