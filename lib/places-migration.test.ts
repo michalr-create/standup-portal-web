@@ -37,6 +37,8 @@ test("reminders and attendance are own-row tables with user and event indexes", 
 
 test("the public count function returns a counter and the reminder list is the caller's", () => {
   assert.match(sql, /function public\.going_counts\(event_ids bigint\[\]\)/);
+  assert.match(sql, /any \(\(coalesce\(event_ids, '\{\}'::bigint\[\]\)\)\[1:200\]\)/);
+  assert.doesNotMatch(sql, /any \(coalesce\(event_ids, '\{\}'::bigint\[\]\)\[1:200\]\)/);
   assert.match(sql, /going_count bigint/);
   assert.match(sql, /a\.status = 'going'/);
   assert.match(sql, /grant execute on function public\.going_counts\(bigint\[\]\) to anon, authenticated, service_role/);
