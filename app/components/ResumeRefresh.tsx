@@ -2,7 +2,10 @@
 
 import { startTransition, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { bindInputModality } from "@/lib/focus-trap";
 import { bindResumeRefresh, type ControlLike } from "@/lib/resume-refresh";
+
+if (typeof document !== "undefined") bindInputModality();
 
 export default function ResumeRefresh() {
   const router = useRouter();

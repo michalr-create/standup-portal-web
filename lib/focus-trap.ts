@@ -86,10 +86,89 @@ export function containTab(
   el?.focus();
 }
 
-/** Show the ring for a focus move we performed, including after a pointer open. */
+/** Show the ring for a focus move we performed (dialog close, keyboard return). */
 export function focusWithRing(el: HTMLElement): void {
   const options = { preventScroll: true, focusVisible: true };
   el.focus(options);
+}
+
+/**
+ * Move focus without painting a ring.
+ * Pointer-opened cards use this when VideoModal returns focus to the opener.
+ * `focusVisible: false` is ignored by engines that do not know the option;
+ * card CSS still hides the outline for pointer focus.
+ */
+export function focusWithoutRing(el: HTMLElement): void {
+  // focus({ preventScroll: true, focusVisible: false }) — the option is not in this
+  // project's FocusOptions type yet, so it is passed as a variable (same as focusWithRing).
+  const options = { preventScroll: true, focusVisible: false };
+  el.focus(options);
+}
+
+/** Pointer opens stay quiet. Keyboard opens keep the coral ring. */
+export function focusRestoredOpener(el: HTMLElement, pointerInitiated: boolean): void {
+  if (pointerInitiated) {
+    focusWithoutRing(el);
+    return;
+  }
+  focusWithRing(el);
+}
+
+export type InputModality = "pointer" | "keyboard";
+
+const KEYBOARD_MODALITY_KEYS = new Set(["Tab", "Enter", " ", "Spacebar"]);
+
+let inputModality: InputModality = "keyboard";
+let modalityBound = false;
+
+/** Pointer wins until Tab, Enter, or Space. Other keys (Escape, arrows) keep the current mode. */
+export function nextInputModality(
+  current: InputModality,
+  event: { type: "pointer" } | { type: "key"; key: string; modified?: boolean },
+): InputModality {
+  if (event.type === "pointer") return "pointer";
+  if (event.modified) return current;
+  if (KEYBOARD_MODALITY_KEYS.has(event.key)) return "keyboard";
+  return current;
+}
+
+function applyInputModality(modality: InputModality): void {
+  inputModality = modality;
+  if (typeof document !== "undefined") document.documentElement.dataset.input = modality;
+}
+
+/**
+ * Capture pointer vs keyboard before the next focus paint.
+ * ResumeRefresh binds this on every page so a tap is already "pointer"
+ * when VideoModal reads it. Capture phase runs before the browser focuses
+ * the card button.
+ */
+export function bindInputModality(): void {
+  if (modalityBound || typeof document === "undefined") return;
+  modalityBound = true;
+  document.addEventListener(
+    "pointerdown",
+    () => applyInputModality(nextInputModality(inputModality, { type: "pointer" })),
+    true,
+  );
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      applyInputModality(
+        nextInputModality(inputModality, {
+          type: "key",
+          key: event.key,
+          modified: event.metaKey || event.ctrlKey || event.altKey,
+        }),
+      );
+    },
+    true,
+  );
+}
+
+/** True after a pointer or touch, until Tab / Enter / Space. */
+export function openerWasPointer(): boolean {
+  return inputModality === "pointer";
 }
 
 /** First visible match in DOM order. Player-bar controls precede the meta sheet. */
