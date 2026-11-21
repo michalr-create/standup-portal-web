@@ -121,7 +121,7 @@ export default function AccountPlaces() {
             <Link href="/zaloguj?next=/ulubione" className={`font-bold ${focusRing}`} style={{ color: "var(--coral)" }}>
               Zaloguj się
             </Link>
-            , żeby zebrać je tutaj. Powiadomienia push dojdą później.
+            , żeby zebrać je tutaj. Push włączysz niżej, w powiadomieniach.
           </p>
         ) : reminders.length === 0 ? (
           <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>

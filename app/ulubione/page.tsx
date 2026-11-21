@@ -16,6 +16,7 @@ import PaidBadge from "@/app/components/PaidBadge";
 import ThumbDuration from "@/app/components/ThumbDuration";
 import AccountPlaces from "./AccountPlaces";
 import FavoriteTours from "./FavoriteTours";
+import PushNotifications from "./PushNotifications";
 import { eventsForFavoritePeople, type FavoriteUpcomingEvent } from "@/lib/events";
 
 type FavDetail = { slug: string; name: string };
@@ -153,6 +154,7 @@ export default function UlubionePage() {
         </header>
 
         <AccountPlaces />
+        <PushNotifications />
 
         {hasLater && (
           <section className="mb-10" aria-labelledby="na-pozniej">
