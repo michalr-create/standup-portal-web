@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { getApprovedItemsByIds } from "@/lib/data";
 import { supabase } from "@/lib/supabase";
 import {
+  HOME_NOSTALGIA_COUNT,
   NOSTALGIA_HITS,
   NOSTALGIA_MIN_SECONDS,
   NOSTALGIA_SHELF,
@@ -122,4 +123,16 @@ export async function getNostalgiaPage(excludeIds: number[]): Promise<{ shelf: R
     shelf: toCards(shelf, byId, false),
     hits: toCards(hits, byId, true),
   };
+}
+
+/** Random home row from the same specials pool as /nostalgia. No cookie. */
+export async function getHomeNostalgia(count = HOME_NOSTALGIA_COUNT) {
+  const pool = await nostalgiaPool();
+  const shelf = pickNostalgiaShelf(pool, [], count);
+  const items = await getApprovedItemsByIds(shelf.map((row) => row.id));
+  const byId = new Map(items.map((item) => [item.id, item]));
+  return shelf.flatMap((row) => {
+    const item = byId.get(row.id);
+    return item ? [item] : [];
+  });
 }

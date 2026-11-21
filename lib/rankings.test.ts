@@ -16,6 +16,8 @@ import {
   rankingHref,
   topByViewCount,
   viewsWindowPhrase,
+  homeRankingLabel,
+  selectHomeRanking,
   weeklyHeading,
 } from "./rankings.ts";
 
@@ -141,6 +143,37 @@ test("specials and shows sort by the public totals", () => {
   assert.equal(shows[0]?.viewCount, 10);
   assert.equal(shows[0]?.episodeCount, 2);
   assert.equal(shows[0]?.thumbnailUrl, "new");
+});
+
+test("home ranking stays on the page and falls back to classics", () => {
+  assert.equal(selectHomeRanking({ pending: false, entryCount: 4 }), "hity");
+  assert.equal(selectHomeRanking({ pending: true, entryCount: 0 }), "klasyki");
+  assert.equal(selectHomeRanking({ pending: true, entryCount: 4 }), "klasyki");
+  assert.equal(selectHomeRanking({ pending: false, entryCount: 0 }), "klasyki");
+  assert.equal(homeRankingLabel("hity", "Hity tygodnia za ostatnie 7 dni"), "Hity tygodnia za ostatnie 7 dni");
+  assert.equal(homeRankingLabel("klasyki", "  "), "Klasyki wszech czas\u00f3w");
+  assert.equal(homeRankingLabel("klasyki", "Klasyki wszech czas\u00f3w"), "Klasyki wszech czas\u00f3w");
+
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const section = readFileSync(new URL("../app/components/HomeRankings.tsx", import.meta.url), "utf8");
+  const data = readFileSync(new URL("./rankings-data.ts", import.meta.url), "utf8");
+  const polecane = home.indexOf('title="Polecane"');
+  const rankings = home.indexOf("<HomeRankings");
+  const specjale = home.indexOf('title="Specjale"');
+  assert.ok(polecane > 0 && rankings > polecane && specjale > rankings);
+  assert.doesNotMatch(home, /HomeWeeklyHits/);
+  assert.match(section, /title="Rankingi"/);
+  assert.match(section, /className="band"/);
+  assert.match(section, /SectionHead/);
+  assert.match(section, /Zobacz wszystkie/);
+  assert.match(section, /rankingHref\(\{ ranking: preview\.kind \}/);
+  assert.match(section, /<RankingCards entries=\{preview\.entries\} layout="strip" \/>/);
+  assert.doesNotMatch(section, /return null/);
+  assert.match(data, /export async function getHomeRanking/);
+  assert.match(data, /ranking: "hity"/);
+  assert.match(data, /ranking: "klasyki"/);
+  assert.match(data, /selectHomeRanking/);
+  assert.doesNotMatch(data, /getHomeWeeklyHits/);
 });
 
 test("nav and both pages link the new sections", () => {

@@ -1,6 +1,8 @@
 export const NOSTALGIA_MIN_SECONDS = 1800;
 export const NOSTALGIA_SHELF = 12;
 export const NOSTALGIA_HITS = 10;
+/** Home row: a short random shelf, not the full 12. */
+export const HOME_NOSTALGIA_COUNT = 6;
 export const NOSTALGIA_COOKIE = "nostalgia_prev";
 export const NOSTALGIA_COOKIE_MAX_IDS = 24;
 export const NOSTALGIA_COOKIE_MAX_AGE = 2_592_000;

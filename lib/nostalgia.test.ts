@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
 import {
+  HOME_NOSTALGIA_COUNT,
   NOSTALGIA_MIN_SECONDS,
   isNostalgiaCandidate,
   nostalgiaCookieAssignment,
@@ -53,6 +55,30 @@ test("hits are the top view counts from the same pool", () => {
     { id: 4, viewCount: 50 },
   ], 2);
   assert.deepEqual(hits.map((item) => item.id), [3, 4]);
+});
+
+test("the home shelf is a few random specials from the nostalgia pool", () => {
+  assert.equal(HOME_NOSTALGIA_COUNT, 6);
+  assert.ok(HOME_NOSTALGIA_COUNT < 12);
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const section = readFileSync(new URL("../app/components/HomeNostalgia.tsx", import.meta.url), "utf8");
+  const data = readFileSync(new URL("./nostalgia-data.ts", import.meta.url), "utf8");
+  const specjale = home.indexOf('title="Specjale"');
+  const nostalgia = home.indexOf("<HomeNostalgia");
+  const formaty = home.indexOf('title="Formaty"');
+  assert.ok(specjale > 0 && nostalgia > specjale && formaty > nostalgia);
+  assert.match(section, /title="Nostalgia"/);
+  assert.match(section, /Specjale starsze ni\\u017c 5 lat/);
+  assert.match(section, /linkHref="\/nostalgia"/);
+  assert.match(section, /Zobacz wszystkie/);
+  assert.match(section, /className="band"/);
+  assert.match(section, /SectionHead/);
+  assert.match(section, /<ScrollRow items=\{items\} \/>/);
+  assert.doesNotMatch(section, /cookies\(/);
+  assert.match(data, /export async function getHomeNostalgia\(count = HOME_NOSTALGIA_COUNT\)/);
+  assert.match(data, /const pool = await nostalgiaPool\(\);\s*const shelf = pickNostalgiaShelf\(pool, \[\], count\);/);
+  assert.match(data, /\.gte\("duration_seconds", NOSTALGIA_MIN_SECONDS\)/);
+  assert.match(data, /\.lt\("published_at", cutoff\)/);
 });
 
 test("the nostalgia cookie stores only the previous ids", () => {
