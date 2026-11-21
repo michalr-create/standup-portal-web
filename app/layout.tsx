@@ -58,6 +58,8 @@ export default async function RootLayout({
     { href: "/shorts", label: "Shorts" },
     { href: "/kulisy", label: "Kulisy" },
     { href: "/roast", label: "Roast" },
+    { href: "/rankingi", label: "Rankingi" },
+    { href: "/nostalgia", label: "Nostalgia" },
     { href: "/standuperzy", label: "Standuperzy" },
     { href: "/open-mic", label: "Open mic" },
     { href: "/ulubione", label: "Ulubione" },
