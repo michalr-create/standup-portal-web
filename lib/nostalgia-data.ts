@@ -6,10 +6,11 @@ import {
   NOSTALGIA_HITS,
   NOSTALGIA_MIN_SECONDS,
   NOSTALGIA_SHELF,
+  dailyNostalgiaPick,
   isNostalgiaCandidate,
   nostalgiaCutoffMs,
   nostalgiaHits,
-  pickNostalgiaShelf,
+  warsawDateKey,
 } from "@/lib/nostalgia";
 import { utcYear, viewsLine } from "@/lib/rankings";
 import type { RankedVideo } from "@/lib/rankings-data";
@@ -113,9 +114,13 @@ function toCards(
   return cards;
 }
 
-export async function getNostalgiaPage(excludeIds: number[]): Promise<{ shelf: RankedVideo[]; hits: RankedVideo[] }> {
+function dailyShelf(pool: PoolItem[], count: number, now: Date) {
+  return dailyNostalgiaPick(pool, count, warsawDateKey(now));
+}
+
+export async function getNostalgiaPage(now = new Date()): Promise<{ shelf: RankedVideo[]; hits: RankedVideo[] }> {
   const pool = await nostalgiaPool();
-  const shelf = pickNostalgiaShelf(pool, excludeIds, NOSTALGIA_SHELF);
+  const shelf = dailyShelf(pool, NOSTALGIA_SHELF, now);
   const hits = nostalgiaHits(pool, NOSTALGIA_HITS);
   const items = await getApprovedItemsByIds([...shelf.map((row) => row.id), ...hits.map((row) => row.id)]);
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -125,10 +130,10 @@ export async function getNostalgiaPage(excludeIds: number[]): Promise<{ shelf: R
   };
 }
 
-/** Random home row from the same specials pool as /nostalgia. No cookie. */
-export async function getHomeNostalgia(count = HOME_NOSTALGIA_COUNT) {
+/** First cards of the same Warsaw-day shelf shown on /nostalgia. */
+export async function getHomeNostalgia(count = HOME_NOSTALGIA_COUNT, now = new Date()) {
   const pool = await nostalgiaPool();
-  const shelf = pickNostalgiaShelf(pool, [], count);
+  const shelf = dailyShelf(pool, NOSTALGIA_SHELF, now).slice(0, count);
   const items = await getApprovedItemsByIds(shelf.map((row) => row.id));
   const byId = new Map(items.map((item) => [item.id, item]));
   return shelf.flatMap((row) => {

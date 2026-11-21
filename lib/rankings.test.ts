@@ -16,7 +16,10 @@ import {
   rankingHref,
   topByViewCount,
   viewsWindowPhrase,
+  HOME_RANKING_CHIP_LABELS,
+  RANKING_IDS,
   homeRankingLabel,
+  homeRankingSeeAllHref,
   selectHomeRanking,
   weeklyHeading,
 } from "./rankings.ts";
@@ -154,24 +157,45 @@ test("home ranking stays on the page and falls back to classics", () => {
   assert.equal(homeRankingLabel("klasyki", "  "), "Klasyki wszech czas\u00f3w");
   assert.equal(homeRankingLabel("klasyki", "Klasyki wszech czas\u00f3w"), "Klasyki wszech czas\u00f3w");
 
+  assert.deepEqual(
+    RANKING_IDS.map((id) => HOME_RANKING_CHIP_LABELS[id]),
+    [
+      "Hity tygodnia",
+      "Zyskuj\u0105ce",
+      "Klasyki",
+      "Nowo\u015bci miesi\u0105ca",
+      "Top specjali roku",
+      "Standuperzy",
+      "Pe\u0142ne programy",
+      "Top format\u00f3w",
+    ],
+  );
+  assert.equal(homeRankingSeeAllHref("hity"), "/rankingi?ranking=hity");
+  assert.equal(homeRankingSeeAllHref("klasyki"), "/rankingi?ranking=klasyki");
+  assert.equal(homeRankingSeeAllHref("formaty"), "/rankingi?ranking=formaty");
+
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   const section = readFileSync(new URL("../app/components/HomeRankings.tsx", import.meta.url), "utf8");
+  const board = readFileSync(new URL("../app/components/HomeRankingBoard.tsx", import.meta.url), "utf8");
   const data = readFileSync(new URL("./rankings-data.ts", import.meta.url), "utf8");
-  const polecane = home.indexOf('title="Polecane"');
+  const nostalgia = home.indexOf("<HomeNostalgia");
   const rankings = home.indexOf("<HomeRankings");
-  const specjale = home.indexOf('title="Specjale"');
-  assert.ok(polecane > 0 && rankings > polecane && specjale > rankings);
+  assert.ok(nostalgia > 0 && rankings > nostalgia);
+  assert.equal(rankings, home.lastIndexOf("<Home"));
   assert.doesNotMatch(home, /HomeWeeklyHits/);
-  assert.match(section, /title="Rankingi"/);
   assert.match(section, /className="band"/);
-  assert.match(section, /SectionHead/);
-  assert.match(section, /Zobacz wszystkie/);
-  assert.match(section, /rankingHref\(\{ ranking: preview\.kind \}/);
-  assert.match(section, /<RankingCards entries=\{preview\.entries\} layout="strip" \/>/);
+  assert.match(section, /selectHomeRanking/);
+  assert.match(section, /getHomeRankingBoards/);
   assert.doesNotMatch(section, /return null/);
-  assert.match(data, /export async function getHomeRanking/);
-  assert.match(data, /ranking: "hity"/);
-  assert.match(data, /ranking: "klasyki"/);
+  assert.match(board, /title="Rankingi"/);
+  assert.match(board, /role="tablist"/);
+  assert.match(board, /Zobacz wszystkie/);
+  assert.match(board, /homeRankingSeeAllHref\(selected\)/);
+  assert.match(board, /<RankingCards entries=\{board\.entries\} layout="strip" \/>/);
+  assert.match(board, /RankingPeople/);
+  assert.match(board, /RankingShows/);
+  assert.match(data, /export async function getHomeRankingBoards/);
+  assert.match(data, /RANKING_IDS\.map/);
   assert.match(data, /selectHomeRanking/);
   assert.doesNotMatch(data, /getHomeWeeklyHits/);
 });
@@ -180,14 +204,13 @@ test("nav and both pages link the new sections", () => {
   const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const ranking = readFileSync(new URL("../app/rankingi/page.tsx", import.meta.url), "utf8");
   const nostalgia = readFileSync(new URL("../app/nostalgia/page.tsx", import.meta.url), "utf8");
-  const reroll = readFileSync(new URL("../app/nostalgia/NostalgiaReroll.tsx", import.meta.url), "utf8");
   const cards = readFileSync(new URL("../app/components/RankingCards.tsx", import.meta.url), "utf8");
   assert.match(layout, /href: "\/rankingi", label: "Rankingi"/);
   assert.match(layout, /href: "\/nostalgia", label: "Nostalgia"/);
   assert.match(ranking, /Ranking ruszy jutro/);
   assert.match(ranking, /Standup i specjale/);
-  assert.match(nostalgia, /NostalgiaReroll/);
   assert.match(nostalgia, /Nostalgiczne hity/);
-  assert.match(reroll, /Wylosuj inne/);
+  assert.match(nostalgia, /czasu warszawskiego/);
+  assert.doesNotMatch(nostalgia, /NostalgiaReroll/);
   assert.match(cards, /VideoModal/);
 });

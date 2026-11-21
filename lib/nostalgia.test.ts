@@ -8,8 +8,11 @@ import {
   nostalgiaCookieAssignment,
   nostalgiaCookieValue,
   parseNostalgiaCookie,
+  dailyNostalgiaPick,
+  nostalgiaDaySeed,
   pickNostalgiaShelf,
   nostalgiaHits,
+  warsawDateKey,
 } from "./nostalgia.ts";
 
 const now = new Date("2026-11-21T12:00:00.000Z");
@@ -57,26 +60,59 @@ test("hits are the top view counts from the same pool", () => {
   assert.deepEqual(hits.map((item) => item.id), [3, 4]);
 });
 
-test("the home shelf is a few random specials from the nostalgia pool", () => {
+test("the Warsaw day keeps one nostalgia shelf and the next day changes it", () => {
+  assert.equal(warsawDateKey(new Date("2026-11-21T22:30:00.000Z")), "2026-11-21");
+  assert.equal(warsawDateKey(new Date("2026-11-21T23:30:00.000Z")), "2026-11-22");
+  assert.equal(warsawDateKey(new Date("2026-07-21T21:30:00.000Z")), "2026-07-21");
+  assert.equal(warsawDateKey(new Date("2026-07-21T22:30:00.000Z")), "2026-07-22");
+
+  const pool = Array.from({ length: 30 }, (_, index) => ({ id: index + 1 }));
+  const today = "2026-11-21";
+  const tomorrow = "2026-11-22";
+  assert.notEqual(nostalgiaDaySeed(today), nostalgiaDaySeed(tomorrow));
+  const page = dailyNostalgiaPick(pool, 12, today);
+  const again = dailyNostalgiaPick(pool, 12, today);
+  const home = dailyNostalgiaPick(pool, 12, today).slice(0, HOME_NOSTALGIA_COUNT);
+  const next = dailyNostalgiaPick(pool, 12, tomorrow);
+  assert.deepEqual(page.map((item) => item.id), again.map((item) => item.id));
+  assert.deepEqual(home.map((item) => item.id), page.slice(0, HOME_NOSTALGIA_COUNT).map((item) => item.id));
+  assert.equal(new Set(page.map((item) => item.id)).size, 12);
+  assert.notDeepEqual(page.map((item) => item.id), next.map((item) => item.id));
+  const shuffled = pool.slice().sort((a, b) => b.id - a.id);
+  assert.deepEqual(
+    dailyNostalgiaPick(shuffled, 12, today).map((item) => item.id),
+    page.map((item) => item.id),
+  );
+});
+
+test("the home shelf is the start of the daily nostalgia pool", () => {
   assert.equal(HOME_NOSTALGIA_COUNT, 6);
   assert.ok(HOME_NOSTALGIA_COUNT < 12);
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   const section = readFileSync(new URL("../app/components/HomeNostalgia.tsx", import.meta.url), "utf8");
   const data = readFileSync(new URL("./nostalgia-data.ts", import.meta.url), "utf8");
-  const specjale = home.indexOf('title="Specjale"');
-  const nostalgia = home.indexOf("<HomeNostalgia");
+  const page = readFileSync(new URL("../app/nostalgia/page.tsx", import.meta.url), "utf8");
   const formaty = home.indexOf('title="Formaty"');
-  assert.ok(specjale > 0 && nostalgia > specjale && formaty > nostalgia);
+  const nostalgia = home.indexOf("<HomeNostalgia");
+  const rankings = home.indexOf("<HomeRankings");
+  assert.ok(formaty > 0 && nostalgia > formaty && rankings > nostalgia);
   assert.match(section, /title="Nostalgia"/);
-  assert.match(section, /Specjale starsze ni\\u017c 5 lat/);
+  assert.match(section, /P\\u00f3\\u0142ka dnia/);
   assert.match(section, /linkHref="\/nostalgia"/);
   assert.match(section, /Zobacz wszystkie/);
   assert.match(section, /className="band"/);
   assert.match(section, /SectionHead/);
   assert.match(section, /<ScrollRow items=\{items\} \/>/);
   assert.doesNotMatch(section, /cookies\(/);
-  assert.match(data, /export async function getHomeNostalgia\(count = HOME_NOSTALGIA_COUNT\)/);
-  assert.match(data, /const pool = await nostalgiaPool\(\);\s*const shelf = pickNostalgiaShelf\(pool, \[\], count\);/);
+  assert.doesNotMatch(section, /Math\.random/);
+  assert.match(data, /export async function getHomeNostalgia\(count = HOME_NOSTALGIA_COUNT, now = new Date\(\)\)/);
+  assert.match(data, /dailyNostalgiaPick\(pool, count, warsawDateKey\(now\)\)/);
+  assert.match(data, /\.slice\(0, count\)/);
+  assert.doesNotMatch(data, /Math\.random/);
+  assert.doesNotMatch(data, /pickNostalgiaShelf\(pool, excludeIds/);
+  assert.match(page, /czasu warszawskiego/);
+  assert.doesNotMatch(page, /cookies\(/);
+  assert.doesNotMatch(page, /NostalgiaReroll/);
   assert.match(data, /\.gte\("duration_seconds", NOSTALGIA_MIN_SECONDS\)/);
   assert.match(data, /\.lt\("published_at", cutoff\)/);
 });
