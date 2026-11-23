@@ -57,6 +57,7 @@ export const config = {
     "/auth",
     "/auth/:path*",
     "/ulubione",
+    "/ulubione/:path*",
     "/konto",
     "/konto/:path*",
     "/zglos",

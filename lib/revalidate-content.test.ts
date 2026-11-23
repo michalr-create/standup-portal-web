@@ -26,7 +26,7 @@ test("category slugs map to the public listing routes", () => {
   const resolved = emptyResolved();
   resolved.categorySlugs = ["roast", "wywiady"];
 
-  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/nostalgia", "/rankingi", "/roast", "/ulubione", "/wywiady"]);
+  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/nostalgia", "/rankingi", "/roast", "/ulubione", "/ulubione/tresci", "/wywiady"]);
 });
 
 test("show ids revalidate the format page and the formaty index", () => {
@@ -60,6 +60,7 @@ test("show ids revalidate the format page and the formaty index", () => {
     "/specjale",
     "/standuper/abelard-giza",
     "/ulubione",
+    "/ulubione/tresci",
   ]);
 });
 
@@ -77,7 +78,7 @@ test("unknown slugs are dropped and a missing show slug still refreshes /formaty
   assert.deepEqual(refs.itemIds, [15]);
   assert.deepEqual(refs.showIds, [3]);
   assert.deepEqual(refs.categoryIds, [1]);
-  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/formaty", "/kulisy", "/nostalgia", "/rankingi", "/ulubione"]);
+  assert.deepEqual(assembleContentPaths(refs, resolved), ["/", "/formaty", "/kulisy", "/nostalgia", "/rankingi", "/ulubione", "/ulubione/tresci"]);
 });
 
 test("content_tags payload keeps removed tag ids and the parent item", () => {
@@ -105,6 +106,7 @@ test("content_tags payload keeps removed tag ids and the parent item", () => {
     "/standup",
     "/standuper/rafal-paczes",
     "/ulubione",
+    "/ulubione/tresci",
   ]);
 });
 

@@ -1,8 +1,14 @@
+import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "./category-browse.ts";
+
 /** How many favorite items the home row asks for. */
 export const FAVORITE_FEED_DEFAULT = 12;
-/** Account page "Pokaż wszystkie" cap. Each side is queried up to this, then merged. */
+/** Home row and the account carousel. The full catalog is /ulubione/tresci. */
 export const FAVORITE_FEED_MAX = 48;
-/** Collapsed "Grają wkrótce" and "Najnowsze treści w Ulubione". */
+/** Safety cap for one side of the /ulubione/tresci catalog scan. */
+export const FAVORITE_CATALOG_CAP = 4000;
+/** Page size of that scan. The public grid still pages at 24. */
+export const FAVORITE_CATALOG_PAGE = 1000;
+/** Nearest rows in "Grają wkrótce w moim mieście" before the link to /trasy. */
 export const ACCOUNT_SECTION_PREVIEW = 5;
 /** Home "Do obejrzenia" row. Same cap as the other saved home row. */
 export const WATCH_LATER_HOME_LIMIT = FAVORITE_FEED_DEFAULT;
@@ -97,4 +103,20 @@ export function mergeFavoriteFeed<T extends DatedFeedItem>(
     return delta !== 0 ? delta : b.id - a.id;
   });
   return merged.slice(0, cap);
+}
+
+/**
+ * One page of every favorite person's and show's videos, newest publication first.
+ * A video tagged to two favorites stays once. A page past the end clamps to the last page.
+ */
+export function pageFavoriteFeed<T extends DatedFeedItem>(
+  groups: readonly (readonly T[])[],
+  page: number,
+  pageSize = PUBLIC_LISTING_PAGE_SIZE,
+): { items: T[]; total: number; page: number } {
+  const size = Number.isFinite(pageSize) && pageSize >= 1 ? Math.floor(pageSize) : PUBLIC_LISTING_PAGE_SIZE;
+  const merged = mergeFavoriteFeed(groups, Number.MAX_SAFE_INTEGER);
+  const clamped = clampListingPage(Number.isFinite(page) ? page : 1, merged.length, size);
+  const start = (clamped.page - 1) * size;
+  return { items: merged.slice(start, start + size), total: merged.length, page: clamped.page };
 }

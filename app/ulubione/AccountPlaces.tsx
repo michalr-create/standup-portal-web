@@ -84,7 +84,7 @@ export default function AccountPlaces({ onCityChange }: { onCityChange?: (city: 
 
   return (
     <div className="mb-10 flex flex-col gap-8">
-      <section aria-labelledby="moje-miasto">
+      <section aria-labelledby="moje-miasto" className="scroll-mt-28">
         <h2 id="moje-miasto" className="font-black mb-2" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
           Moje miasto
           <span className="dot-accent">.</span>

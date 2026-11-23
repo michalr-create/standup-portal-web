@@ -46,18 +46,27 @@ test("favorites API adds upcoming events for the slugs it already receives", () 
   assert.doesNotMatch(cityFn, /SERVICE/);
 });
 
-test("ulubione renders tours only from the stored person list", () => {
+test("ulubione city shows are the saved city, with favorites only when no city is set", () => {
   const page = readFileSync(new URL("../app/ulubione/page.tsx", import.meta.url), "utf8");
   const section = readFileSync(new URL("../app/ulubione/FavoriteTours.tsx", import.meta.url), "utf8");
   assert.match(page, /personSlugs\.length > 0 \|\| homeCity/);
   assert.match(page, /eventsForFavoritePeople\(data\.upcoming_events, personSlugs\)/);
-  assert.match(page, /mergeAccountUpcoming/);
-  assert.match(page, /onCityChange=\{setHomeCity\}/);
-  assert.match(page, /city: homeCity/);
-  assert.match(section, /Grają wkrótce/);
+  assert.match(page, /selectAccountUpcoming\(data\.city_events, favoriteEvents, homeCity\)/);
+  assert.doesNotMatch(page, /mergeAccountUpcoming\(\[/);
+  assert.match(page, /setHomeCity\(city\)/);
+  assert.match(page, /setCityKnown\(true\)/);
+  assert.match(page, /const requestedCity = homeCity/);
+  assert.match(page, /city: requestedCity/);
+  assert.match(page, /city=\{homeCity\}/);
+  assert.match(page, /cityKnown=\{cityKnown\}/);
+  assert.match(section, /Grają wkrótce w moim mieście/);
   assert.match(section, /Brak ogłoszonych dat u ulubionych/);
+  assert.match(section, /Nie ma ogłoszonych terminów/);
   assert.match(section, /"\/trasy"/);
+  assert.match(section, /trasyHref\(\{ miasto: city \}\)/);
   assert.match(section, /Pokaż wszystkie/);
+  assert.match(section, /#moje-miasto/);
+  assert.match(section, /Ustaw miasto/);
   assert.match(section, /ACCOUNT_SECTION_PREVIEW/);
   assert.match(section, /eventPeople\(event\)/);
   assert.match(section, /standuperProfileHref\(person\.slug\)/);

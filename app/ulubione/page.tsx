@@ -6,6 +6,8 @@ import HeartButton from "@/app/components/HeartButton";
 import SignOutButton from "@/app/components/SignOutButton";
 import VideoModal from "@/app/components/VideoModal";
 import CardByline from "@/app/components/CardByline";
+import ScrollRow from "@/app/components/ScrollRow";
+import SectionHead from "@/app/components/SectionHead";
 import { useLibrary } from "@/app/components/LibraryProvider";
 import WatchLaterButton from "@/app/components/WatchLaterButton";
 import AdminMaterialActions from "@/app/components/AdminMaterialActions";
@@ -19,8 +21,8 @@ import ReportForm from "@/app/zglos/ReportForm";
 import AccountPlaces from "./AccountPlaces";
 import FavoriteTours from "./FavoriteTours";
 import PushNotifications from "./PushNotifications";
-import { eventsForFavoritePeople, mergeAccountUpcoming, type FavoriteUpcomingEvent } from "@/lib/events";
-import { ACCOUNT_SECTION_PREVIEW, FAVORITE_FEED_MAX, accountPreview } from "@/lib/favorite-feed";
+import { eventsForFavoritePeople, selectAccountUpcoming, type FavoriteUpcomingEvent } from "@/lib/events";
+import { FAVORITE_FEED_MAX } from "@/lib/favorite-feed";
 import { MISSING_REPORT_KINDS } from "@/lib/content-report";
 
 const logoutClass =
@@ -43,15 +45,15 @@ export default function UlubionePage() {
   const showKey = showSlugs.join("\n");
   const laterKey = library.later.join(",");
   const [homeCity, setHomeCity] = useState("");
+  const [cityKnown, setCityKnown] = useState(false);
+  const [eventsCity, setEventsCity] = useState<string | null>(null);
   const [data, setData] = useState<ApiResponse>({ items: [], people: [], shows: [], upcoming_events: [], city_events: [] });
   const [laterItems, setLaterItems] = useState<Item[]>([]);
   const [laterLoadedKey, setLaterLoadedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [latestExpandedFor, setLatestExpandedFor] = useState<string | null>(null);
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
   const { watched, markWatched } = useWatchHistory();
   const slugKeyRef = useRef<string | null>(null);
-  const cityRef = useRef(homeCity);
 
   const handleClick = (item: Item) => {
     const target = resolveContentOpen(item);
@@ -70,22 +72,21 @@ export default function UlubionePage() {
 
     const slugsChanged = slugKeyRef.current !== `${personKey}\n${showKey}`;
     slugKeyRef.current = `${personKey}\n${showKey}`;
-    const cityChanged = cityRef.current !== homeCity;
-    cityRef.current = homeCity;
+    const requestedCity = homeCity;
 
-    if (ps.length === 0 && ss.length === 0 && !homeCity) {
+    if (ps.length === 0 && ss.length === 0 && !requestedCity) {
       setData({ items: [], people: [], shows: [], upcoming_events: [], city_events: [] });
+      setEventsCity("");
       setLoading(false);
       return;
     }
 
     let cancelled = false;
     if (slugsChanged) setLoading(true);
-    if (cityChanged) setData((current) => ({ ...current, city_events: [] }));
     fetch("/api/favorites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ person_slugs: ps, show_slugs: ss, city: homeCity, limit: FAVORITE_FEED_MAX }),
+      body: JSON.stringify({ person_slugs: ps, show_slugs: ss, city: requestedCity, limit: FAVORITE_FEED_MAX }),
     })
       .then((r) => r.json())
       .then((d: ApiResponse) => {
@@ -97,10 +98,14 @@ export default function UlubionePage() {
           upcoming_events: Array.isArray(d?.upcoming_events) ? d.upcoming_events : [],
           city_events: Array.isArray(d?.city_events) ? d.city_events : [],
         });
+        setEventsCity(requestedCity);
         setLoading(false);
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setEventsCity(requestedCity);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -139,13 +144,9 @@ export default function UlubionePage() {
 
   const hasAny = personSlugs.length > 0 || showSlugs.length > 0;
   const hasLater = library.later.length > 0;
-  const upcomingEvents = mergeAccountUpcoming([
-    eventsForFavoritePeople(data.upcoming_events, personSlugs),
-    data.city_events,
-  ]);
-  const latestSignature = data.items.map((item) => item.id).join(",");
-  const showAllLatest = latestExpandedFor === latestSignature;
-  const latestVisible = accountPreview(data.items, showAllLatest);
+  const favoriteEvents = eventsForFavoritePeople(data.upcoming_events, personSlugs);
+  const upcomingEvents = selectAccountUpcoming(data.city_events, favoriteEvents, homeCity);
+  const toursLoading = homeCity !== "" && eventsCity !== homeCity;
 
   return (
     <>
@@ -183,7 +184,12 @@ export default function UlubionePage() {
           )}
         </header>
 
-        <AccountPlaces onCityChange={setHomeCity} />
+        <AccountPlaces
+          onCityChange={(city) => {
+            setHomeCity(city);
+            setCityKnown(true);
+          }}
+        />
         <PushNotifications />
 
         {library.ready && (hasAny || hasLater) && (
@@ -247,7 +253,12 @@ export default function UlubionePage() {
         )}
 
         {!hasAny && Boolean(homeCity) && (
-          <FavoriteTours loading={loading} events={upcomingEvents} city={homeCity} />
+          <FavoriteTours
+            loading={toursLoading || loading}
+            events={toursLoading ? [] : upcomingEvents}
+            city={homeCity}
+            cityKnown={cityKnown}
+          />
         )}
 
         {!hasAny && !hasLater && !loading && library.ready && (
@@ -306,7 +317,12 @@ export default function UlubionePage() {
             )}
 
             {(personSlugs.length > 0 || homeCity) && (
-              <FavoriteTours loading={loading} events={upcomingEvents} city={homeCity} />
+              <FavoriteTours
+                loading={toursLoading || loading}
+                events={toursLoading ? [] : upcomingEvents}
+                city={homeCity}
+                cityKnown={cityKnown}
+              />
             )}
 
             {/* Obserwowane formaty */}
@@ -339,11 +355,13 @@ export default function UlubionePage() {
               </section>
             )}
 
-            {/* Najnowsze treści */}
-            <section>
-              <h2 className="font-black mb-6" style={{ fontSize: "18px", letterSpacing: "-.01em" }}>
-                Najnowsze treści w Ulubione
-              </h2>
+            <section aria-labelledby="najnowsze-ulubione">
+              <SectionHead
+                titleId="najnowsze-ulubione"
+                title="Najnowsze treści w Ulubione"
+                linkHref="/ulubione/tresci"
+                linkText={"Pokaż wszystkie \u2192"}
+              />
               {loading ? (
                 <div className="text-sm" style={{ color: "var(--paper-mute)" }}>
                   Ładowanie…
@@ -353,72 +371,7 @@ export default function UlubionePage() {
                   Brak treści dla wybranych ulubionych.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {latestVisible.map((item) => {
-                    const isWatched = watched.has(item.url);
-                    return (
-                      <article key={item.id} className="group vcard relative text-left w-full min-w-0">
-                        <ContentCardAction
-                          isPaid={item.is_paid}
-                          url={item.url}
-                          onOpen={() => handleClick(item)}
-                        >
-                          <div
-                            className="overflow-hidden relative"
-                            style={{
-                              aspectRatio: "16/10",
-                              borderRadius: "14px",
-                              border: "1px solid var(--line)",
-                              background: "var(--ink-3)",
-                            }}
-                          >
-                            {item.thumbnail_url && (
-                              <img
-                                src={item.thumbnail_url}
-                                alt={item.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                style={{ opacity: isWatched ? 0.7 : 1 }}
-                              />
-                            )}
-                            <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
-                            {item.is_paid && <PaidBadge url={item.url} />}
-                            {isWatched && (
-                              <div
-                                className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center"
-                                style={{ background: "var(--coral)", fontSize: "12px", color: "#fff", fontWeight: 700 }}
-                              >
-                                {"✓"}
-                              </div>
-                            )}
-                            {!item.is_paid && (
-                              <div className="play-overlay"><div className="play-btn" /></div>
-                            )}
-                          </div>
-                          <div className="pt-3 px-0.5">
-                            <h4 className="font-extrabold leading-tight line-clamp-2" style={{ fontSize: "16px", letterSpacing: "-.01em" }}>
-                              {item.title}
-                            </h4>
-                          </div>
-                        </ContentCardAction>
-                        <div className="mt-2">
-                          <WatchLaterButton itemId={item.id} title={item.title} />
-                        </div>
-                        <AdminMaterialActions itemId={item.id} />
-                        <CardByline item={item} />
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-              {!loading && data.items.length > ACCOUNT_SECTION_PREVIEW && !showAllLatest && (
-                <button
-                  type="button"
-                  className="mt-4 inline-flex min-h-11 items-center text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
-                  style={{ color: "var(--coral)", background: "transparent", border: 0 }}
-                  onClick={() => setLatestExpandedFor(latestSignature)}
-                >
-                  Pokaż wszystkie
-                </button>
+                <ScrollRow items={data.items} />
               )}
             </section>
           </>
