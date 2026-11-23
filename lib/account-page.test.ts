@@ -27,7 +27,7 @@ test("the account collapses tours and the favorite feed scrolls like the home ro
   assert.match(page, /Najnowsze treści w Ulubione/);
   assert.match(page, /Pokaż wszystkie/);
   assert.match(page, /<SectionHead/);
-  assert.match(page, /linkHref="\/ulubione"/);
+  assert.match(page, /linkHref="\/ulubione\/tresci"/);
   assert.match(page, /<ScrollRow items=\{data\.items\} \/>/);
   assert.match(page, /id="do-obejrzenia"/);
   assert.match(page, /Do obejrzenia/);

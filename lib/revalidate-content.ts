@@ -221,6 +221,7 @@ export function assembleContentPaths(refs: RevalidateRefs, resolved: ResolvedSlu
   }
   if (tagSlugs.has("special")) paths.add("/specjale");
   paths.add("/ulubione");
+  paths.add("/ulubione/tresci");
   paths.add("/rankingi");
   paths.add("/nostalgia");
 

@@ -359,7 +359,7 @@ export default function UlubionePage() {
               <SectionHead
                 titleId="najnowsze-ulubione"
                 title="Najnowsze treści w Ulubione"
-                linkHref="/ulubione"
+                linkHref="/ulubione/tresci"
                 linkText={"Pokaż wszystkie \u2192"}
               />
               {loading ? (
