@@ -2,7 +2,7 @@
 export const FAVORITE_FEED_DEFAULT = 12;
 /** Account page "Pokaż wszystkie" cap. Each side is queried up to this, then merged. */
 export const FAVORITE_FEED_MAX = 48;
-/** Collapsed "Grają wkrótce" and "Najnowsze treści w Ulubione". */
+/** Nearest rows in "Grają wkrótce w moim mieście" before the link to /trasy. */
 export const ACCOUNT_SECTION_PREVIEW = 5;
 /** Home "Do obejrzenia" row. Same cap as the other saved home row. */
 export const WATCH_LATER_HOME_LIMIT = FAVORITE_FEED_DEFAULT;

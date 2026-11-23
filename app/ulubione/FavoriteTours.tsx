@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { ACCOUNT_SECTION_PREVIEW, accountPreview } from "@/lib/favorite-feed";
 import {
@@ -11,6 +10,9 @@ import {
   type FavoriteUpcomingEvent,
 } from "@/lib/events";
 import { paidExternalUrl } from "@/lib/youtube";
+
+const focusRing =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
 
 function ExternalIcon() {
   return (
@@ -59,39 +61,70 @@ export default function FavoriteTours({
   loading,
   events,
   city = "",
+  cityKnown = false,
 }: {
   loading: boolean;
   events: FavoriteUpcomingEvent[];
   city?: string;
+  /** False until the account has read the saved city, so the hint does not flash. */
+  cityKnown?: boolean;
 }) {
-  const signature = events.map((event) => event.id).join(",");
-  const [expandedFor, setExpandedFor] = useState<string | null>(null);
-  const showAll = expandedFor === signature;
-  const visible = accountPreview(events, showAll);
+  const visible = accountPreview(events, false, ACCOUNT_SECTION_PREVIEW);
   const showList = events.length > 0;
   const showEmpty = !loading && !showList;
-  const toursHref = city ? `/trasy?miasto=${encodeURIComponent(city)}` : "/trasy";
+  const toursHref = city ? trasyHref({ miasto: city }) : "/trasy";
+  const showAll = Boolean(city) || showList;
 
   return (
-    <section className="mb-10" aria-labelledby="graja-wkrotce" aria-busy={loading}>
-      <h2
-        id="graja-wkrotce"
-        className="font-black mb-4"
-        style={{ fontSize: "18px", letterSpacing: "-.01em" }}
-      >
-        Grają wkrótce
-        <span className="dot-accent">.</span>
-      </h2>
+    <section className="mb-10 scroll-mt-28" aria-labelledby="graja-wkrotce" aria-busy={loading}>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h2
+            id="graja-wkrotce"
+            className="font-black m-0"
+            style={{ fontSize: "18px", letterSpacing: "-.01em" }}
+          >
+            Grają wkrótce w moim mieście
+            <span className="dot-accent">.</span>
+          </h2>
+          {city ? (
+            <p className="mono m-0 mt-1 text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".1em" }}>
+              {city}
+            </p>
+          ) : null}
+        </div>
+        {showAll && (
+          <Link
+            href={toursHref}
+            className={`inline-flex min-h-11 shrink-0 items-center text-sm font-bold ${focusRing}`}
+            style={{ color: "var(--coral)" }}
+          >
+            Pokaż wszystkie
+          </Link>
+        )}
+      </div>
+      {cityKnown && !city && (
+        <p className="m-0 mb-4 text-sm" style={{ color: "var(--paper-dim)" }}>
+          <Link href="#moje-miasto" className={`font-bold ${focusRing}`} style={{ color: "var(--coral)" }}>
+            Ustaw miasto
+          </Link>
+          , żeby zobaczyć najbliższe występy u siebie.
+        </p>
+      )}
       {loading && !showList && (
         <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>
           Ładowanie…
         </p>
       )}
-      {showEmpty && (
+      {showEmpty && city && (
         <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>
-          Brak ogłoszonych dat u ulubionych.
-          {city ? " W wybranym mieście też nie ma najbliższego terminu." : null}{" "}
-          <Link href={toursHref} className="font-bold" style={{ color: "var(--coral)" }}>
+          Nie ma ogłoszonych terminów.
+        </p>
+      )}
+      {showEmpty && !city && (
+        <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>
+          Brak ogłoszonych dat u ulubionych.{" "}
+          <Link href="/trasy" className={`font-bold ${focusRing}`} style={{ color: "var(--coral)" }}>
             Zobacz trasy
           </Link>
         </p>
@@ -114,7 +147,7 @@ export default function FavoriteTours({
                         {href ? (
                           <Link
                             href={href}
-                            className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                            className={`transition-colors hover:text-white ${focusRing}`}
                           >
                             {person.name}
                           </Link>
@@ -141,7 +174,7 @@ export default function FavoriteTours({
                 <TicketCta event={event} />
                 <Link
                   href={trasyHref({ osoba: event.person.slug })}
-                  className="inline-flex min-h-11 items-center text-sm font-bold transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                  className={`inline-flex min-h-11 items-center text-sm font-bold transition-colors hover:text-white ${focusRing}`}
                   style={{ color: "var(--paper-dim)" }}
                 >
                   więcej tras
@@ -150,16 +183,6 @@ export default function FavoriteTours({
             </li>
           ))}
         </ul>
-      )}
-      {events.length > ACCOUNT_SECTION_PREVIEW && !showAll && (
-        <button
-          type="button"
-          className="mt-4 inline-flex min-h-11 items-center text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
-          style={{ color: "var(--coral)", background: "transparent", border: 0 }}
-          onClick={() => setExpandedFor(signature)}
-        >
-          Pokaż wszystkie
-        </button>
       )}
     </section>
   );

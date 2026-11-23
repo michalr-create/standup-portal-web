@@ -744,7 +744,7 @@ export function eventsForFavoritePeople<T extends FavoriteUpcomingEvent>(
   return matched.slice(0, favoriteResultLimit(limit));
 }
 
-/** Favorite dates plus dates in the saved city. Same id once, soonest first. */
+/** Same id once, soonest first. Drops past rows and anything not on sale or sold out. */
 export function mergeAccountUpcoming<T extends FavoriteUpcomingEvent>(
   groups: readonly (readonly T[])[],
   now = new Date(),
@@ -767,6 +767,35 @@ export function mergeAccountUpcoming<T extends FavoriteUpcomingEvent>(
     return delta !== 0 ? delta : a.id - b.id;
   });
   return matched;
+}
+
+function accountCityKey(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("pl");
+}
+
+/**
+ * "Grają wkrótce w moim mieście".
+ *
+ * A saved city lists every upcoming show in that city, soonest first.
+ * Favourites do not jump the queue: a show tomorrow stays ahead of a
+ * favourite's show next month, and a favourite playing in another city stays out.
+ * That is the date order "najbliższe" asks for.
+ *
+ * No saved city: upcoming shows of favourite people, any city, soonest first.
+ * The screen then links to the city setting.
+ */
+export function selectAccountUpcoming<T extends FavoriteUpcomingEvent>(
+  cityEvents: readonly T[],
+  favoriteEvents: readonly T[],
+  city: string,
+  now = new Date(),
+): T[] {
+  const saved = accountCityKey(city);
+  if (saved) {
+    const inCity = cityEvents.filter((event) => event != null && accountCityKey(event.city) === saved);
+    return mergeAccountUpcoming([inCity], now);
+  }
+  return mergeAccountUpcoming([favoriteEvents], now);
 }
 
 export function pickFavoriteUpcomingEvents(

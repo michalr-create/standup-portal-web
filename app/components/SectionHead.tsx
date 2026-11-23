@@ -5,16 +5,18 @@ export default function SectionHead({
   sub,
   linkHref,
   linkText,
+  titleId,
 }: {
   title: string;
   sub?: string;
   linkHref?: string;
   linkText?: string;
+  titleId?: string;
 }) {
   return (
     <div className="flex items-end justify-between mb-5 md:mb-6 gap-6 flex-wrap">
       <div className="flex items-baseline gap-4 flex-wrap">
-        <h2 className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}>
+        <h2 id={titleId} className="font-black m-0 leading-none" style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}>
           {title}<span className="dot-accent">.</span>
         </h2>
         {sub && (

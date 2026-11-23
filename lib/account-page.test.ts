@@ -23,9 +23,12 @@ test("followed people and shows still link to the directories", () => {
   assert.match(page, /Dodaj format/);
 });
 
-test("the account collapses tours and the favorite feed, then offers the rest", () => {
+test("the account collapses tours and the favorite feed scrolls like the home rows", () => {
   assert.match(page, /Najnowsze treści w Ulubione/);
   assert.match(page, /Pokaż wszystkie/);
+  assert.match(page, /<SectionHead/);
+  assert.match(page, /linkHref="\/ulubione"/);
+  assert.match(page, /<ScrollRow items=\{data\.items\} \/>/);
   assert.match(page, /id="do-obejrzenia"/);
   assert.match(page, /Do obejrzenia/);
   assert.doesNotMatch(page, /Do obejrzenia później/);
