@@ -20,8 +20,11 @@ export const FAVORITE_UPCOMING_LIMIT = 12;
 export const FAVORITE_UPCOMING_SCAN_LIMIT = FAVORITE_UPCOMING_LIMIT * 4;
 export const FAVORITE_PERSON_SLUG_CAP = 100;
 
-/** Nearest upcoming dates on a standuper profile. The rest live on /trasy. */
-export const PROFILE_TOUR_LIMIT = 8;
+/**
+ * Upcoming dates counted for the profile "Trasy (n)" button.
+ * One comedian's rows, merged into shows. The list itself lives on /trasy.
+ */
+export const PROFILE_TOUR_COUNT_CAP = 200;
 
 export const TICKET_PROVIDERS = [
   "kupbilecik",

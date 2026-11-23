@@ -6,7 +6,7 @@ import {
   FAVORITE_UPCOMING_SCAN_LIMIT,
   favoritePersonSlugs,
   peopleFromEventRow,
-  PROFILE_TOUR_LIMIT,
+  PROFILE_TOUR_COUNT_CAP,
   hasActiveTrasyFilters,
   LISTED_EVENT_STATUSES,
   mergeTourEvents,
@@ -2194,25 +2194,25 @@ export async function getUpcomingEventsInCity(
   }
 }
 
-// Najbliższe terminy jednego standupera (profil). Dopasowanie po person_id
-// albo event_people, z limitem zanim PostgREST zwróci pełne wiersze — nie
-// korzysta z listingu /trasy, który dociąga facety całego katalogu.
-export async function getUpcomingEventsForPerson(
+// Liczba terminów jednego standupera na przycisk „Trasy (n)”.
+// Dopasowanie po person_id albo event_people, potem scalenie wspólnych
+// występów (ten sam bilet + godzina to jeden show). Bez facety całego katalogu.
+export async function countUpcomingEventsForPerson(
   personId: number,
   now = new Date(),
-): Promise<TourEvent[]> {
-  if (!Number.isInteger(personId) || personId <= 0) return [];
+): Promise<number> {
+  if (!Number.isInteger(personId) || personId <= 0) return 0;
 
   try {
-    const rows = await listedRowsForPersonMatch(now, PROFILE_TOUR_LIMIT, { personId });
+    const rows = await listedRowsForPersonMatch(now, PROFILE_TOUR_COUNT_CAP, { personId });
     if (!rows) {
-      console.error("Błąd pobierania trasy profilu");
-      return [];
+      console.error("Błąd liczenia trasy profilu");
+      return 0;
     }
-    return withCoPerformers(rowsToTourEvents(rows), now);
+    return mergeTourEvents(rowsToTourEvents(rows)).length;
   } catch (error) {
-    console.error("Błąd pobierania trasy profilu:", error);
-    return [];
+    console.error("Błąd liczenia trasy profilu:", error);
+    return 0;
   }
 }
 

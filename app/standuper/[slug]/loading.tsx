@@ -23,12 +23,15 @@ export default function StanduperLoading() {
           <Bone className="mt-4 h-4 w-full max-w-2xl" />
           <Bone className="mt-2 h-4 w-2/3 max-w-xl" />
         </header>
-        <Bone className="mb-6 h-8 w-40" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          <Card />
-          <Card />
-          <Card />
-          <Card />
+        <Bone className="mt-6 h-12 w-full max-w-xs rounded-full" />
+        <Bone className="mt-10 mb-6 h-8 w-40" />
+        <div className="flex gap-5 overflow-hidden">
+          <div className="w-72 shrink-0">
+            <Card />
+          </div>
+          <div className="w-72 shrink-0">
+            <Card />
+          </div>
         </div>
       </div>
     </div>
