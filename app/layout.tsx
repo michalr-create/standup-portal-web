@@ -2,7 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getShowsWithLatestEpisode, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
-import { DRAWER_FORMAT_LIMIT, FOOTER_FORMAT_LIMIT, footerShows } from "@/lib/home-shows";
+import { FOOTER_FORMAT_LIMIT, footerShows } from "@/lib/home-shows";
 import { peopleByActivity } from "@/lib/standuperzy-directory";
 import MobileDrawer from "./components/MobileDrawer";
 import InstallButton, { InstallBand, InstallProvider } from "./components/InstallButton";
@@ -44,13 +44,11 @@ export default async function RootLayout({
     getApprovedItemCountsByPersonId(),
   ]);
   const footerPeople = peopleByActivity(people, itemCounts, 8);
-  const drawerShows = footerShows(showActivity, DRAWER_FORMAT_LIMIT);
   const footerFormatShows = footerShows(showActivity, FOOTER_FORMAT_LIMIT);
 
   // Desktop nav includes Open mic. The row scrolls inside the bar so it is not
   // clipped (the nav itself is overflow-x-clip). Trasy stays off that bar
-  // (UX-11): the drawer inserts it before Ulubione, and the hero and footer
-  // link to /trasy as well. The drawer therefore lists both Trasy and Open mic.
+  // (UX-11); the burger menu and the footer link to /trasy.
   const navLinks = [
     { href: "/", label: "Start" },
     { href: "/standup", label: "Standup" },
@@ -121,11 +119,7 @@ export default async function RootLayout({
                 <AdminNavLink />
                 <HeaderSearchLink />
                 <AuthStatus />
-                <MobileDrawer
-                  navLinks={navLinks}
-                  tourLink={{ href: "/trasy", label: "Trasy" }}
-                  shows={drawerShows.map(({ id, name, slug }) => ({ id, name, slug }))}
-                />
+                <MobileDrawer />
               </div>
             </div>
             <InstallBand />

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
-  DRAWER_FORMAT_LIMIT,
   FOOTER_FORMAT_LIMIT,
   footerShows,
   selectHomeFormats,
@@ -101,26 +100,6 @@ test("footer shows are the six newest episodes inside the home window", () => {
   );
 });
 
-test("drawer shows use the same window and keep eight newest", () => {
-  assert.equal(DRAWER_FORMAT_LIMIT, 8);
-  const sections = Array.from({ length: 10 }, (_, i) =>
-    row(`s${i}`, new Date(Date.UTC(2026, 9, 20 - i, 12)).toISOString()),
-  );
-
-  const drawer = footerShows(sections, DRAWER_FORMAT_LIMIT, { now });
-  const footer = footerShows(sections, FOOTER_FORMAT_LIMIT, { now });
-
-  assert.equal(drawer.length, 8);
-  assert.deepEqual(
-    drawer.map((section) => section.id),
-    ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"],
-  );
-  assert.deepEqual(
-    footer.map((section) => section.id),
-    drawer.slice(0, FOOTER_FORMAT_LIMIT).map((section) => section.id),
-  );
-});
-
 test("footer helper does not reorder the input list", () => {
   const sections = [
     row("b", "2026-08-01T00:00:00.000Z"),
@@ -142,8 +121,8 @@ test("layout lists active formats by episode date; catalog page stays untouched"
   const data = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
 
   assert.match(layout, /getShowsWithLatestEpisode/);
-  assert.match(layout, /footerShows\(showActivity, DRAWER_FORMAT_LIMIT\)/);
   assert.match(layout, /footerShows\(showActivity, FOOTER_FORMAT_LIMIT\)/);
+  assert.doesNotMatch(layout, /DRAWER_FORMAT_LIMIT|drawerShows/);
   assert.match(layout, /Wszystkie formaty/);
   assert.doesNotMatch(layout, /getAllShows\(/);
   assert.doesNotMatch(layout, /shows\.slice\(0,\s*[68]\)/);

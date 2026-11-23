@@ -5,29 +5,9 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { containTab } from "@/lib/focus-trap";
+import { DRAWER_PRIMARY_LINKS, DRAWER_SECONDARY_LINKS, type DrawerLink } from "@/lib/drawer-nav";
 import AuthStatus from "./AuthStatus";
 import AdminNavLink from "./AdminNavLink";
-
-type NavLink = { href: string; label: string };
-
-type Props = {
-  navLinks: NavLink[];
-  tourLink: NavLink;
-  shows: { id: number; name: string; slug: string }[];
-};
-
-function withTourLink(navLinks: NavLink[], tourLink: NavLink): NavLink[] {
-  if (navLinks.some((link) => link.href === tourLink.href)) return navLinks;
-  const favoritesIndex = navLinks.findIndex((link) => link.href === "/ulubione");
-  if (favoritesIndex === -1) return [...navLinks, tourLink];
-  return [
-    ...navLinks.slice(0, favoritesIndex),
-    tourLink,
-    ...navLinks.slice(favoritesIndex),
-  ];
-}
-
-const MAX_VISIBLE_SHOWS = 8;
 
 function HeartIcon() {
   return (
@@ -48,21 +28,36 @@ function HeartIcon() {
   );
 }
 
-export default function MobileDrawer({ navLinks, tourLink, shows }: Props) {
+function DrawerLinks({ links, onNavigate }: { links: readonly DrawerLink[]; onNavigate: () => void }) {
+  return (
+    <ul className="list-none p-0 m-0">
+      {links.map((link) => (
+        <li key={link.href}>
+          <Link
+            href={link.href}
+            onClick={onNavigate}
+            className="flex items-center gap-2 min-h-11 px-3 py-3 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
+            style={{ color: "var(--paper)" }}
+          >
+            {link.href === "/ulubione/tresci" && <HeartIcon />}
+            {link.label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function MobileDrawer() {
   const [open, setOpen] = useState(false);
-  const [showsOpen, setShowsOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const router = useRouter();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
-  const showsPanelId = useId();
-  const links = withTourLink(navLinks, tourLink);
-  const visibleShows = shows.slice(0, MAX_VISIBLE_SHOWS);
 
   const close = useCallback(() => {
     setOpen(false);
-    setShowsOpen(false);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -185,103 +180,19 @@ export default function MobileDrawer({ navLinks, tourLink, shows }: Props) {
               />
             </form>
 
-            <div className="mb-2" style={{ borderBottom: "1px solid var(--line)" }}>
-              <AuthStatus variant="drawer" onNavigate={close} />
-              <AdminNavLink variant="drawer" onNavigate={close} />
-            </div>
-
             <nav aria-label="G\u0142\u00f3wne">
-              <ul className="list-none p-0 m-0">
-                {links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      onClick={close}
-                      className="flex items-center gap-2 min-h-11 px-3 py-3 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
-                      style={{ color: "var(--paper)" }}
-                    >
-                      {link.href === "/ulubione" && <HeartIcon />}
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <DrawerLinks links={DRAWER_PRIMARY_LINKS} onNavigate={close} />
+              <hr
+                className="my-3 border-0"
+                style={{ borderTop: "1px solid var(--line)" }}
+              />
+              <DrawerLinks links={DRAWER_SECONDARY_LINKS} onNavigate={close} />
             </nav>
 
-            <div
-              className="mt-4 pt-4 space-y-4"
-              style={{ borderTop: "1px solid var(--line)" }}
-            >
-              <div>
-                <button
-                  type="button"
-                  aria-expanded={showsOpen}
-                  aria-controls={showsPanelId}
-                  onClick={() => setShowsOpen((value) => !value)}
-                  className="flex w-full min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-3 text-sm font-semibold hover:bg-[var(--ink-3)]"
-                  style={{ color: "var(--paper-dim)" }}
-                >
-                  <span>Formaty</span>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                    className={"shrink-0 transition-transform" + (showsOpen ? " rotate-180" : "")}
-                    style={{ color: "var(--paper-mute)" }}
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
-                {showsOpen && (
-                  <ul id={showsPanelId} className="list-none p-0 m-0 pb-1">
-                    {visibleShows.map((show) => (
-                      <li key={show.id}>
-                        <Link
-                          href={"/format/" + show.slug}
-                          onClick={close}
-                          className="flex items-center min-h-11 px-3 py-3 rounded-lg text-sm transition-colors hover:bg-[var(--ink-3)]"
-                          style={{ color: "var(--paper-dim)" }}
-                        >
-                          {show.name}
-                        </Link>
-                      </li>
-                    ))}
-                    <li>
-                      <Link
-                        href="/formaty"
-                        onClick={close}
-                        className="flex items-center min-h-11 px-3 py-3 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
-                        style={{ color: "var(--paper)" }}
-                      >
-                        {"Wszystkie formaty \u2192"}
-                      </Link>
-                    </li>
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <h4
-                  className="mono text-xs uppercase mb-1 px-3"
-                  style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
-                >
-                  Osoby
-                </h4>
-                <Link
-                  href="/standuperzy"
-                  onClick={close}
-                  className="flex items-center min-h-11 px-3 py-3 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--ink-3)]"
-                  style={{ color: "var(--paper)" }}
-                >
-                  {"Wszyscy standuperzy \u2192"}
-                </Link>
-              </div>
+            <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }}>
+              <AuthStatus variant="drawer" onNavigate={close} />
+              <AdminNavLink variant="drawer" onNavigate={close} />
+              <AuthStatus variant="drawer" slot="sign-out" onNavigate={close} />
             </div>
           </div>
         </div>,
