@@ -318,10 +318,13 @@ test("open mics stay off tours, and the public query hides the contact email", (
 
   const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
   assert.match(layout, /href: "\/open-mic", label: "Open mic"/);
-  assert.match(layout, /tourLink=\{\{ href: "\/trasy", label: "Trasy" \}\}/);
+  const nav = readFileSync(new URL("./drawer-nav.ts", import.meta.url), "utf8");
+  const trasyAt = nav.indexOf('href: "/trasy"');
+  const micAt = nav.indexOf('href: "/open-mic"');
+  assert.ok(trasyAt !== -1 && micAt > trasyAt);
   const drawer = readFileSync(new URL("../app/components/MobileDrawer.tsx", import.meta.url), "utf8");
-  assert.match(drawer, /function withTourLink/);
-  assert.match(drawer, /links\.map/);
+  assert.match(drawer, /DRAWER_PRIMARY_LINKS/);
+  assert.doesNotMatch(drawer, /function withTourLink/);
 
   const sitemap = readFileSync(new URL("../app/sitemap.ts", import.meta.url), "utf8");
   assert.match(sitemap, /\/open-mic\/dodaj/);

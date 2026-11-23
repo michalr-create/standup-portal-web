@@ -22,9 +22,12 @@ function ZalogujLink({ className, onNavigate }: { className: string; onNavigate?
 
 export default function AuthStatus({
   variant = "nav",
+  slot = "account",
   onNavigate,
 }: {
   variant?: Variant;
+  /** Drawer only. "sign-out" is the trailing Wyloguj row. */
+  slot?: "account" | "sign-out";
   onNavigate?: () => void;
 }) {
   const [signedIn, setSignedIn] = useState(false);
@@ -41,6 +44,10 @@ export default function AuthStatus({
 
   if (variant === "drawer") {
     const itemClass = `flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-[var(--ink-3)] ${focusRing}`;
+    if (slot === "sign-out") {
+      if (!signedIn) return null;
+      return <SignOutButton className={itemClass} style={{ color: "var(--paper)" }} />;
+    }
     if (!signedIn) {
       return (
         <ZalogujLink
@@ -50,12 +57,9 @@ export default function AuthStatus({
       );
     }
     return (
-      <div className="flex flex-col">
-        <Link href="/ulubione" onClick={onNavigate} className={itemClass} style={{ color: "var(--paper)" }}>
-          Ulubione
-        </Link>
-        <SignOutButton className={itemClass} style={{ color: "var(--paper)" }} />
-      </div>
+      <Link href="/ulubione" onClick={onNavigate} className={itemClass} style={{ color: "var(--paper)" }}>
+        Konto
+      </Link>
     );
   }
 

@@ -79,8 +79,11 @@ test("every logout control uses the same POST and shows pending feedback", () =>
   }
 
   const drawer = readFileSync(new URL("../app/components/MobileDrawer.tsx", import.meta.url), "utf8");
-  assert.match(drawer, /<AuthStatus variant="drawer"/);
-  assert.match(drawer, /<AdminNavLink variant="drawer"/);
+  const accountAt = drawer.indexOf('<AuthStatus variant="drawer"');
+  const adminAt = drawer.indexOf('<AdminNavLink variant="drawer"');
+  const signOutAt = drawer.indexOf('slot="sign-out"');
+  assert.ok(accountAt !== -1 && adminAt > accountAt && signOutAt > adminAt);
+  assert.equal(drawer.indexOf('slot="sign-out"', signOutAt + 1), -1);
 });
 
 test("a signed-out browser drops the account library cache", () => {
