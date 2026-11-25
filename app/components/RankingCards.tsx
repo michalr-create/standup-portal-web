@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Item } from "@/lib/data";
 import { itemDisplayTitle } from "@/lib/display-title";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
 import { resolveContentOpen } from "@/lib/youtube";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { DEFAULT_GRID_CLASS } from "./itemsBrowserLayout";
@@ -13,6 +14,7 @@ import ContentCardAction from "./ContentCardAction";
 import SpecialProgramLink from "./SpecialProgramLink";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
+import SizedImage from "./SizedImage";
 import WatchLaterButton from "./WatchLaterButton";
 
 export type RankingCardModel = {
@@ -57,6 +59,7 @@ export default function RankingCards({
     const isWatched = watched.has(item.url);
     const solePerson = item.people.length === 1 ? item.people[0] : null;
     const title = itemDisplayTitle(item);
+    const alt = contentThumbnailAlt({ title, people: item.people, showName: item.showName });
     const showRank = entry.rank > 0;
     const articleClass = layout === "strip"
       ? "group vcard relative text-left w-72 sm:w-80 shrink-0 snap-start min-w-0"
@@ -75,9 +78,11 @@ export default function RankingCards({
             }}
           >
             {item.thumbnail_url && (
-              <img
+              <SizedImage
                 src={item.thumbnail_url}
-                alt={title}
+                alt={alt}
+                width={IMAGE_SIZE.thumbLandscape.width}
+                height={IMAGE_SIZE.thumbLandscape.height}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 style={{ opacity: isWatched ? 0.7 : 1 }}
               />

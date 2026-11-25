@@ -14,6 +14,8 @@ import {
 } from "../actions";
 import { createTag } from "../actions-sources";
 import { EXCLUDED_SPECIAL_ITEM_ID, isPublicContentSlug, slugify } from "@/lib/slugify";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
+import SizedImage from "@/app/components/SizedImage";
 
 type PersonTag = { id: number; name: string; slug: string; person_id: number | null };
 type ContentTag = { id: number; name: string; slug: string; tag_type: string };
@@ -154,6 +156,11 @@ export default function ModerationCard({ item, personTags, contentTags, categori
   const specialTag = contentTags.find((tag) => tag.slug === "special" && tag.tag_type === "topic");
   const marksSpecial = specialTag != null && selectedTagIds.includes(specialTag.id);
   const publicSlug = item.slug && isPublicContentSlug(item.slug) ? item.slug : null;
+  const thumbAlt = contentThumbnailAlt({
+    title: item.title,
+    people: personTags.filter((tag) => selectedTagIds.includes(tag.id)),
+    showName: shows.find((show) => show.id === selectedShowId)?.name ?? item.showName,
+  });
 
   const saveChanges = async () => {
     if (selectedCategoryId !== item.category_id) {
@@ -280,7 +287,13 @@ export default function ModerationCard({ item, personTags, contentTags, categori
       <div className="flex flex-col sm:flex-row">
         {item.thumbnail_url ? (
           <div className="sm:w-48 shrink-0 relative">
-            <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover aspect-video sm:aspect-auto" />
+            <SizedImage
+              src={item.thumbnail_url}
+              alt={thumbAlt}
+              width={IMAGE_SIZE.preview.width}
+              height={IMAGE_SIZE.preview.height}
+              className="w-full h-full object-cover aspect-video sm:aspect-auto"
+            />
             {item.duration_seconds != null && (
               <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
                 {formatDuration(item.duration_seconds)}

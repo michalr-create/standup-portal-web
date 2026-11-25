@@ -1063,6 +1063,22 @@ export function eventCrumbLabel(event: {
   return place ? `${lead}, ${place}` : lead;
 }
 
+/** Poster alt: "Plakat: {tytuł}, {miasto}". An empty title uses the heading. */
+export function eventPosterAlt(event: {
+  title?: string | null;
+  city?: string | null;
+  person?: { name: string } | null;
+  people?: readonly { name: string }[] | null;
+}): string {
+  const title = (event.title ?? "").replace(/\s+/g, " ").trim();
+  const name = title || eventHeading(event);
+  const place = (event.city ?? "").replace(/\s+/g, " ").trim();
+  if (name && place) return `Plakat: ${name}, ${place}`;
+  if (name) return `Plakat: ${name}`;
+  if (place) return `Plakat: ${place}`;
+  return "Plakat";
+}
+
 /** Inclusive cap: "za 60 dni" still shows; later dates stay absolute-only. */
 export const RELATIVE_WHEN_MAX_DAYS = 60;
 

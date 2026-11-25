@@ -4,7 +4,10 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import ItemsBrowser from "@/app/components/ItemsBrowser";
 import type { Item } from "@/lib/data";
+import { itemDisplayTitle } from "@/lib/display-title";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
 import { collapseBy, type ProgramFields } from "@/lib/program-parts";
+import SizedImage from "./SizedImage";
 
 function itemFields(item: Item): ProgramFields {
   return {
@@ -49,7 +52,19 @@ function ProgramBlock({
         className="flex w-full items-center gap-3 p-3 text-left"
       >
         {cover?.thumbnail_url ? (
-          <img src={cover.thumbnail_url} alt="" className="h-16 w-28 shrink-0 rounded-[10px] object-cover" />
+          <SizedImage
+            src={cover.thumbnail_url}
+            alt={
+              contentThumbnailAlt({
+                title: itemDisplayTitle(cover),
+                people: cover.people,
+                showName: cover.showName,
+              }) || name
+            }
+            width={IMAGE_SIZE.programCover.width}
+            height={IMAGE_SIZE.programCover.height}
+            className="h-16 w-28 shrink-0 rounded-[10px] object-cover"
+          />
         ) : (
           <span className="h-16 w-28 shrink-0 rounded-[10px]" style={{ background: "var(--ink-3)" }} />
         )}

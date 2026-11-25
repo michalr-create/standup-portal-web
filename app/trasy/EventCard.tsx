@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   eventCrumbLabel,
   eventLeafUsesDate,
+  eventPosterAlt,
   eventPeople,
   formatEventWhen,
   formatPrice,
@@ -17,7 +18,9 @@ import {
   type TourEvent,
   type TourPerson,
 } from "@/lib/events";
+import { IMAGE_SIZE } from "@/lib/image-alt";
 import { paidExternalUrl } from "@/lib/youtube";
+import SizedImage from "../components/SizedImage";
 import EventPlanActions from "./EventPlanActions";
 
 function ExternalIcon() {
@@ -153,7 +156,13 @@ export default function EventCard({
           className={`absolute inset-0 block ${focusRing}`}
         >
           {poster ? (
-            <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <SizedImage
+              src={poster}
+              alt={eventPosterAlt(event)}
+              width={IMAGE_SIZE.poster.width}
+              height={IMAGE_SIZE.poster.height}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           ) : (
             <div
               aria-hidden="true"
