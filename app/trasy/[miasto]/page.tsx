@@ -5,7 +5,7 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 import JsonLd from "@/app/components/JsonLd";
 import Pager from "@/app/components/Pager";
 import SectionHead from "@/app/components/SectionHead";
-import { getGoingCounts, getTrasyListing } from "@/lib/data";
+import { getTrasyListing } from "@/lib/data";
 import { cityLandingHref, cityLeadParagraphs, resolveCityParam } from "@/lib/city-landings";
 import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "@/lib/category-browse";
 import { listingCountLabel } from "@/lib/listing-count";
@@ -140,7 +140,6 @@ export default async function CityTourPage({ params, searchParams }: Props) {
   }
 
   const groups = groupEventsByMonth(listing.events);
-  const goingCounts = listing.ok ? await getGoingCounts(listing.events.map((event) => event.id)) : new Map<number, number>();
   const extraFilters = hasActiveTrasyFilters({ ...parsed.filters, miasto: "" });
   const listCount = !listing.ok
     ? null
@@ -230,12 +229,7 @@ export default async function CityTourPage({ params, searchParams }: Props) {
                         <MonthHead title={group.label} sub={`${group.events.length} ${terminLabel(group.events.length)}`} />
                         <div className="flex flex-col gap-3">
                           {group.events.map((event) => (
-                            <EventCard
-                              key={event.id}
-                              event={event}
-                              now={now}
-                              goingCount={goingCounts.get(event.id) ?? 0}
-                            />
+                            <EventCard key={event.id} event={event} now={now} />
                           ))}
                         </div>
                       </section>

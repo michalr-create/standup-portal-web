@@ -108,11 +108,9 @@ function posterLabel(roster: readonly TourPerson[]): string {
 export default function EventCard({
   event,
   now,
-  goingCount = 0,
 }: {
   event: TourEvent;
   now: Date;
-  goingCount?: number;
 }) {
   const roster = eventPeople(event);
   const solo = roster.length <= 1;
@@ -144,7 +142,7 @@ export default function EventCard({
       };
 
   return (
-    <article className="overflow-hidden rounded-[18px]" style={cardStyle}>
+    <article className="relative rounded-[18px] focus-within:z-20" style={cardStyle}>
       <div
         className="relative aspect-[4/3] w-full overflow-hidden rounded-t-[18px]"
         style={{ aspectRatio: "4 / 3" }}
@@ -280,7 +278,14 @@ export default function EventCard({
             Link do biletów niedostępny
           </span>
         )}
-        <EventPlanActions eventId={event.id} startsAt={event.starts_at} goingCount={goingCount} />
+        <EventPlanActions
+          eventId={event.id}
+          title={event.title}
+          startsAt={event.starts_at}
+          city={event.city}
+          venue={event.venue}
+          ticketUrl={primary?.href ?? event.ticket_url}
+        />
       </div>
     </article>
   );

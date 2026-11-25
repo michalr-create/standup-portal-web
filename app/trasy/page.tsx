@@ -9,7 +9,7 @@ import EventPlansProvider from "./EventPlansProvider";
 import TrasyFilters from "./TrasyFilters";
 import Pager from "@/app/components/Pager";
 import HomeCityRedirect from "@/app/components/HomeCityRedirect";
-import { getGoingCounts, getTrasyListing } from "@/lib/data";
+import { getTrasyListing } from "@/lib/data";
 import { hasBlankCityParam } from "@/lib/home-city";
 import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "@/lib/category-browse";
 import { listingCountLabel } from "@/lib/listing-count";
@@ -122,7 +122,6 @@ export default async function TrasyPage({ searchParams }: Props) {
   }
 
   const groups = groupEventsByMonth(listing.events);
-  const goingCounts = listing.ok ? await getGoingCounts(listing.events.map((event) => event.id)) : new Map<number, number>();
   const filteredView = hasActiveTrasyFilters(parsed.filters);
   const headerStatus = !listing.ok
     ? "błąd wczytywania"
@@ -219,12 +218,7 @@ export default async function TrasyPage({ searchParams }: Props) {
                       <SectionHead title={group.label} sub={`${group.events.length} ${terminLabel(group.events.length)}`} />
                       <div className="flex flex-col gap-3">
                         {group.events.map((event) => (
-                          <EventCard
-                            key={event.id}
-                            event={event}
-                            now={now}
-                            goingCount={goingCounts.get(event.id) ?? 0}
-                          />
+                          <EventCard key={event.id} event={event} now={now} />
                         ))}
                       </div>
                     </section>
