@@ -1,6 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { aliasRedirectUrl, aliasSection, lookupAliasSlug } from "@/lib/slug-alias-middleware";
 import { shouldRefreshSession } from "@/lib/session-path";
+
+/**
+ * 308 before the app renders. loading.tsx puts the page in Suspense, and a
+ * permanentRedirect after that streams a 200 with a meta refresh.
+ */
+async function historicalSlugRedirect(request: NextRequest): Promise<NextResponse | null> {
+  const parsed = aliasSection(request.nextUrl.pathname);
+  if (!parsed) return null;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  const canonical = await lookupAliasSlug(parsed.section, parsed.slug, { url, key });
+  const target = aliasRedirectUrl(request.nextUrl, parsed.section, parsed.slug, canonical);
+  if (!target) return null;
+  return NextResponse.redirect(target, 308);
+}
 
 function continueWithPath(request: NextRequest, pathname: string) {
   const requestHeaders = new Headers(request.headers);
@@ -12,6 +29,9 @@ function continueWithPath(request: NextRequest, pathname: string) {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const aliasRedirect = await historicalSlugRedirect(request);
+  if (aliasRedirect) return aliasRedirect;
+
   let response = continueWithPath(request, pathname);
 
   if (!shouldRefreshSession(pathname)) {
@@ -49,7 +69,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Keep this list aligned with SESSION_REFRESH_PREFIXES. No catch-all.
+  // Session prefixes stay aligned with SESSION_REFRESH_PREFIXES. No catch-all.
+  // Standuper and format paths only resolve a historical slug before render.
   matcher: [
     "/admin",
     "/admin/:path*",
@@ -62,5 +83,7 @@ export const config = {
     "/konto/:path*",
     "/zglos",
     "/zglos/:path*",
+    "/standuper/:slug",
+    "/format/:slug",
   ],
 };
