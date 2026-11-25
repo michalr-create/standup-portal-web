@@ -6,7 +6,7 @@ import JsonLd from "@/app/components/JsonLd";
 import Pager from "@/app/components/Pager";
 import SectionHead from "@/app/components/SectionHead";
 import { getGoingCounts, getTrasyListing } from "@/lib/data";
-import { cityLandingHref, resolveCityParam } from "@/lib/city-landings";
+import { cityLandingHref, cityLeadParagraphs, resolveCityParam } from "@/lib/city-landings";
 import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "@/lib/category-browse";
 import { listingCountLabel } from "@/lib/listing-count";
 import { getOpenMicCatalog } from "@/lib/open-mic-data";
@@ -105,7 +105,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   if (!resolved) notFound();
   const parsed = settle(await searchParams, resolved.city.slug);
   if (resolved.redirect) permanentRedirect(cityLandingHref(resolved.city.slug, { ...parsed.filters, page: parsed.page }));
-  const description = resolved.city.description.trim();
+  const description = cityLeadParagraphs(resolved.city.description)[0] ?? "";
   return contentMetadata({
     title: `Stand-up ${resolved.city.name} \u2014 terminy i bilety`,
     description: description || null,
@@ -152,7 +152,7 @@ export default async function CityTourPage({ params, searchParams }: Props) {
         filtered: extraFilters,
         server: true,
       });
-  const lead = city.description.trim();
+  const leadParagraphs = cityLeadParagraphs(city.description);
   const pageUrl = absoluteUrl(`/trasy/${city.slug}`);
 
   const openMics = catalog.ok
@@ -191,11 +191,15 @@ export default async function CityTourPage({ params, searchParams }: Props) {
               {`Stand-up w ${city.inCity}`}
               <span className="dot-accent">.</span>
             </h1>
-            {lead ? (
-              <p className="m-0 mt-4 max-w-2xl text-[15px] md:text-[17px]" style={{ color: "var(--paper-dim)" }}>
-                {lead}
+            {leadParagraphs.map((paragraph) => (
+              <p
+                key={paragraph}
+                className="m-0 mt-4 max-w-2xl text-[15px] md:text-[17px]"
+                style={{ color: "var(--paper-dim)" }}
+              >
+                {paragraph}
               </p>
-            ) : null}
+            ))}
           </header>
 
           {!listing.ok ? (
