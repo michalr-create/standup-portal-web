@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
-import { useWatchHistory } from "../hooks/useWatchHistory";
 import { itemDisplayTitle } from "@/lib/display-title";
 import { resolveContentOpen } from "@/lib/youtube";
 import CardByline from "./CardByline";
@@ -37,13 +36,11 @@ export default function ItemsBrowser({
   showCategoryBadge?: boolean;
 }) {
   const layout = resolveItemsBrowserVariant(items, variant);
-  const { watched, markWatched } = useWatchHistory();
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
 
   const handleClick = (item: Item) => {
     const target = resolveContentOpen(item);
     if (target?.type === "modal") {
-      markWatched(item.url);
       setModal({ item, videoId: target.videoId });
     } else if (target?.type === "external") {
       window.open(target.url, "_blank", "noopener,noreferrer");
@@ -63,7 +60,6 @@ export default function ItemsBrowser({
     <>
       <div className={layout === "shorts" ? SHORTS_GRID_CLASS : DEFAULT_GRID_CLASS}>
         {items.map((item) => {
-          const isWatched = watched.has(item.url);
           const solePerson = item.people.length === 1 ? item.people[0] : null;
           const title = itemDisplayTitle(item);
 
@@ -89,7 +85,6 @@ export default function ItemsBrowser({
                       src={item.thumbnail_url}
                       alt={title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      style={{ opacity: isWatched ? 0.7 : 1 }}
                     />
                   )}
                   <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
@@ -108,14 +103,6 @@ export default function ItemsBrowser({
                     </div>
                   )}
                   {item.is_paid && <PaidBadge url={item.url} />}
-                  {isWatched && (
-                    <div
-                      className={`absolute top-2.5 w-6 h-6 rounded-full flex items-center justify-center ${solePerson ? "right-16" : "right-2.5"}`}
-                      style={{ background: "var(--coral)", fontSize: "12px", color: "#fff", fontWeight: 700 }}
-                    >
-                      {"✓"}
-                    </div>
-                  )}
                   {!item.is_paid && (
                     <div className="play-overlay">
                       <div className="play-btn" />

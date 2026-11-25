@@ -232,7 +232,6 @@ export default async function SpecialPage({ params }: Props) {
           <SpecialPageActions
             itemId={special.id}
             title={title}
-            url={special.url}
             videoId={videoId}
             people={special.people}
           />

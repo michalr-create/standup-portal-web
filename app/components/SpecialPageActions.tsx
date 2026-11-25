@@ -1,8 +1,5 @@
-"use client";
-
 import HeartButton from "./HeartButton";
 import WatchLaterButton from "./WatchLaterButton";
-import { useWatchHistory } from "../hooks/useWatchHistory";
 import { OPEN_YOUTUBE_LABEL } from "@/lib/player-session";
 
 const focusRing =
@@ -11,30 +8,20 @@ const focusRing =
 export default function SpecialPageActions({
   itemId,
   title,
-  url,
   videoId,
   people,
 }: {
   itemId: number;
   title: string;
-  url: string;
   videoId: string | null;
   people: { name: string; slug: string }[];
 }) {
-  const { watched } = useWatchHistory();
-  const seen = watched.has(url);
-
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
       <WatchLaterButton itemId={itemId} title={title} />
       {people.map((person) => (
         <HeartButton key={person.slug} type="person" slug={person.slug} name={person.name} size={22} />
       ))}
-      {seen ? (
-        <span className="inline-flex min-h-11 items-center text-sm font-bold" style={{ color: "var(--coral)" }}>
-          Obejrzane
-        </span>
-      ) : null}
       {videoId ? (
         <a
           href={`https://www.youtube.com/watch?v=${videoId}`}

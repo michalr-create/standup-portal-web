@@ -129,7 +129,7 @@ test("the favorites query orders every person and show before it limits", () => 
   assert.match(grid, /Zapisane w tej przeglądarce\./);
   assert.match(grid, /href=\{`\/zaloguj\?next=\$\{PATHNAME\}`\}/);
   assert.match(grid, /Zaloguj się/);
-  assert.match(grid, /żeby mieć ulubione, obejrzane i listę „Do obejrzenia” też na innych urządzeniach\./);
+  assert.match(grid, /żeby mieć ulubione i listę „Do obejrzenia” też na innych urządzeniach\./);
   assert.match(grid, /!library\.signedIn/);
   assert.match(grid, /<ItemsBrowser items=\{items\} \/>/);
   assert.match(grid, /<Pager/);
