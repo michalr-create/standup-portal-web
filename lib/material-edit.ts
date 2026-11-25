@@ -1,5 +1,8 @@
+import { isPublicContentSlug } from "./slugify.ts";
+
 export const MATERIAL_TITLE_MAX = 500;
 export const MATERIAL_DESCRIPTION_MAX = 5000;
+export const MATERIAL_SLUG_MAX = 120;
 
 export type MaterialDraft = {
   title: string;
@@ -8,6 +11,8 @@ export type MaterialDraft = {
   showId: number | null;
   personIds: number[];
   tagIds: number[];
+  /** Empty clears or, for an eligible special, allocates from the raw title. */
+  slug: string;
 };
 
 export type MaterialDraftResult =
@@ -29,6 +34,7 @@ export type MaterialEditorData = {
     status: string;
     categoryId: number | null;
     showId: number | null;
+    slug: string;
   };
   categories: NamedId[];
   shows: NamedId[];
@@ -84,6 +90,7 @@ export function normalizeMaterialDraft(input: {
   showId: unknown;
   personIds: unknown;
   tagIds: unknown;
+  slug?: unknown;
 }): MaterialDraftResult {
   if (typeof input.title !== "string") return fail("Podaj tytuł.");
   const title = input.title.trim();
@@ -106,6 +113,8 @@ export function normalizeMaterialDraft(input: {
   if (!personIds.ok) return personIds;
   const tagIds = idList(input.tagIds, "tagi");
   if (!tagIds.ok) return tagIds;
+  const slug = contentSlugField(input.slug);
+  if (!slug.ok) return slug;
 
   return {
     ok: true,
@@ -116,8 +125,21 @@ export function normalizeMaterialDraft(input: {
       showId: showId.id,
       personIds: personIds.ids,
       tagIds: tagIds.ids,
+      slug: slug.slug,
     },
   };
+}
+
+function contentSlugField(value: unknown): { ok: true; slug: string } | DraftError {
+  if (value == null) return { ok: true, slug: "" };
+  if (typeof value !== "string") return fail("Nieprawidłowy slug.");
+  const slug = value.trim().toLowerCase();
+  if (!slug) return { ok: true, slug: "" };
+  if (slug.length > MATERIAL_SLUG_MAX) return fail(`Slug może mieć najwyżej ${MATERIAL_SLUG_MAX} znaków.`);
+  if (!isPublicContentSlug(slug)) {
+    return fail("Slug może zawierać tylko małe litery, cyfry i myślniki.");
+  }
+  return { ok: true, slug };
 }
 
 export type PersonTagSlot =

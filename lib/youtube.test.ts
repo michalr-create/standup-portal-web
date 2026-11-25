@@ -6,6 +6,8 @@ import {
   PAID_SHOP_LINK_CUE,
   PAID_UNAVAILABLE_LABEL,
   cardActionKind,
+  externalHostLabel,
+  isPlainLeftClick,
   resolveContentOpen,
   showThumbDuration,
 } from "./youtube.ts";
@@ -63,6 +65,25 @@ test("paid badge copy is readable Polish", () => {
   assert.match(badge, /PAID_BADGE_LABEL/);
   assert.match(action, /PAID_SHOP_LINK_CUE/);
   assert.match(action, /disabled/);
+});
+
+test("a plain left click is the only one that may open the modal", () => {
+  const plain = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false };
+  assert.equal(isPlainLeftClick(plain), true);
+  assert.equal(isPlainLeftClick({ ...plain, button: 1 }), false);
+  assert.equal(isPlainLeftClick({ ...plain, metaKey: true }), false);
+  assert.equal(isPlainLeftClick({ ...plain, ctrlKey: true }), false);
+  assert.equal(isPlainLeftClick({ ...plain, shiftKey: true }), false);
+  assert.equal(externalHostLabel("https://www.abelardgiza.pl/wentyl"), "abelardgiza.pl");
+  assert.equal(externalHostLabel("javascript:alert(1)"), null);
+  const action = readFileSync(new URL("../app/components/ContentCardAction.tsx", import.meta.url), "utf8");
+  assert.match(action, /preventDefault/);
+  assert.match(action, /\/specjale\//);
+  assert.match(action, /isPlainLeftClick/);
+  const modal = readFileSync(new URL("../app/components/VideoModal.tsx", import.meta.url), "utf8");
+  assert.match(modal, /Otwórz stronę specjalu/);
+  const cards = readFileSync(new URL("../app/components/ItemsBrowser.tsx", import.meta.url), "utf8");
+  assert.match(cards, /Strona programu|SpecialProgramLink/);
 });
 
 test("unpaid YouTube stays in the modal and other urls stay external", () => {

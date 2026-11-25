@@ -22,6 +22,8 @@ export type RevalidateRefs = {
   itemIds: number[];
   tagIds: number[];
   embeddedTags: TagRef[];
+  /** Slugs already present on the webhook row (current and previous). */
+  itemSlugs: string[];
 };
 
 export type ResolvedSlugs = {
@@ -31,6 +33,8 @@ export type ResolvedSlugs = {
   tagSlugs: string[];
   /** True when a show id was present even if its slug could not be resolved. */
   hasShow: boolean;
+  /** Public `/specjale/{slug}` rows touched by this change. */
+  itemSlugs?: string[];
 };
 
 export function numericId(value: unknown): number | null {
@@ -76,6 +80,12 @@ export function standuperPath(slug: unknown): string | null {
   const normalized = normalizeSlug(slug);
   if (!normalized) return null;
   return `/standuper/${normalized}`;
+}
+
+export function specialPath(slug: unknown): string | null {
+  const normalized = normalizeSlug(slug);
+  if (!normalized) return null;
+  return `/specjale/${normalized}`;
 }
 
 /** Explicit `{paths}` entries. Anything that is not a site path is ignored. */
@@ -136,6 +146,8 @@ function collectRow(refs: RevalidateRefs, row: Record<string, unknown> | null, t
   pushId(refs.itemIds, row.id);
   pushId(refs.categoryIds, row.category_id);
   pushId(refs.showIds, row.show_id);
+  const slug = normalizeSlug(row.slug);
+  if (slug) refs.itemSlugs.push(slug);
   refs.embeddedTags.push(...tagRefs(row.tags));
 }
 
@@ -154,6 +166,7 @@ export function collectRevalidateRefs(body: Record<string, unknown>): Revalidate
     itemIds: [],
     tagIds: [],
     embeddedTags: [],
+    itemSlugs: [],
   };
   if (!webhook) return refs;
 
@@ -173,6 +186,7 @@ export function collectRevalidateRefs(body: Record<string, unknown>): Revalidate
   refs.showIds = uniqueNumbers(refs.showIds);
   refs.itemIds = uniqueNumbers(refs.itemIds);
   refs.tagIds = uniqueNumbers(refs.tagIds);
+  refs.itemSlugs = [...new Set(refs.itemSlugs)].sort();
   return refs;
 }
 
@@ -219,7 +233,17 @@ export function assembleContentPaths(refs: RevalidateRefs, resolved: ResolvedSlu
     const path = standuperPath(slug);
     if (path) paths.add(path);
   }
-  if (tagSlugs.has("special")) paths.add("/specjale");
+  const itemSlugs = new Set<string>();
+  for (const slug of refs.itemSlugs) addSlug(itemSlugs, slug);
+  for (const slug of resolved.itemSlugs ?? []) addSlug(itemSlugs, slug);
+  for (const slug of itemSlugs) {
+    const path = specialPath(slug);
+    if (path) paths.add(path);
+  }
+  if (tagSlugs.has("special") || itemSlugs.size > 0) {
+    paths.add("/specjale");
+    paths.add("/sitemap.xml");
+  }
   paths.add("/ulubione");
   paths.add("/ulubione/tresci");
   paths.add("/rankingi");

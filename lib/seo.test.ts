@@ -15,6 +15,9 @@ import {
   noindexMetadata,
   pageFromSearch,
   robotsPolicy,
+  specialDocumentTitle,
+  specialFallbackDescription,
+  specialLastModified,
   withSiteTitle,
 } from "./seo.ts";
 
@@ -109,6 +112,23 @@ test("utility pages are noindex and the sitemap drops them", () => {
   assert.equal(urls.includes("https://parska.pl/format/wahanie"), true);
   assert.equal(urls.includes("https://parska.pl/format/ulubione"), true);
   assert.equal(urls.includes("https://parska.pl/ulubione"), false);
+  const withSpecials = buildSitemap(people, shows, [
+    { slug: "abelard-giza-wentyl-2026", lastModified: "2026-01-02T00:00:00.000Z" },
+    "abelard-giza-wentyl-2026",
+    "dodaj",
+    "page",
+    "../admin",
+  ]);
+  const specialUrls = withSpecials.map((entry) => entry.url);
+  assert.equal(specialUrls.includes("https://parska.pl/specjale/abelard-giza-wentyl-2026"), true);
+  assert.equal(specialUrls.filter((url) => url.endsWith("/abelard-giza-wentyl-2026")).length, 1);
+  assert.equal(specialUrls.includes("https://parska.pl/specjale/dodaj"), false);
+  assert.equal(specialUrls.includes("https://parska.pl/specjale/page"), false);
+  assert.equal(specialUrls.includes("https://parska.pl/ulubione"), false);
+  const special = withSpecials.find((entry) => entry.url.endsWith("/abelard-giza-wentyl-2026"));
+  assert.equal(special?.changeFrequency, "weekly");
+  assert.equal(special?.priority, 0.7);
+  assert.equal(special?.lastModified, "2026-01-02T00:00:00.000Z");
   assert.equal(urls.includes("https://parska.pl/open-mic/dodaj"), false);
   assert.equal(urls.some((url) => url.includes("www.") || url.includes("?")), false);
   assert.equal(isBlockedSitemapPath("/ulubione"), true);
@@ -172,4 +192,68 @@ test("public content pages declare their own metadata", () => {
   assert.match(missing, /NOINDEX_ROBOTS/);
   const dodaj = readFileSync(new URL("../app/open-mic/dodaj/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(dodaj, /openGraph:/);
+
+  const specialPage = readFileSync(new URL("../app/specjale/[slug]/page.tsx", import.meta.url), "utf8");
+  assert.match(specialPage, /contentMetadata\(/);
+  assert.match(specialPage, /generateStaticParams/);
+  assert.match(specialPage, /revalidate = 120/);
+  assert.match(specialPage, /notFound\(\)/);
+  assert.doesNotMatch(specialPage, /autoplay/);
+  assert.match(specialPage, /youtube\.com\/embed\//);
+  const data = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
+  assert.match(data, /EXCLUDED_SPECIAL_ITEM_ID/);
+  assert.match(data, /\.neq\("id", EXCLUDED_SPECIAL_ITEM_ID\)/);
+});
+
+test("special titles name the performer once and paid pages are not videos", () => {
+  assert.equal(
+    specialDocumentTitle("Abelard Giza — Wentyl (2026)", [{ name: "Abelard Giza" }]),
+    "Abelard Giza — Wentyl (2026) — specjal stand-up",
+  );
+  assert.equal(
+    specialDocumentTitle("Wentyl (2026)", [{ name: "Abelard Giza" }, { name: "Rafał Pacześ" }]),
+    "Wentyl (2026) — Abelard Giza, Rafał Pacześ — specjal stand-up",
+  );
+  assert.equal(
+    specialDocumentTitle("Składanka", [{ name: "Ala" }, { name: "Bartek" }, { name: "Celina" }]),
+    "Składanka — Ala i inni — specjal stand-up",
+  );
+  assert.equal(specialDocumentTitle("Składanka", []), "Składanka — specjal stand-up");
+  assert.equal(
+    specialFallbackDescription([{ name: "Abelard Giza" }], true),
+    "Pełny program stand-up: Abelard Giza. Płatny VOD — link do zakupu na parska.",
+  );
+  assert.equal(
+    specialFallbackDescription([], false),
+    "Pełny program stand-up. Oglądaj na parska.",
+  );
+  assert.equal(
+    specialLastModified("2025-03-21T00:00:00.000Z", "2026-01-02T00:00:00.000Z"),
+    "2026-01-02T00:00:00.000Z",
+  );
+
+  const paid = contentMetadata({
+    title: specialDocumentTitle("Abelard Giza — Wentyl (2026)", [{ name: "Abelard Giza" }]),
+    description: null,
+    fallbackDescription: specialFallbackDescription([{ name: "Abelard Giza" }], true),
+    pathname: "/specjale/abelard-giza-wentyl-2026",
+    openGraphType: "website",
+    image: "https://abelardgiza.pl/wentyl.jpg",
+  });
+  assert.equal(paid.openGraph?.type, "website");
+  assert.equal(paid.alternates?.canonical, "https://parska.pl/specjale/abelard-giza-wentyl-2026");
+  assert.equal(paid.description?.includes("Płatny VOD"), true);
+  const images = paid.openGraph?.images;
+  const imageUrl = Array.isArray(images) ? images[0] : images;
+  assert.equal(typeof imageUrl === "object" && imageUrl && "url" in imageUrl ? imageUrl.url : "", "https://abelardgiza.pl/wentyl.jpg");
+
+  const free = contentMetadata({
+    title: "Piniata — specjal stand-up",
+    description: "Opis programu.",
+    fallbackDescription: "Pełny program stand-up.",
+    pathname: "/specjale/piniata",
+    openGraphType: "video.other",
+    image: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+  });
+  assert.equal(free.openGraph?.type, "video.other");
 });

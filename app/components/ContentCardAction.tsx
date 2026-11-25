@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { isPublicContentSlug } from "@/lib/slugify";
 import {
   cardActionKind,
+  isPlainLeftClick,
   PAID_SHOP_LINK_CUE,
   PAID_UNAVAILABLE_LABEL,
   paidExternalUrl,
@@ -9,23 +11,27 @@ import {
 const linkClass = "block text-left w-full";
 
 /**
- * Unpaid cards stay a button (in-app player or the existing external fallback).
- * Paid cards with an http(s) url are a real link: new tab, no player.
- * Paid cards without one are disabled — no click that goes nowhere.
+ * Unpaid cards without a special slug stay a button (in-app player).
+ * A free special is a real link to `/specjale/{slug}`: left click still opens the modal,
+ * and middle-click, new tab, and Googlebot follow the href.
+ * Paid cards with an http(s) url stay a shop link. Paid cards without one are disabled.
  */
 export default function ContentCardAction({
   isPaid,
   url,
+  slug,
   onOpen,
   children,
 }: {
   isPaid: boolean;
   url: string | null;
+  slug?: string | null;
   onOpen: () => void;
   children: ReactNode;
 }) {
   const kind = cardActionKind(isPaid, url);
   const href = kind === "shop" ? paidExternalUrl(url) : null;
+  const pageHref = slug && isPublicContentSlug(slug) ? `/specjale/${slug}` : null;
 
   if (kind === "shop" && href) {
     return (
@@ -52,6 +58,19 @@ export default function ContentCardAction({
       >
         {children}
       </button>
+    );
+  }
+
+  if (pageHref) {
+    const openModal = (event: MouseEvent<HTMLAnchorElement>) => {
+      if (!isPlainLeftClick(event)) return;
+      event.preventDefault();
+      onOpen();
+    };
+    return (
+      <a href={pageHref} className={linkClass} onClick={openModal}>
+        {children}
+      </a>
     );
   }
 

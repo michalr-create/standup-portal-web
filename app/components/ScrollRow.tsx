@@ -5,6 +5,7 @@ import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
+import { itemDisplayTitle } from "@/lib/display-title";
 import { resolveContentOpen } from "@/lib/youtube";
 import {
   isCenterSnap,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/scroll-row";
 import CardByline from "./CardByline";
 import ContentCardAction from "./ContentCardAction";
+import SpecialProgramLink from "./SpecialProgramLink";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
 import WatchLaterButton from "./WatchLaterButton";
@@ -31,13 +33,14 @@ function ScrollCard({
   showCategoryBadge: boolean;
 }) {
   const solePerson = item.people.length === 1 ? item.people[0] : null;
+  const title = itemDisplayTitle(item);
 
   return (
     <article
       data-scroll-card
       className="scroll-row-card group vcard relative text-left w-72 sm:w-80 shrink-0 snap-center md:snap-start min-w-0"
     >
-      <ContentCardAction isPaid={item.is_paid} url={item.url} onOpen={onClick}>
+      <ContentCardAction isPaid={item.is_paid} url={item.url} slug={item.slug} onOpen={onClick}>
         <div
           className="overflow-hidden relative"
           style={{
@@ -50,7 +53,7 @@ function ScrollCard({
           {item.thumbnail_url && (
             <img
               src={item.thumbnail_url}
-              alt={item.title}
+              alt={title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               style={{ opacity: isWatched ? 0.7 : 1 }}
             />
@@ -91,7 +94,7 @@ function ScrollCard({
             className="font-extrabold leading-tight line-clamp-2"
             style={{ fontSize: "16px", letterSpacing: "-.01em" }}
           >
-            {item.title}
+            {title}
           </h4>
         </div>
       </ContentCardAction>
@@ -100,8 +103,9 @@ function ScrollCard({
           <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
         </div>
       )}
-      <div className="mt-2">
-        <WatchLaterButton itemId={item.id} title={item.title} />
+      <div className={item.is_paid && item.slug ? "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" : "mt-2"}>
+        <WatchLaterButton itemId={item.id} title={title} />
+        {item.is_paid && item.slug ? <SpecialProgramLink slug={item.slug} /> : null}
       </div>
       <AdminMaterialActions itemId={item.id} />
       <CardByline item={item} className="mt-1" />

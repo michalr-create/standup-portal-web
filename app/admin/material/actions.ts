@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/admin-auth";
 import { getAdminSupabase } from "@/lib/supabase-admin";
+import { syncSpecialSlug } from "@/lib/ensure-special-slug";
 import {
   assembleTagIds,
   normalizeMaterialDraft,
@@ -23,7 +24,7 @@ export async function getMaterialEditor(itemId: number): Promise<MaterialEditorD
 
   const { data: item, error } = await sb
     .from("content_items")
-    .select("id, title, description, url, status, category_id, show_id")
+    .select("id, title, description, url, status, category_id, show_id, slug")
     .eq("id", itemId)
     .maybeSingle();
 
@@ -65,6 +66,7 @@ export async function getMaterialEditor(itemId: number): Promise<MaterialEditorD
       status: item.status ?? "",
       categoryId: item.category_id,
       showId: item.show_id,
+      slug: item.slug ?? "",
     },
     categories: (categoriesRes.data ?? []).map((row) => ({ id: row.id, name: row.name })),
     shows: (showsRes.data ?? [])
@@ -233,6 +235,9 @@ export async function updateMaterial(
       .in("tag_id", toRemove);
     if (deleteError) return { ok: false, error: deleteError.message };
   }
+
+  const slugResult = await syncSpecialSlug(itemId, value.slug);
+  if (!slugResult.ok) return slugResult;
 
   revalidateMaterial();
   return { ok: true };

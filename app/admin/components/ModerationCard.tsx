@@ -13,6 +13,7 @@ import {
   dismissDuplicate,
 } from "../actions";
 import { createTag } from "../actions-sources";
+import { EXCLUDED_SPECIAL_ITEM_ID, isPublicContentSlug } from "@/lib/slugify";
 
 type PersonTag = { id: number; name: string; slug: string; person_id: number | null };
 type ContentTag = { id: number; name: string; slug: string; tag_type: string };
@@ -37,6 +38,7 @@ type Props = {
     assignedTagIds: number[];
     possible_duplicate_of: number | null;
     is_featured: boolean;
+    slug?: string | null;
     duplicateOf: { id: number; title: string; url: string } | null;
   };
   personTags: PersonTag[];
@@ -158,6 +160,9 @@ export default function ModerationCard({ item, personTags, contentTags, categori
   if (done) return null;
 
   const allTagIds = [...selectedTagIds];
+  const specialTag = contentTags.find((tag) => tag.slug === "special" && tag.tag_type === "topic");
+  const marksSpecial = specialTag != null && selectedTagIds.includes(specialTag.id);
+  const publicSlug = item.slug && isPublicContentSlug(item.slug) ? item.slug : null;
 
   const saveChanges = async () => {
     if (selectedCategoryId !== item.category_id) {
@@ -398,6 +403,22 @@ export default function ModerationCard({ item, personTags, contentTags, categori
                 </div>
               </div>
             )}
+            {item.id === EXCLUDED_SPECIAL_ITEM_ID ? (
+              <p className="mt-2 text-xs text-gray-500">
+                Ten duplikat nie dostaje publicznej strony. Scal go z rekordem kanonicznym.
+              </p>
+            ) : publicSlug ? (
+              <p className="mt-2 text-xs text-gray-400">
+                Strona:{" "}
+                <a href={`/specjale/${publicSlug}`} className="underline">
+                  {`/specjale/${publicSlug}`}
+                </a>
+              </p>
+            ) : marksSpecial ? (
+              <p className="mt-2 text-xs text-gray-500">
+                Po zatwierdzeniu specjal dostanie adres strony.
+              </p>
+            ) : null}
           </div>
 
           {/* Akcje */}

@@ -1,4 +1,5 @@
 import type { Metadata, MetadataRoute } from "next";
+import { isPublicContentSlug, PUBLIC_SLUG } from "./slugify.ts";
 
 /** Canonical origin. Public URLs stay on the apex host, never www. */
 export const SITE_ORIGIN = "https://parska.pl";
@@ -61,8 +62,6 @@ const SITEMAP_BLOCKED = new Set<string>([
   "/debug",
 ]);
 
-const PUBLIC_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
 export const NOINDEX_ROBOTS = {
   index: false,
   follow: false,
@@ -75,6 +74,12 @@ export type SitemapEntry = {
   url: string;
   changeFrequency: SitemapChangeFrequency;
   priority: number;
+  lastModified?: string;
+};
+
+export type SitemapSpecial = {
+  slug: string;
+  lastModified?: string | null;
 };
 
 export function fixBrokenDiacritics(text: string): string {
@@ -129,13 +134,23 @@ type ContentMetadataInput = {
   fallbackDescription: string;
   pathname: string;
   page?: number;
-  openGraphType?: "website" | "profile";
+  openGraphType?: "website" | "profile" | "video.other";
+  image?: string | null;
 };
+
+function absoluteImage(image: string | null | undefined): string | null {
+  const value = image?.trim() ?? "";
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return absoluteUrl(value);
+  return null;
+}
 
 export function contentMetadata(input: ContentMetadataInput): Metadata {
   const description = clipDescription(input.description, input.fallbackDescription);
   const url = listingCanonical(input.pathname, input.page ?? 1);
   const socialTitle = withSiteTitle(input.title);
+  const image = absoluteImage(input.image);
   return {
     // Absolute so the layout template cannot append a second " — parska.".
     title: { absolute: socialTitle },
@@ -148,13 +163,63 @@ export function contentMetadata(input: ContentMetadataInput): Metadata {
       siteName: SITE_NAME,
       title: socialTitle,
       description,
+      ...(image ? { images: [{ url: image }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title: socialTitle,
       description,
+      ...(image ? { images: [image] } : {}),
     },
   };
+}
+
+export function specialPath(slug: string): string | null {
+  if (!isPublicContentSlug(slug)) return null;
+  return `/specjale/${slug}`;
+}
+
+/** Later of publication and approval, when either date parses. */
+export function specialLastModified(
+  publishedAt: string | null | undefined,
+  approvedAt: string | null | undefined,
+): string | undefined {
+  const times = [publishedAt, approvedAt]
+    .map((value) => (value ? Date.parse(value) : Number.NaN))
+    .filter((value) => !Number.isNaN(value));
+  if (times.length === 0) return undefined;
+  return new Date(Math.max(...times)).toISOString();
+}
+
+function personLabel(people: readonly { name: string }[]): string | null {
+  const names = people.map((person) => person.name.trim()).filter(Boolean);
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0] ?? null;
+  if (names.length === 2) return `${names[0]}, ${names[1]}`;
+  return `${names[0]} i inni`;
+}
+
+function titleMentionsPerson(title: string, name: string): boolean {
+  const person = name.trim().toLowerCase();
+  if (!person) return false;
+  return title.toLowerCase().includes(person);
+}
+
+/** Document title without the layout's " — parska." suffix. */
+export function specialDocumentTitle(title: string, people: readonly { name: string }[]): string {
+  const clean = title.trim();
+  const first = people[0]?.name.trim() ?? "";
+  if (first && titleMentionsPerson(clean, first)) return `${clean} — specjal stand-up`;
+  const label = personLabel(people);
+  if (!label) return `${clean} — specjal stand-up`;
+  return `${clean} — ${label} — specjal stand-up`;
+}
+
+export function specialFallbackDescription(people: readonly { name: string }[], isPaid: boolean): string {
+  const label = personLabel(people);
+  const who = label ? `Pełny program stand-up: ${label}.` : "Pełny program stand-up.";
+  if (isPaid) return `${who} Płatny VOD — link do zakupu na parska.`;
+  return `${who} Oglądaj na parska.`;
 }
 
 export function noindexMetadata(title: string, pathname: string, description?: string): Metadata {
@@ -225,10 +290,30 @@ function sitemapPriority(pathname: string): { changeFrequency: SitemapChangeFreq
   if (pathname === "/") return { changeFrequency: "daily", priority: 1 };
   if (pathname === "/open-mic") return { changeFrequency: "daily", priority: 0.8 };
   if (pathname === "/trasy") return { changeFrequency: "daily", priority: 0.6 };
+  if (pathname.startsWith("/specjale/")) return { changeFrequency: "weekly", priority: 0.7 };
   return { changeFrequency: "weekly", priority: 0.6 };
 }
 
-export function buildSitemap(peopleSlugs: readonly string[], showSlugs: readonly string[]): SitemapEntry[] {
+function specialSitemapRows(specials: readonly (string | SitemapSpecial)[]): { pathname: string; lastModified?: string }[] {
+  const seen = new Set<string>();
+  const rows: { pathname: string; lastModified?: string }[] = [];
+  for (const entry of specials) {
+    const slug = typeof entry === "string" ? entry : entry.slug;
+    const pathname = specialPath(typeof slug === "string" ? slug.trim() : "");
+    if (!pathname || seen.has(pathname)) continue;
+    seen.add(pathname);
+    const lastModified = typeof entry === "string" ? undefined : specialLastModified(entry.lastModified, null);
+    rows.push(lastModified ? { pathname, lastModified } : { pathname });
+  }
+  rows.sort((a, b) => a.pathname.localeCompare(b.pathname));
+  return rows;
+}
+
+export function buildSitemap(
+  peopleSlugs: readonly string[],
+  showSlugs: readonly string[],
+  specials: readonly (string | SitemapSpecial)[] = [],
+): SitemapEntry[] {
   const paths = [
     ...SITEMAP_STATIC_PATHS,
     ...publicSlugs(peopleSlugs).map((slug) => `/standuper/${slug}`),
@@ -244,6 +329,17 @@ export function buildSitemap(peopleSlugs: readonly string[], showSlugs: readonly
       url: absoluteUrl(pathname),
       changeFrequency: cadence.changeFrequency,
       priority: cadence.priority,
+    });
+  }
+  for (const row of specialSitemapRows(specials)) {
+    if (isBlockedSitemapPath(row.pathname) || seen.has(row.pathname)) continue;
+    seen.add(row.pathname);
+    const cadence = sitemapPriority(row.pathname);
+    entries.push({
+      url: absoluteUrl(row.pathname),
+      changeFrequency: cadence.changeFrequency,
+      priority: cadence.priority,
+      ...(row.lastModified ? { lastModified: row.lastModified } : {}),
     });
   }
   return entries;

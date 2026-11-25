@@ -1,4 +1,5 @@
 import type { Item } from "./data.ts";
+import { isPublicContentSlug } from "./slugify.ts";
 import { getYouTubeId } from "./youtube.ts";
 
 /** Homepage query that opens one approved item in VideoModal. */
@@ -81,6 +82,9 @@ export function readFilmItem(value: unknown): Item | null {
     episode_group_id: text(row.episode_group_id),
     duration_seconds: typeof row.duration_seconds === "number" ? row.duration_seconds : null,
     is_paid: row.is_paid === true,
+    slug: typeof row.slug === "string" && isPublicContentSlug(row.slug.trim().toLowerCase())
+      ? row.slug.trim().toLowerCase()
+      : null,
     showName: text(row.showName),
     showSlug: text(row.showSlug),
     categoryName: text(row.categoryName),
@@ -109,6 +113,7 @@ export function stubFilmItem(id: number, videoId: string): Item {
     episode_group_id: null,
     duration_seconds: null,
     is_paid: false,
+    slug: null,
     showName: null,
     showSlug: null,
     categoryName: null,

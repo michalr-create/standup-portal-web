@@ -3,6 +3,7 @@
 import { featuredIdsToClear, HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { getAdminSupabase } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/admin-auth";
+import { syncSpecialSlug } from "@/lib/ensure-special-slug";
 import { revalidatePath } from "next/cache";
 
 export async function bulkUpdateAndApprove(
@@ -29,6 +30,9 @@ export async function bulkUpdateAndApprove(
   if (showId !== undefined) update.show_id = showId;
 
   await sb.from("content_items").update(update).in("id", itemIds);
+  for (const itemId of itemIds) {
+    await syncSpecialSlug(itemId);
+  }
 
   revalidatePath("/admin");
   revalidatePath("/");
@@ -42,6 +46,7 @@ export async function approveItem(itemId: number) {
     .from("content_items")
     .update({ status: "approved" })
     .eq("id", itemId);
+  await syncSpecialSlug(itemId);
 
   revalidatePath("/admin");
   revalidatePath("/");
@@ -55,6 +60,7 @@ export async function rejectItem(itemId: number) {
     .from("content_items")
     .update({ status: "rejected" })
     .eq("id", itemId);
+  await syncSpecialSlug(itemId);
 
   revalidatePath("/admin");
 }
@@ -101,6 +107,7 @@ export async function setItemTags(itemId: number, tagIds: number[]) {
     }));
     await sb.from("content_tags").insert(rows);
   }
+  await syncSpecialSlug(itemId);
 
   revalidatePath("/admin");
 }
@@ -271,6 +278,7 @@ if (error || !items) return { items: [], totalCount: 0, personTags: [], allCateg
     .from("content_items")
     .update({ status: "pending" })
     .eq("id", itemId);
+  await syncSpecialSlug(itemId);
 
   revalidatePath("/admin");
   revalidatePath("/");
