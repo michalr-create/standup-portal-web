@@ -2316,31 +2316,6 @@ export async function countUpcomingEventsForPerson(
   }
 }
 
-/** Public aggregate from going_counts. Missing function or a failed call yields an empty map. */
-export async function getGoingCounts(eventIds: number[]): Promise<Map<number, number>> {
-  const ids: number[] = [];
-  const seen = new Set<number>();
-  for (const id of eventIds) {
-    if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
-    if (ids.length >= 200) break;
-  }
-  if (ids.length === 0) return new Map();
-
-  const { data, error } = await supabase.rpc("going_counts", { event_ids: ids });
-  if (error || !Array.isArray(data)) return new Map();
-
-  const counts = new Map<number, number>();
-  for (const row of data as { event_id?: unknown; going_count?: unknown }[]) {
-    const eventId = typeof row.event_id === "number" ? row.event_id : Number(row.event_id);
-    const count = typeof row.going_count === "number" ? row.going_count : Number(row.going_count);
-    if (!Number.isSafeInteger(eventId) || !Number.isFinite(count) || count <= 0) continue;
-    counts.set(eventId, Math.floor(count));
-  }
-  return counts;
-}
-
 export type SpecialPageRecord = {
   id: number;
   slug: string;

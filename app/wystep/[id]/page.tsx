@@ -5,7 +5,7 @@ import JsonLd from "@/app/components/JsonLd";
 import EventPlanActions from "@/app/trasy/EventPlanActions";
 import EventPlansProvider from "@/app/trasy/EventPlansProvider";
 import { cityLandingByName } from "@/lib/city-landings";
-import { getGoingCounts, getPublicEventById } from "@/lib/data";
+import { getPublicEventById } from "@/lib/data";
 import {
   eventCrumbLabel,
   eventHeading,
@@ -111,10 +111,7 @@ export default async function WystepPage({ params }: Props) {
   const id = parseEventId(rawId);
   if (id == null) notFound();
   const now = new Date();
-  const [loaded, goingCounts] = await Promise.all([
-    getPublicEventById(id),
-    getGoingCounts([id]),
-  ]);
+  const loaded = await getPublicEventById(id);
   if (!loaded) notFound();
   if (loaded.canonicalId !== id) permanentRedirect(wystepHref(loaded.canonicalId));
   const { event } = loaded;
@@ -256,7 +253,7 @@ export default async function WystepPage({ params }: Props) {
                 </p>
               )}
 
-              <div className="mt-5 flex flex-col items-start gap-3">
+              <div className="relative mt-5 flex flex-col items-start gap-3 focus-within:z-20">
                 {past ? (
                   <p className="m-0 text-lg font-black">Występ już się odbył</p>
                 ) : primary ? (
@@ -298,8 +295,11 @@ export default async function WystepPage({ params }: Props) {
                 <EventPlansProvider eventIds={[event.id]}>
                   <EventPlanActions
                     eventId={event.id}
+                    title={event.title}
                     startsAt={event.starts_at}
-                    goingCount={goingCounts.get(event.id) ?? 0}
+                    city={event.city}
+                    venue={event.venue}
+                    ticketUrl={primary?.href ?? event.ticket_url}
                   />
                 </EventPlansProvider>
               </div>
