@@ -14,11 +14,13 @@ import {
   loadAccountLibrary,
   markWatchedOnAccount,
   mergeAccountLibrary,
+  renameStoredFavoriteSlugs,
   setFavorite,
   setWatchLater,
 } from "@/app/konto/library-actions";
 import {
   applyLibraryDelta,
+  applySlugRenames,
   emptyLibrary,
   planLibrarySync,
   resolveLibrary,
@@ -134,7 +136,20 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
           } else {
             commit(libraryOrEmpty(currentStore));
           }
-          setReady(true);
+          void (async () => {
+            const base = snapshotRef.current;
+            let next = base;
+            try {
+              const renames = await renameStoredFavoriteSlugs(base.people, base.shows);
+              if (cancelled || runId.current !== id) return;
+              next = applySlugRenames(snapshotRef.current, renames.people, renames.shows);
+            } catch {
+              next = snapshotRef.current;
+            }
+            if (cancelled || runId.current !== id) return;
+            if (next !== snapshotRef.current) commit(next);
+            setReady(true);
+          })();
           return;
         }
 
@@ -187,6 +202,14 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
             }
           }
 
+          if (cancelled || runId.current !== id) return;
+          try {
+            const renames = await renameStoredFavoriteSlugs(resolved.people, resolved.shows);
+            if (cancelled || runId.current !== id) return;
+            resolved = applySlugRenames(resolved, renames.people, renames.shows);
+          } catch {
+            // The account list is already on current slugs when the alias read fails.
+          }
           if (cancelled || runId.current !== id) return;
           const markerStore = browserStore();
           if (markerStore) {

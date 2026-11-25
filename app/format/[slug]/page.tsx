@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { getShowBySlug, getShowEpisodesPage } from "@/lib/data";
+import { showAliasTarget } from "@/lib/slug-alias-lookup";
+import { slugRedirectPath } from "@/lib/slug-redirect";
 import { contentMetadata, pageFromSearch } from "@/lib/seo";
 import ProgramCatalog from "@/app/components/ProgramCatalog";
 import HeartButton from "@/app/components/HeartButton";
@@ -23,10 +25,18 @@ type Props = {
   searchParams: Promise<{ page?: string | string[] }>;
 };
 
+async function redirectLegacyShow(slug: string, page: number): Promise<void> {
+  const path = slugRedirectPath("format", slug, await showAliasTarget(slug), page);
+  if (path) permanentRedirect(path);
+}
+
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const show = await getShowBySlug(slug);
-  if (!show) notFound();
+  if (!show) {
+    await redirectLegacyShow(slug, pageFromSearch(query.page));
+    notFound();
+  }
   return contentMetadata({
     title: `${show.name} \u2014 odcinki i nagrania`,
     description: show.description,
@@ -40,13 +50,18 @@ export default async function FormatPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const pathname = "/format/" + slug;
   const parsed = parseListingPage((await searchParams).page, pathname);
-  if (parsed.redirectHref) redirect(parsed.redirectHref);
+  if (parsed.redirectHref) {
+    const legacy = slugRedirectPath("format", slug, await showAliasTarget(slug), parsed.page);
+    if (legacy) permanentRedirect(legacy);
+    redirect(parsed.redirectHref);
+  }
 
   const [show, episodes] = await Promise.all([
     getShowBySlug(slug),
     getShowEpisodesPage(slug, PUBLIC_LISTING_PAGE_SIZE, (parsed.page - 1) * PUBLIC_LISTING_PAGE_SIZE),
   ]);
 
+  if (!show) await redirectLegacyShow(slug, parsed.page);
   if (!show) notFound();
 
   const clamped = clampListingPage(parsed.page, episodes.total, PUBLIC_LISTING_PAGE_SIZE);
@@ -60,7 +75,7 @@ export default async function FormatPage({ params, searchParams }: Props) {
             <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-.025em" }}>
               {show.name}<span className="dot-accent">.</span>
             </h1>
-            <HeartButton type="show" slug={slug} />
+            <HeartButton type="show" slug={show.slug} />
           </div>
           {show.description && (
             <p className="max-w-2xl" style={{ color: "var(--paper-dim)", fontSize: "17px", lineHeight: "1.55" }}>
@@ -110,7 +125,7 @@ export default async function FormatPage({ params, searchParams }: Props) {
           page={parsed.page}
           total={episodes.total}
           pageSize={PUBLIC_LISTING_PAGE_SIZE}
-          hrefForPage={(page) => listingPageHref(pathname, page)}
+          hrefForPage={(page) => listingPageHref(`/format/${show.slug}`, page)}
         />
       </div>
     </div>

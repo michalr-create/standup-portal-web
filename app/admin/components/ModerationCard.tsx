@@ -13,7 +13,7 @@ import {
   dismissDuplicate,
 } from "../actions";
 import { createTag } from "../actions-sources";
-import { EXCLUDED_SPECIAL_ITEM_ID, isPublicContentSlug } from "@/lib/slugify";
+import { EXCLUDED_SPECIAL_ITEM_ID, isPublicContentSlug, slugify } from "@/lib/slugify";
 
 type PersonTag = { id: number; name: string; slug: string; person_id: number | null };
 type ContentTag = { id: number; name: string; slug: string; tag_type: string };
@@ -119,15 +119,6 @@ function PersonTagSearch({
       </div>
     </div>
   );
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 function formatDuration(seconds: number | null): string {

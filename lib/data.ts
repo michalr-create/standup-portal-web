@@ -33,6 +33,7 @@ import {
   buildSearchFacets,
   type SearchFacet,
 } from "@/lib/search-filters";
+import { canonicalPersonSlugs } from "@/lib/slug-alias-lookup";
 import { supabase } from "@/lib/supabase";
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { PUBLIC_LISTING_PAGE_SIZE } from "@/lib/category-browse";
@@ -2223,8 +2224,9 @@ export async function getUpcomingEventsForPersonSlugs(
   slugs: readonly string[],
   now = new Date(),
 ): Promise<FavoriteUpcomingEvent[]> {
-  const allowed = favoritePersonSlugs(slugs);
-  if (allowed.length === 0) return [];
+  const requested = favoritePersonSlugs(slugs);
+  if (requested.length === 0) return [];
+  const allowed = await canonicalPersonSlugs(requested);
 
   const rows = await listedRowsForPersonMatch(now, FAVORITE_UPCOMING_SCAN_LIMIT, { slugs: allowed });
   if (!rows) {

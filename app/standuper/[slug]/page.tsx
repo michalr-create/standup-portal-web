@@ -9,7 +9,9 @@ import SectionHead from "@/app/components/SectionHead";
 import HeartButton from "@/app/components/HeartButton";
 import { categoryBrowseHref } from "@/lib/category-browse";
 import { buildProfileBlocks, profileCountLabel, profileVideoCount } from "@/lib/standuper-profile";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import { personAliasTarget } from "@/lib/slug-alias-lookup";
+import { slugRedirectPath } from "@/lib/slug-redirect";
 import ProfileTour from "./ProfileTour";
 
 export const revalidate = 120;
@@ -18,10 +20,18 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
+async function redirectLegacyPerson(slug: string): Promise<void> {
+  const path = slugRedirectPath("standuper", slug, await personAliasTarget(slug));
+  if (path) permanentRedirect(path);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const person = await getPersonBySlug(slug);
-  if (!person) notFound();
+  if (!person) {
+    await redirectLegacyPerson(slug);
+    notFound();
+  }
   return contentMetadata({
     title: `${person.name} \u2014 stand-up, nagrania i wyst\u0119py`,
     description: person.bio,
@@ -38,7 +48,10 @@ export default async function StanduperPage({ params }: Props) {
   const personPromise = getPersonBySlug(slug);
   const itemsPromise = getItemsByPersonSlug(slug, 999);
   const person = await personPromise;
-  if (!person) notFound();
+  if (!person) {
+    await redirectLegacyPerson(slug);
+    notFound();
+  }
 
   const [items, defaultShows, tourCount, youtubeUrls] = await Promise.all([
     itemsPromise,
@@ -78,7 +91,7 @@ export default async function StanduperPage({ params }: Props) {
               </h1>
               <HeartButton
                 type="person"
-                slug={slug}
+                slug={person.slug}
                 name={person.name}
                 size={32}
                 inactiveColor="var(--paper)"

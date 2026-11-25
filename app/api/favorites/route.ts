@@ -11,6 +11,7 @@ import {
   pageFavoriteFeed,
 } from "@/lib/favorite-feed";
 import { normalizeHomeCity } from "@/lib/home-city";
+import { peopleByAliasSlugs, showsByAliasSlugs } from "@/lib/slug-alias-lookup";
 import { isPublicContentSlug } from "@/lib/slugify";
 
 function stringList(value: unknown): string[] {
@@ -94,28 +95,38 @@ export async function POST(req: NextRequest) {
 
   let personIds: number[] = [];
   if (personSlugs.length > 0) {
-    const { data: people } = await sb
-      .from("people")
-      .select("id, name, slug")
-      .in("slug", personSlugs);
-
-    if (people?.length) {
-      peopleDetails.push(...people.map((person) => ({ slug: person.slug, name: person.name })));
-      personIds = people.map((person) => person.id).filter((id): id is number => typeof id === "number");
+    const [{ data: people }, aliased] = await Promise.all([
+      sb.from("people").select("id, name, slug").in("slug", personSlugs),
+      peopleByAliasSlugs(personSlugs),
+    ]);
+    const byId = new Map<number, { slug: string; name: string }>();
+    for (const person of people ?? []) {
+      if (typeof person.id !== "number" || typeof person.slug !== "string" || typeof person.name !== "string") continue;
+      byId.set(person.id, { slug: person.slug, name: person.name });
     }
+    for (const person of aliased) {
+      if (!byId.has(person.id)) byId.set(person.id, { slug: person.slug, name: person.name });
+    }
+    peopleDetails.push(...byId.values());
+    personIds = [...byId.keys()];
   }
 
   let showIds: number[] = [];
   if (showSlugs.length > 0) {
-    const { data: shows } = await sb
-      .from("shows")
-      .select("id, name, slug")
-      .in("slug", showSlugs);
-
-    if (shows?.length) {
-      showDetails.push(...shows.map((show) => ({ slug: show.slug, name: show.name })));
-      showIds = shows.map((show) => show.id).filter((id): id is number => typeof id === "number");
+    const [{ data: shows }, aliased] = await Promise.all([
+      sb.from("shows").select("id, name, slug").in("slug", showSlugs),
+      showsByAliasSlugs(showSlugs),
+    ]);
+    const byId = new Map<number, { slug: string; name: string }>();
+    for (const show of shows ?? []) {
+      if (typeof show.id !== "number" || typeof show.slug !== "string" || typeof show.name !== "string") continue;
+      byId.set(show.id, { slug: show.slug, name: show.name });
     }
+    for (const show of aliased) {
+      if (!byId.has(show.id)) byId.set(show.id, { slug: show.slug, name: show.name });
+    }
+    showDetails.push(...byId.values());
+    showIds = [...byId.keys()];
   }
 
   const tagIdSet = new Set<number>();
