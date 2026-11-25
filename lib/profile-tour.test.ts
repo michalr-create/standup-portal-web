@@ -37,6 +37,8 @@ test("standuper profile links to filtered trasy and scrolls one row per category
 
   assert.match(page, /countUpcomingEventsForPerson\(person\.id, now\)/);
   assert.match(page, /<ProfileTour slug=\{person\.slug\} count=\{tourCount\} \/>/);
+  assert.match(page, /personPageGraph/);
+  assert.doesNotMatch(page, /eventPageGraph|eventNode/);
   const tourAt = page.indexOf("<ProfileTour");
   const rowsAt = page.indexOf("blocks.map");
   assert.ok(tourAt > 0 && rowsAt > tourAt);
@@ -60,5 +62,5 @@ test("standuper profile links to filtered trasy and scrolls one row per category
   assert.match(section, /if \(!label\) return null/);
   assert.match(section, /trasyHref\(\{ osoba: slug \}\)/);
   assert.match(section, /\{label\}/);
-  assert.doesNotMatch(section, /formatEventWhen|Bilety|TourRow|events\.map|Wszystkie terminy/);
+  assert.doesNotMatch(section, /formatEventWhen|Bilety|TourRow|events\.map|Wszystkie terminy|wystep/);
 });

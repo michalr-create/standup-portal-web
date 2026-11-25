@@ -166,6 +166,8 @@ test("public content pages declare their own metadata", () => {
     "app/roast/page.tsx",
     "app/shorts/page.tsx",
     "app/trasy/page.tsx",
+    "app/trasy/[miasto]/page.tsx",
+    "app/wystep/[id]/page.tsx",
     "app/nostalgia/page.tsx",
     "app/rankingi/page.tsx",
     "app/open-mic/page.tsx",
@@ -256,4 +258,42 @@ test("special titles name the performer once and paid pages are not videos", () 
     image: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
   });
   assert.equal(free.openGraph?.type, "video.other");
+});
+
+test("sitemap lists city landings and event leaves, not filter queries", () => {
+  const entries = buildSitemap(["kacper-rucinski"], ["litosci"], [], [1033, 1033, 0, 1574]);
+  const urls = entries.map((entry) => entry.url);
+  assert.equal(urls.includes("https://parska.pl/trasy/krakow"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/lodz"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/gdansk"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/bialystok"), true);
+  assert.equal(urls.includes("https://parska.pl/wystep/1033"), true);
+  assert.equal(urls.includes("https://parska.pl/wystep/1574"), true);
+  assert.equal(urls.filter((url) => url === "https://parska.pl/wystep/1033").length, 1);
+  assert.equal(urls.includes("https://parska.pl/wystep/0"), false);
+  assert.equal(urls.some((url) => url.includes("?") || url.includes("miasto=")), false);
+  const event = entries.find((entry) => entry.url.endsWith("/wystep/1033"));
+  assert.equal(event?.changeFrequency, "daily");
+  assert.equal(event?.priority, 0.5);
+  const city = entries.find((entry) => entry.url.endsWith("/trasy/krakow"));
+  assert.equal(city?.changeFrequency, "weekly");
+  assert.equal(city?.priority, 0.7);
+
+  const trasy = readFileSync(new URL("../app/trasy/page.tsx", import.meta.url), "utf8");
+  const cityPage = readFileSync(new URL("../app/trasy/[miasto]/page.tsx", import.meta.url), "utf8");
+  const profile = readFileSync(new URL("../app/standuper/[slug]/page.tsx", import.meta.url), "utf8");
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const leaf = readFileSync(new URL("../app/wystep/[id]/page.tsx", import.meta.url), "utf8");
+  for (const source of [trasy, cityPage, profile]) {
+    assert.equal(source.includes("eventPageGraph"), false);
+    assert.equal(source.includes("eventNode"), false);
+  }
+  assert.match(home, /homePageGraph/);
+  assert.doesNotMatch(home, /SearchAction/);
+  assert.match(leaf, /eventPageGraph/);
+  assert.match(leaf, /revalidate = 120/);
+  assert.match(leaf, /Kup bilet/);
+  assert.match(cityPage, /cityPageGraph/);
+  assert.match(cityPage, /hideCityChips/);
+  assert.doesNotMatch(cityPage, /description:\s*"/);
 });

@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { publicTrasyHref } from "@/lib/city-landings";
 import {
   BILETY_OPTIONS,
   activeTrasyFilterCount,
   topFacetCities,
-  trasyHref,
   type EventFacets,
   type TrasyFilters,
 } from "@/lib/events";
@@ -98,6 +98,7 @@ export default function TrasyFilters({
   facets,
   today,
   explicitAllCities = false,
+  hideCityChips = false,
   children,
 }: {
   filters: TrasyFilters;
@@ -105,6 +106,8 @@ export default function TrasyFilters({
   today: string;
   /** `?miasto=` with an empty value: do not let a saved city fill the URL again. */
   explicitAllCities?: boolean;
+  /** City landings already name the city. The chip row would only repeat it. */
+  hideCityChips?: boolean;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -112,7 +115,8 @@ export default function TrasyFilters({
   useEffect(() => {
     blankCity.current = explicitAllCities;
   }, [explicitAllCities]);
-  const activeCount = activeTrasyFilterCount(filters);
+  const rawCount = activeTrasyFilterCount(filters);
+  const activeCount = hideCityChips && filters.miasto ? Math.max(0, rawCount - 1) : rawCount;
   const cityChips = topFacetCities(facets.cities);
   // First paint follows the URL. Later chip taps update props without remounting,
   // so the panel stays where the reader left it.
@@ -136,7 +140,7 @@ export default function TrasyFilters({
       keepBlankCity = next.miasto === "";
       blankCity.current = keepBlankCity;
     }
-    router.push(trasyHref(merged, { keepBlankCity }), { scroll: false });
+    router.push(publicTrasyHref(merged, { keepBlankCity }), { scroll: false });
   };
 
   const fieldsClass = open
@@ -214,7 +218,7 @@ export default function TrasyFilters({
           </div>
         </div>
 
-        {cityChips.length > 0 && (
+        {cityChips.length > 0 && !hideCityChips && (
           <div
             className="order-1 flex max-w-full items-center gap-2 overflow-x-auto scrollbar-hide lg:order-none lg:flex-wrap lg:overflow-visible"
             role="group"
@@ -262,8 +266,21 @@ export default function TrasyFilters({
             <button
               type="button"
               onClick={() => {
-                blankCity.current = true;
-                router.push(trasyHref({}, { keepBlankCity: true }), { scroll: false });
+                const keepCity = hideCityChips && filters.miasto !== "";
+                blankCity.current = !keepCity;
+                router.push(
+                  publicTrasyHref(
+                    {
+                      osoba: "",
+                      miasto: keepCity ? filters.miasto : "",
+                      od: "",
+                      doDnia: "",
+                      bilety: "",
+                    },
+                    { keepBlankCity: !keepCity },
+                  ),
+                  { scroll: false },
+                );
               }}
               className="min-h-11 px-2 text-sm font-bold"
               style={{ color: "var(--coral)", background: "none", border: "none", fontFamily: "inherit" }}

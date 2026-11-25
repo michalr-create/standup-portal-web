@@ -12,6 +12,10 @@ import {
   facetRedirect,
   favoritePersonSlugs,
   filterUpcomingEvents,
+  eventCrumbLabel,
+  eventHeading,
+  eventLeafUsesDate,
+  formatEventDate,
   formatEventWhen,
   formatRelativeWhen,
   formatPrice,
@@ -1086,4 +1090,19 @@ test("tour card profile link stays on parska and skips a missing slug", () => {
   assert.equal(profileWatchAriaLabel("Adam Van Bendler"), "Nagrania: Adam Van Bendler na parska.pl");
   assert.equal(profileWatchAriaLabel("  Rafał Pacześ  "), "Nagrania: Rafał Pacześ na parska.pl");
   assert.equal(profileWatchAriaLabel("Łukasz Lotek Lodkowski"), "Nagrania: Łukasz Lotek Lodkowski na parska.pl");
+});
+
+test("a repeated comedian name links the date, a tour title links itself", () => {
+  const person = { name: "Kacper Ruciński", slug: "kacper-rucinski" };
+  const same = { title: "Kacper Ruciński", person, people: [person], city: "Kraków" };
+  assert.equal(eventLeafUsesDate(same), true);
+  assert.equal(eventHeading(same), "Kacper Ruciński");
+  assert.equal(eventCrumbLabel(same), "Kacper Ruciński, Kraków");
+  const tour = { title: "Stand-up: Kacper Ruciński", person, people: [person], city: "Kraków" };
+  assert.equal(eventLeafUsesDate(tour), false);
+  assert.equal(eventHeading(tour), "Stand-up: Kacper Ruciński");
+  assert.equal(eventCrumbLabel(tour), "Stand-up: Kacper Ruciński");
+  assert.equal(eventLeafUsesDate({ title: null, person, people: [person] }), true);
+  assert.equal(formatEventDate("2027-01-26T18:00:00.000Z"), "26 stycznia 2027");
+  assert.equal(formatEventDate("2027-05-12T16:00:00.000Z"), "12 maja 2027");
 });

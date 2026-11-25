@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { contentMetadata, pageFromSearch } from "@/lib/seo";
-import { redirect } from "next/navigation";
+import { trasyLandingRedirect } from "@/lib/city-landings";
+import { contentMetadata } from "@/lib/seo";
+import { permanentRedirect, redirect } from "next/navigation";
 import EventCard from "./EventCard";
 import EventPlansProvider from "./EventPlansProvider";
 import TrasyFilters from "./TrasyFilters";
@@ -29,13 +30,22 @@ type Props = {
   searchParams: Promise<TrasySearch>;
 };
 
+function settleTrasy(raw: TrasySearch) {
+  const parsed = parseTrasySearchParams(raw);
+  if (parsed.redirectHref) redirect(parsed.redirectHref);
+  const landing = trasyLandingRedirect(parsed.filters, parsed.page);
+  if (landing) permanentRedirect(landing);
+  return parsed;
+}
+
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const parsed = settleTrasy(await searchParams);
   return contentMetadata({
     title: "Trasy",
     description: "Nadchodz\u0105ce terminy polskiego stand-upu i linki do bilet\u00f3w.",
     fallbackDescription: "Nadchodz\u0105ce terminy polskiego stand-upu i linki do bilet\u00f3w.",
     pathname: "/trasy",
-    page: pageFromSearch((await searchParams).page),
+    page: parsed.page,
   });
 }
 
@@ -100,8 +110,7 @@ function Notice({
 export default async function TrasyPage({ searchParams }: Props) {
   const raw = await searchParams;
   const explicitAllCities = hasBlankCityParam(raw);
-  const parsed = parseTrasySearchParams(raw);
-  if (parsed.redirectHref) redirect(parsed.redirectHref);
+  const parsed = settleTrasy(raw);
 
   const now = new Date();
   const listing = await getTrasyListing(parsed.filters, parsed.page, PUBLIC_LISTING_PAGE_SIZE, now);

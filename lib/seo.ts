@@ -1,4 +1,5 @@
 import type { Metadata, MetadataRoute } from "next";
+import { CITY_LANDINGS } from "./city-landings.ts";
 import { isPublicContentSlug, PUBLIC_SLUG } from "./slugify.ts";
 
 /** Canonical origin. Public URLs stay on the apex host, never www. */
@@ -290,6 +291,8 @@ function sitemapPriority(pathname: string): { changeFrequency: SitemapChangeFreq
   if (pathname === "/") return { changeFrequency: "daily", priority: 1 };
   if (pathname === "/open-mic") return { changeFrequency: "daily", priority: 0.8 };
   if (pathname === "/trasy") return { changeFrequency: "daily", priority: 0.6 };
+  if (pathname.startsWith("/trasy/")) return { changeFrequency: "weekly", priority: 0.7 };
+  if (pathname.startsWith("/wystep/")) return { changeFrequency: "daily", priority: 0.5 };
   if (pathname.startsWith("/specjale/")) return { changeFrequency: "weekly", priority: 0.7 };
   return { changeFrequency: "weekly", priority: 0.6 };
 }
@@ -309,10 +312,27 @@ function specialSitemapRows(specials: readonly (string | SitemapSpecial)[]): { p
   return rows;
 }
 
+function eventSitemapPaths(ids: readonly number[]): string[] {
+  const seen = new Set<number>();
+  const paths: string[] = [];
+  for (const id of ids) {
+    if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    paths.push(`/wystep/${id}`);
+  }
+  paths.sort((a, b) => Number(a.slice("/wystep/".length)) - Number(b.slice("/wystep/".length)));
+  return paths;
+}
+
+function citySitemapPaths(): string[] {
+  return CITY_LANDINGS.map((city) => `/trasy/${city.slug}`).sort((a, b) => a.localeCompare(b));
+}
+
 export function buildSitemap(
   peopleSlugs: readonly string[],
   showSlugs: readonly string[],
   specials: readonly (string | SitemapSpecial)[] = [],
+  eventIds: readonly number[] = [],
 ): SitemapEntry[] {
   const paths = [
     ...SITEMAP_STATIC_PATHS,
@@ -340,6 +360,16 @@ export function buildSitemap(
       changeFrequency: cadence.changeFrequency,
       priority: cadence.priority,
       ...(row.lastModified ? { lastModified: row.lastModified } : {}),
+    });
+  }
+  for (const pathname of [...citySitemapPaths(), ...eventSitemapPaths(eventIds)]) {
+    if (isBlockedSitemapPath(pathname) || seen.has(pathname)) continue;
+    seen.add(pathname);
+    const cadence = sitemapPriority(pathname);
+    entries.push({
+      url: absoluteUrl(pathname),
+      changeFrequency: cadence.changeFrequency,
+      priority: cadence.priority,
     });
   }
   return entries;
