@@ -33,6 +33,13 @@ import {
   buildSearchFacets,
   type SearchFacet,
 } from "@/lib/search-filters";
+import {
+  emptyPersonImage,
+  isMissingPeopleImageColumn,
+  PERSON_PROFILE_CACHE_TAG,
+  personImageFromUnknown,
+  type PersonImageRow,
+} from "@/lib/person-portrait";
 import { canonicalPersonSlugs } from "@/lib/slug-alias-lookup";
 import { supabase } from "@/lib/supabase";
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
@@ -74,6 +81,8 @@ export type Person = {
   photo_url: string | null;
   role: string | null;
 };
+
+export type ProfilePerson = Person & PersonImageRow;
 
 export type Show = {
   id: number;
@@ -505,26 +514,80 @@ export function getItemsByPersonSlug(slug: string, limit = 100): Promise<Item[]>
   return itemsByPersonSlug(slug, size);
 }
 
-async function loadPersonBySlug(slug: string): Promise<Person | null> {
-  const { data } = await supabase
+const PERSON_PUBLIC_COLUMNS = "id, name, slug, bio, photo_url, role";
+const PERSON_IMAGE_COLUMNS = [
+  "image_url",
+  "image_source",
+  "image_credit",
+  "image_license",
+  "image_license_url",
+  "image_source_url",
+  "image_width",
+  "image_height",
+  "image_disabled",
+  "image_fetched_at",
+  "youtube_channel_url",
+  "youtube_image_url",
+  "youtube_image_width",
+  "youtube_image_height",
+  "image_fallback_url",
+  "image_fallback_credit",
+  "image_fallback_license",
+  "image_fallback_license_url",
+  "image_fallback_source_url",
+  "image_fallback_width",
+  "image_fallback_height",
+  "image_fallback_cropped",
+].join(", ");
+
+function profilePersonFromRow(row: Person & Record<string, unknown>): ProfilePerson {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    bio: row.bio,
+    photo_url: row.photo_url,
+    role: row.role,
+    ...personImageFromUnknown(row),
+  };
+}
+
+async function loadPersonBySlug(slug: string): Promise<ProfilePerson | null> {
+  const extended = await supabase
     .from("people")
-    .select("id, name, slug, bio, photo_url, role")
+    .select(`${PERSON_PUBLIC_COLUMNS}, ${PERSON_IMAGE_COLUMNS}`)
     .eq("slug", slug)
     .maybeSingle();
-
-  return data || null;
+  if (!extended.error) {
+    return extended.data ? profilePersonFromRow(extended.data as unknown as Person & Record<string, unknown>) : null;
+  }
+  if (!isMissingPeopleImageColumn(extended.error)) {
+    console.error("Błąd pobierania osoby:", extended.error.message);
+    return null;
+  }
+  const basic = await supabase
+    .from("people")
+    .select(PERSON_PUBLIC_COLUMNS)
+    .eq("slug", slug)
+    .maybeSingle();
+  if (basic.error) {
+    console.error("Błąd pobierania osoby:", basic.error.message);
+    return null;
+  }
+  if (!basic.data) return null;
+  return { ...basic.data, ...emptyPersonImage() };
 }
 
 const personBySlug = unstable_cache(
   async (slug: string) => loadPersonBySlug(slug),
   ["person-by-slug"],
-  { revalidate: PROFILE_REVALIDATE_SECONDS },
+  { revalidate: PROFILE_REVALIDATE_SECONDS, tags: [PERSON_PROFILE_CACHE_TAG] },
 );
 
 // =================================================================
 // QUERY: dane person po slugu
 // =================================================================
-export function getPersonBySlug(slug: string): Promise<Person | null> {
+export function getPersonBySlug(slug: string): Promise<ProfilePerson | null> {
   return personBySlug(slug);
 }
 

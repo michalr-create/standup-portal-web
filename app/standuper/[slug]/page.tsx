@@ -10,8 +10,10 @@ import HeartButton from "@/app/components/HeartButton";
 import { categoryBrowseHref } from "@/lib/category-browse";
 import { buildProfileBlocks, profileCountLabel, profileVideoCount } from "@/lib/standuper-profile";
 import { notFound, permanentRedirect } from "next/navigation";
+import { portraitJsonLd, profileSameAs, resolvePersonPortrait } from "@/lib/person-portrait";
 import { personAliasTarget } from "@/lib/slug-alias-lookup";
 import { slugRedirectPath } from "@/lib/slug-redirect";
+import ProfilePortrait, { ProfilePortraitCredit } from "./ProfilePortrait";
 import ProfileTour from "./ProfileTour";
 
 export const revalidate = 120;
@@ -32,12 +34,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     await redirectLegacyPerson(slug);
     notFound();
   }
+  const portrait = resolvePersonPortrait(person);
   return contentMetadata({
     title: `${person.name} \u2014 stand-up, nagrania i wyst\u0119py`,
     description: person.bio,
     fallbackDescription: `Nagrania, specjale, formaty i nadchodz\u0105ce wyst\u0119py: ${person.name} w polskim stand-upie.`,
     pathname: `/standuper/${person.slug}`,
     openGraphType: "profile",
+    image: portrait?.ogImage ?? null,
   });
 }
 
@@ -67,6 +71,35 @@ export default async function StanduperPage({ params }: Props) {
   });
   const videoCount = profileVideoCount(blocks);
   const formatCount = defaultShows.length;
+  const portrait = resolvePersonPortrait(person);
+  const headerBody = (
+    <>
+      <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
+        {person.role || "Standuper"}
+      </div>
+      <div className="flex items-center gap-3 flex-wrap mb-2">
+        <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
+          {person.name}<span className="dot-accent">.</span>
+        </h1>
+        <HeartButton
+          type="person"
+          slug={person.slug}
+          name={person.name}
+          size={32}
+          inactiveColor="var(--paper)"
+        />
+        <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
+          {profileCountLabel(videoCount, formatCount)}
+        </span>
+      </div>
+      {person.bio && (
+        <p className="max-w-2xl" style={{ color: "var(--paper-dim)", fontSize: "17px", lineHeight: "1.55" }}>
+          {person.bio}
+        </p>
+      )}
+      <ProfileTour slug={person.slug} count={tourCount} />
+    </>
+  );
 
   return (
     <>
@@ -75,37 +108,20 @@ export default async function StanduperPage({ params }: Props) {
           name: person.name,
           slug: person.slug,
           bio: person.bio,
-          photoUrl: person.photo_url,
-          sameAs: youtubeUrls,
+          image: portrait ? portraitJsonLd(portrait) : null,
+          sameAs: profileSameAs(youtubeUrls, person.youtube_channel_url),
         })}
       />
       <div className="band">
         <div className="max-w-6xl mx-auto">
           <header>
-            <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-              {person.role || "Standuper"}
-            </div>
-            <div className="flex items-center gap-3 flex-wrap mb-2">
-              <h1 className="font-black m-0 leading-none" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}>
-                {person.name}<span className="dot-accent">.</span>
-              </h1>
-              <HeartButton
-                type="person"
-                slug={person.slug}
-                name={person.name}
-                size={32}
-                inactiveColor="var(--paper)"
-              />
-              <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-                {profileCountLabel(videoCount, formatCount)}
-              </span>
-            </div>
-            {person.bio && (
-              <p className="max-w-2xl" style={{ color: "var(--paper-dim)", fontSize: "17px", lineHeight: "1.55" }}>
-                {person.bio}
-              </p>
-            )}
-            <ProfileTour slug={person.slug} count={tourCount} />
+            {portrait ? (
+              <div className="flex items-start gap-4">
+                <ProfilePortrait name={person.name} portrait={portrait} />
+                <div className="min-w-0 flex-1">{headerBody}</div>
+              </div>
+            ) : headerBody}
+            {portrait ? <ProfilePortraitCredit portrait={portrait} /> : null}
           </header>
 
           {videoCount === 0 && formatCount === 0 && (
