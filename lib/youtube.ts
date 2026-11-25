@@ -60,6 +60,28 @@ export function resolveContentOpen(item: {
   return { type: "external", url };
 }
 
+/** Host shown on a paid special, without a leading www. */
+export function externalHostLabel(url: string | null): string | null {
+  const href = paidExternalUrl(url);
+  if (!href) return null;
+  try {
+    return new URL(href).hostname.replace(/^www\./i, "");
+  } catch {
+    return null;
+  }
+}
+
+/** Unmodified primary click. Middle-click and modified clicks keep the real href. */
+export function isPlainLeftClick(event: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
 export function getYouTubeId(url: string): string | null {
   const patterns = [
     /[?&]v=([^&#]+)/,

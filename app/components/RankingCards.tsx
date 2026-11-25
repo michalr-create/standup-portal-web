@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Item } from "@/lib/data";
+import { itemDisplayTitle } from "@/lib/display-title";
 import { resolveContentOpen } from "@/lib/youtube";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { DEFAULT_GRID_CLASS } from "./itemsBrowserLayout";
@@ -9,6 +10,7 @@ import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import CardByline from "./CardByline";
 import ContentCardAction from "./ContentCardAction";
+import SpecialProgramLink from "./SpecialProgramLink";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
 import WatchLaterButton from "./WatchLaterButton";
@@ -54,6 +56,7 @@ export default function RankingCards({
     const item = entry.item;
     const isWatched = watched.has(item.url);
     const solePerson = item.people.length === 1 ? item.people[0] : null;
+    const title = itemDisplayTitle(item);
     const showRank = entry.rank > 0;
     const articleClass = layout === "strip"
       ? "group vcard relative text-left w-72 sm:w-80 shrink-0 snap-start min-w-0"
@@ -61,7 +64,7 @@ export default function RankingCards({
 
     return (
       <article key={item.id} className={articleClass}>
-        <ContentCardAction isPaid={item.is_paid} url={item.url} onOpen={() => handleClick(item)}>
+        <ContentCardAction isPaid={item.is_paid} url={item.url} slug={item.slug} onOpen={() => handleClick(item)}>
           <div
             className="overflow-hidden relative"
             style={{
@@ -74,7 +77,7 @@ export default function RankingCards({
             {item.thumbnail_url && (
               <img
                 src={item.thumbnail_url}
-                alt={item.title}
+                alt={title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 style={{ opacity: isWatched ? 0.7 : 1 }}
               />
@@ -131,7 +134,7 @@ export default function RankingCards({
               className="font-extrabold leading-tight line-clamp-2"
               style={{ fontSize: "16px", letterSpacing: "-.01em" }}
             >
-              {item.title}
+              {title}
             </h4>
           </div>
         </ContentCardAction>
@@ -157,8 +160,9 @@ export default function RankingCards({
             )}
           </p>
         )}
-        <div className="mt-2">
-          <WatchLaterButton itemId={item.id} title={item.title} />
+        <div className={item.is_paid && item.slug ? "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" : "mt-2"}>
+          <WatchLaterButton itemId={item.id} title={title} />
+          {item.is_paid && item.slug ? <SpecialProgramLink slug={item.slug} /> : null}
         </div>
         <CardByline item={item} />
       </article>

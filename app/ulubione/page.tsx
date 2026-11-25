@@ -15,6 +15,8 @@ import { useWatchHistory } from "@/app/hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
 import ContentCardAction from "@/app/components/ContentCardAction";
+import SpecialProgramLink from "@/app/components/SpecialProgramLink";
+import { itemDisplayTitle } from "@/lib/display-title";
 import PaidBadge from "@/app/components/PaidBadge";
 import ThumbDuration from "@/app/components/ThumbDuration";
 import ReportForm from "@/app/zglos/ReportForm";
@@ -215,9 +217,10 @@ export default function UlubionePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {laterItems.map((item) => {
                   const isWatched = watched.has(item.url);
+                  const title = itemDisplayTitle(item);
                   return (
                     <article key={item.id} className="group vcard relative text-left w-full min-w-0">
-                      <ContentCardAction isPaid={item.is_paid} url={item.url} onOpen={() => handleClick(item)}>
+                      <ContentCardAction isPaid={item.is_paid} url={item.url} slug={item.slug} onOpen={() => handleClick(item)}>
                         <div
                           className="overflow-hidden relative"
                           style={{ aspectRatio: "16/10", borderRadius: "14px", border: "1px solid var(--line)", background: "var(--ink-3)" }}
@@ -225,7 +228,7 @@ export default function UlubionePage() {
                           {item.thumbnail_url && (
                             <img
                               src={item.thumbnail_url}
-                              alt={item.title}
+                              alt={title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               style={{ opacity: isWatched ? 0.7 : 1 }}
                             />
@@ -235,12 +238,13 @@ export default function UlubionePage() {
                         </div>
                         <div className="pt-3 px-0.5">
                           <h3 className="font-extrabold leading-tight line-clamp-2" style={{ fontSize: "16px", letterSpacing: "-.01em" }}>
-                            {item.title}
+                            {title}
                           </h3>
                         </div>
                       </ContentCardAction>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <WatchLaterButton itemId={item.id} title={item.title} />
+                        <WatchLaterButton itemId={item.id} title={title} />
+                        {item.is_paid && item.slug ? <SpecialProgramLink slug={item.slug} /> : null}
                         <AdminMaterialActions itemId={item.id} inline />
                       </div>
                       <CardByline item={item} />

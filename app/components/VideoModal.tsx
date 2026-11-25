@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { Item } from "@/lib/data";
+import { itemDisplayTitle } from "@/lib/display-title";
+import { isPublicContentSlug } from "@/lib/slugify";
 import {
   OPEN_YOUTUBE_LABEL,
   OPEN_YOUTUBE_TITLE,
@@ -947,7 +949,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
       className={cover ? "video-modal is-cover outline-none" : "video-modal outline-none"}
       role="dialog"
       aria-modal="true"
-      aria-label={item.title}
+      aria-label={itemDisplayTitle(item)}
       data-player-session=""
       tabIndex={-1}
     >
@@ -971,7 +973,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
             tabIndex={-1}
             className="video-modal-iframe"
             src={iframeSrc}
-            title={item.title}
+            title={itemDisplayTitle(item)}
             allow={YT_ALLOW}
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
@@ -1022,7 +1024,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
                 className="font-extrabold leading-tight line-clamp-2"
                 style={{ fontSize: "17px", color: "var(--paper)", letterSpacing: "-.01em" }}
               >
-                {item.title}
+                {itemDisplayTitle(item)}
               </h3>
               {hasPeople || fallbackLabel ? (
                 <p className="mt-1" style={{ fontSize: "13px", color: "var(--paper-dim)" }}>
@@ -1075,7 +1077,16 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <WatchLaterButton itemId={item.id} title={item.title} />
+            <WatchLaterButton itemId={item.id} title={itemDisplayTitle(item)} />
+            {item.slug && isPublicContentSlug(item.slug) ? (
+              <Link
+                href={`/specjale/${item.slug}`}
+                className="inline-flex min-h-11 items-center text-sm font-bold underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                style={{ color: "var(--coral)" }}
+              >
+                Otwórz stronę specjalu
+              </Link>
+            ) : null}
             <AdminMaterialActions itemId={item.id} inline />
           </div>
           <PlayerTools key={`meta-${videoId}`} {...toolProps} showHint />

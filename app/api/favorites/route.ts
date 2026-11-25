@@ -11,6 +11,7 @@ import {
   pageFavoriteFeed,
 } from "@/lib/favorite-feed";
 import { normalizeHomeCity } from "@/lib/home-city";
+import { isPublicContentSlug } from "@/lib/slugify";
 
 function stringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -27,6 +28,7 @@ type FeedRow = {
   show_id: number | null;
   category_id: number | null;
   is_paid: boolean;
+  slug: string | null;
 };
 
 function rowsOf(data: unknown): FeedRow[] {
@@ -48,6 +50,9 @@ function rowsOf(data: unknown): FeedRow[] {
       show_id: typeof record.show_id === "number" ? record.show_id : null,
       category_id: typeof record.category_id === "number" ? record.category_id : null,
       is_paid: record.is_paid === true,
+      slug: typeof record.slug === "string" && isPublicContentSlug(record.slug.trim().toLowerCase())
+        ? record.slug.trim().toLowerCase()
+        : null,
     });
   }
   return out;
@@ -146,7 +151,7 @@ export async function POST(req: NextRequest) {
   const shortsRaw = shortsCategory?.id;
   const shortsCategoryId = typeof shortsRaw === "number" && Number.isInteger(shortsRaw) ? shortsRaw : null;
 
-  const baseSelect = "id, title, url, thumbnail_url, published_at, duration_seconds, show_id, category_id, is_paid";
+  const baseSelect = "id, title, url, thumbnail_url, published_at, duration_seconds, show_id, category_id, is_paid, slug";
 
   // Order by publication date before the limit. An unordered cap on
   // content_tags kept only one comedian's rows when that person had the

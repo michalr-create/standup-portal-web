@@ -57,6 +57,7 @@ test("show ids revalidate the format page and the formaty index", () => {
     "/formaty",
     "/nostalgia",
     "/rankingi",
+    "/sitemap.xml",
     "/specjale",
     "/standuper/abelard-giza",
     "/ulubione",
@@ -102,12 +103,32 @@ test("content_tags payload keeps removed tag ids and the parent item", () => {
     "/",
     "/nostalgia",
     "/rankingi",
+    "/sitemap.xml",
     "/specjale",
     "/standup",
     "/standuper/rafal-paczes",
     "/ulubione",
     "/ulubione/tresci",
   ]);
+});
+
+test("a special slug refreshes its page and the sitemap", () => {
+  const refs = collectRevalidateRefs({
+    type: "UPDATE",
+    table: "content_items",
+    record: { id: 3102, slug: "abelard-giza-wentyl-2026", category_id: 1 },
+    old_record: { id: 3102, slug: "stary-slug", category_id: 1 },
+  });
+  const resolved = emptyResolved();
+  resolved.itemSlugs = ["abelard-giza-wentyl-2026"];
+  resolved.categorySlugs = ["standup"];
+
+  assert.deepEqual(refs.itemSlugs, ["abelard-giza-wentyl-2026", "stary-slug"]);
+  const paths = assembleContentPaths(refs, resolved);
+  assert.equal(paths.includes("/specjale/abelard-giza-wentyl-2026"), true);
+  assert.equal(paths.includes("/specjale/stary-slug"), true);
+  assert.equal(paths.includes("/sitemap.xml"), true);
+  assert.equal(paths.includes("/specjale"), true);
 });
 
 test("explicit paths ignore anything that is not a site path", () => {

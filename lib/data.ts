@@ -39,6 +39,7 @@ import { PUBLIC_LISTING_PAGE_SIZE } from "@/lib/category-browse";
 import { mergeShowEpisodes, pageShowEpisodes } from "@/lib/show-episodes";
 import { collapseBy } from "@/lib/program-parts";
 import { normalizeHomeCity } from "@/lib/home-city";
+import { EXCLUDED_SPECIAL_ITEM_ID, isPublicContentSlug } from "@/lib/slugify";
 import { paidExternalUrl } from "@/lib/youtube";
 
 export type Item = {
@@ -53,6 +54,8 @@ export type Item = {
   episode_group_id: string | null;
   duration_seconds: number | null;
   is_paid: boolean;
+  /** Public `/specjale/{slug}`. Null on shorts, clips, and unpublished specials. */
+  slug: string | null;
   // pola pochodne (wypełniane w hydratacji)
   showName: string | null;
   showSlug: string | null;
@@ -131,6 +134,7 @@ async function hydrateItems(rawItems: {
   episode_group_id: string | null;
   duration_seconds: number | null;
   is_paid: boolean;
+  slug?: string | null;
 }[]): Promise<Item[]> {
   if (rawItems.length === 0) return [];
 
@@ -219,6 +223,7 @@ type NpCtRow = {
     return {
       ...item,
       is_paid: item.is_paid === true,
+      slug: item.slug?.trim() || null,
       showName: show?.name || null,
       showSlug: show?.slug || null,
       categoryName: category?.name || null,
@@ -235,7 +240,7 @@ type NpCtRow = {
 export async function getAllApprovedItems(limit = 100): Promise<Item[]> {
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug")
     .eq("status", "approved")
     .is("merged_into_id", null)
     .order("published_at", { ascending: false })
@@ -262,7 +267,7 @@ export async function getApprovedItemsByIds(ids: number[]): Promise<Item[]> {
 
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug")
     .in("id", unique)
     .eq("status", "approved")
     .is("merged_into_id", null);
@@ -289,7 +294,7 @@ export async function getItemsByCategorySlug(slug: string, limit = 100): Promise
 
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug")
     .eq("status", "approved")
     .eq("category_id", cat.id)
     .is("merged_into_id", null)
@@ -321,7 +326,7 @@ export async function getItemsByShowSlug(slug: string, limit = 100): Promise<Ite
   const sourceIds = (sourcesRes.data || []).map((s) => s.id);
   const shortsCatId = shortsCatRes.data?.id;
 
-  const cols = "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid";
+  const cols = "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug";
 
   // Zapytanie 1: items z show_id ustawionym bezpośrednio
   let q1 = supabase
@@ -381,7 +386,7 @@ function manyEmbedded<T>(value: Embedded<T>): T[] {
 
 const PERSON_ITEM_SELECT = [
   "content_items!inner(",
-  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid,",
+  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug,",
   "shows(name, slug),",
   "categories(name, slug),",
   "content_tags(tags(name, slug, tag_type, person_id, people(name, slug)))",
@@ -408,6 +413,7 @@ type PersonItemRow = {
   episode_group_id: string | null;
   duration_seconds: number | null;
   is_paid: boolean | null;
+  slug?: string | null;
   shows?: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
   categories?: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
   content_tags?: { tags?: PersonItemTag | PersonItemTag[] | null }[] | null;
@@ -446,6 +452,7 @@ function itemFromPersonRow(row: PersonItemRow): Item | null {
     episode_group_id: row.episode_group_id,
     duration_seconds: row.duration_seconds,
     is_paid: row.is_paid === true,
+    slug: row.slug?.trim() || null,
     showName: show?.name || null,
     showSlug: show?.slug || null,
     categoryName: category?.name || null,
@@ -809,7 +816,7 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
     const query = excludeShortsFromNowe(
       supabase
         .from("content_items")
-        .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+        .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug")
         .eq("status", "approved")
         .is("merged_into_id", null)
         .gte("published_at", cutoff.toISOString())
@@ -836,7 +843,7 @@ export async function getRecentItems(days = 7, minItems = 3, maxDays = 30): Prom
   const fallbackQuery = excludeShortsFromNowe(
     supabase
       .from("content_items")
-      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid")
+      .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug")
       .eq("status", "approved")
       .is("merged_into_id", null)
       .order("published_at", { ascending: false })
@@ -858,7 +865,7 @@ export async function getFeaturedItems(limit = HOME_FEATURED_LIMIT): Promise<Ite
   );
   const { data, error } = await supabase
     .from("content_items")
-    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, featured_at")
+    .select("id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug, featured_at")
     .eq("status", "approved")
     .eq("is_featured", true)
     .is("merged_into_id", null)
@@ -876,7 +883,7 @@ export async function getFeaturedItems(limit = HOME_FEATURED_LIMIT): Promise<Ite
 // QUERY: wpisy z danym tagiem (paginacja po published_at desc)
 // =================================================================
 const ITEM_COLUMNS =
-  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid";
+  "id, title, url, thumbnail_url, published_at, source_id, show_id, category_id, episode_group_id, duration_seconds, is_paid, slug";
 
 type ContentItemRow = {
   id: number;
@@ -890,6 +897,7 @@ type ContentItemRow = {
   episode_group_id: string | null;
   duration_seconds: number | null;
   is_paid: boolean;
+  slug?: string | null;
 };
 
 export type PagedItems = {
@@ -2239,4 +2247,208 @@ export async function getGoingCounts(eventIds: number[]): Promise<Map<number, nu
     counts.set(eventId, Math.floor(count));
   }
   return counts;
+}
+
+export type SpecialPageRecord = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  url: string;
+  thumbnail_url: string | null;
+  published_at: string | null;
+  duration_seconds: number | null;
+  is_paid: boolean;
+  show_id: number | null;
+  showName: string | null;
+  showSlug: string | null;
+  people: { name: string; slug: string }[];
+  tags: { name: string; slug: string; tag_type: string }[];
+};
+
+export type SpecialSlugRow = {
+  slug: string;
+  published_at: string | null;
+  approved_at: string | null;
+};
+
+type SpecialTagRow = {
+  name?: string;
+  slug?: string;
+  tag_type?: string;
+  people?: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
+};
+
+function publicContentSlug(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const slug = value.trim().toLowerCase();
+  return isPublicContentSlug(slug) ? slug : null;
+}
+
+async function specialTopicTagId(): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("tags")
+    .select("id")
+    .eq("slug", "special")
+    .eq("tag_type", "topic")
+    .maybeSingle();
+  if (error || !data || typeof data.id !== "number") return null;
+  return data.id;
+}
+
+function readSpecialTags(value: unknown): {
+  people: { name: string; slug: string }[];
+  tags: SpecialPageRecord["tags"];
+  hasSpecial: boolean;
+} {
+  const people: { name: string; slug: string }[] = [];
+  const tags: SpecialPageRecord["tags"] = [];
+  const seenPeople = new Set<string>();
+  let hasSpecial = false;
+  const links = Array.isArray(value) ? value : [];
+  for (const link of links) {
+    if (!link || typeof link !== "object") continue;
+    const embedded = (link as { tags?: SpecialTagRow | SpecialTagRow[] | null }).tags;
+    for (const tag of manyEmbedded(embedded)) {
+      if (tag.tag_type === "person") {
+        const person = oneEmbedded(tag.people);
+        if (!person?.name || !person.slug || seenPeople.has(person.slug)) continue;
+        seenPeople.add(person.slug);
+        people.push({ name: person.name, slug: person.slug });
+        continue;
+      }
+      if (tag.slug === "special" && tag.tag_type === "topic") hasSpecial = true;
+      if (tag.name && tag.slug && tag.tag_type) {
+        tags.push({ name: tag.name, slug: tag.slug, tag_type: tag.tag_type });
+      }
+    }
+  }
+  return { people, tags, hasSpecial };
+}
+
+async function loadSpecialBySlug(slug: string): Promise<SpecialPageRecord | null> {
+  const publicSlug = publicContentSlug(slug);
+  if (!publicSlug) return null;
+  const { data, error } = await supabase
+    .from("content_items")
+    .select(
+      "id, slug, title, description, url, thumbnail_url, published_at, duration_seconds, is_paid, status, merged_into_id, show_id, shows(name, slug), content_tags(tags(name, slug, tag_type, people(name, slug)))",
+    )
+    .eq("slug", publicSlug)
+    .maybeSingle();
+  if (error || !data) return null;
+  const id = typeof data.id === "number" ? data.id : null;
+  if (id == null || id === EXCLUDED_SPECIAL_ITEM_ID) return null;
+  if (data.status !== "approved" || data.merged_into_id != null) return null;
+  if (typeof data.title !== "string" || typeof data.url !== "string") return null;
+  const storedSlug = publicContentSlug(data.slug);
+  if (!storedSlug) return null;
+  const parsed = readSpecialTags(data.content_tags);
+  if (!parsed.hasSpecial) return null;
+  const show = oneEmbedded(data.shows as { name?: string; slug?: string } | { name?: string; slug?: string }[] | null);
+  return {
+    id,
+    slug: storedSlug,
+    title: data.title,
+    description: typeof data.description === "string" ? data.description : null,
+    url: data.url,
+    thumbnail_url: typeof data.thumbnail_url === "string" ? data.thumbnail_url : null,
+    published_at: typeof data.published_at === "string" ? data.published_at : null,
+    duration_seconds: typeof data.duration_seconds === "number" ? data.duration_seconds : null,
+    is_paid: data.is_paid === true,
+    show_id: typeof data.show_id === "number" ? data.show_id : null,
+    showName: show?.name || null,
+    showSlug: show?.slug || null,
+    people: parsed.people,
+    tags: parsed.tags,
+  };
+}
+
+export const getSpecialBySlug = cache(loadSpecialBySlug);
+
+export async function getAllSpecialSlugs(): Promise<SpecialSlugRow[]> {
+  const tagId = await specialTopicTagId();
+  if (tagId == null) return [];
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id, slug, published_at, approved_at, content_tags!inner(tag_id)")
+    .eq("content_tags.tag_id", tagId)
+    .eq("status", "approved")
+    .is("merged_into_id", null)
+    .not("slug", "is", null)
+    .neq("id", EXCLUDED_SPECIAL_ITEM_ID);
+  if (error || !data) return [];
+  const rows: SpecialSlugRow[] = [];
+  const seen = new Set<string>();
+  for (const row of data) {
+    const slug = publicContentSlug(row.slug);
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+    rows.push({
+      slug,
+      published_at: typeof row.published_at === "string" ? row.published_at : null,
+      approved_at: typeof row.approved_at === "string" ? row.approved_at : null,
+    });
+  }
+  rows.sort((a, b) => a.slug.localeCompare(b.slug));
+  return rows;
+}
+
+async function idsForTag(tagId: number): Promise<number[]> {
+  const { data, error } = await supabase.from("content_tags").select("content_item_id").eq("tag_id", tagId);
+  if (error || !data) return [];
+  const ids: number[] = [];
+  for (const row of data) {
+    if (typeof row.content_item_id === "number") ids.push(row.content_item_id);
+  }
+  return ids;
+}
+
+async function loadPublicSpecialsByIds(ids: number[]): Promise<Item[]> {
+  const unique = [...new Set(ids)].filter((id) => id !== EXCLUDED_SPECIAL_ITEM_ID);
+  if (unique.length === 0) return [];
+  const { data, error } = await supabase
+    .from("content_items")
+    .select(ITEM_COLUMNS)
+    .in("id", unique)
+    .eq("status", "approved")
+    .is("merged_into_id", null)
+    .not("slug", "is", null);
+  if (error || !data) return [];
+  const items = await hydrateItems(data);
+  return items.sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? "") || b.id - a.id);
+}
+
+/** Other public specials by the same person, or recent ones when nobody is tagged. */
+export async function getRelatedSpecials(personSlug: string | null, excludeId: number, limit = 6): Promise<Item[]> {
+  const size = Number.isFinite(limit) ? Math.min(12, Math.max(1, Math.floor(limit))) : 6;
+  const specialTagId = await specialTopicTagId();
+  if (specialTagId == null) return [];
+  if (personSlug) {
+    const specialIds = new Set(await idsForTag(specialTagId));
+    const { data: personTag } = await supabase
+      .from("tags")
+      .select("id")
+      .eq("slug", personSlug)
+      .eq("tag_type", "person")
+      .maybeSingle();
+    if (!personTag || typeof personTag.id !== "number") return [];
+    const personIds = await idsForTag(personTag.id);
+    const ids = personIds.filter((id) => id !== excludeId && specialIds.has(id));
+    const items = await loadPublicSpecialsByIds(ids);
+    return items.slice(0, size);
+  }
+  const { data, error } = await supabase
+    .from("content_items")
+    .select(`${ITEM_COLUMNS}, content_tags!inner(tag_id)`)
+    .eq("content_tags.tag_id", specialTagId)
+    .eq("status", "approved")
+    .is("merged_into_id", null)
+    .not("slug", "is", null)
+    .neq("id", EXCLUDED_SPECIAL_ITEM_ID)
+    .neq("id", excludeId)
+    .order("published_at", { ascending: false })
+    .limit(size);
+  if (error || !data) return [];
+  return hydrateItems(data);
 }

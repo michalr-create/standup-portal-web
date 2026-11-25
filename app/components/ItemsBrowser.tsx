@@ -5,10 +5,12 @@ import type { Item } from "@/lib/data";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
+import { itemDisplayTitle } from "@/lib/display-title";
 import { resolveContentOpen } from "@/lib/youtube";
 import CardByline from "./CardByline";
 import HighlightedText from "./HighlightedText";
 import ContentCardAction from "./ContentCardAction";
+import SpecialProgramLink from "./SpecialProgramLink";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
 import WatchLaterButton from "./WatchLaterButton";
@@ -63,12 +65,14 @@ export default function ItemsBrowser({
         {items.map((item) => {
           const isWatched = watched.has(item.url);
           const solePerson = item.people.length === 1 ? item.people[0] : null;
+          const title = itemDisplayTitle(item);
 
           return (
             <article key={item.id} className="group vcard relative text-left w-full min-w-0">
               <ContentCardAction
                 isPaid={item.is_paid}
                 url={item.url}
+                slug={item.slug}
                 onOpen={() => handleClick(item)}
               >
                 <div
@@ -83,7 +87,7 @@ export default function ItemsBrowser({
                   {item.thumbnail_url && (
                     <img
                       src={item.thumbnail_url}
-                      alt={item.title}
+                      alt={title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       style={{ opacity: isWatched ? 0.7 : 1 }}
                     />
@@ -123,7 +127,7 @@ export default function ItemsBrowser({
                     className="font-extrabold leading-tight line-clamp-2"
                     style={{ fontSize: "16px", letterSpacing: "-.01em" }}
                   >
-                    {highlight ? <HighlightedText text={item.title} query={highlight} /> : item.title}
+                    {highlight ? <HighlightedText text={title} query={highlight} /> : title}
                   </h4>
                 </div>
               </ContentCardAction>
@@ -132,8 +136,9 @@ export default function ItemsBrowser({
                   <HeartButton type="person" slug={solePerson.slug} name={solePerson.name} size={15} overlay />
                 </div>
               )}
-              <div className="mt-2">
-                <WatchLaterButton itemId={item.id} title={item.title} />
+              <div className={item.is_paid && item.slug ? "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" : "mt-2"}>
+                <WatchLaterButton itemId={item.id} title={title} />
+                {item.is_paid && item.slug ? <SpecialProgramLink slug={item.slug} /> : null}
               </div>
               <AdminMaterialActions itemId={item.id} />
               <CardByline item={item} />

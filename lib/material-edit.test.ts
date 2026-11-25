@@ -40,6 +40,14 @@ test("draft rejects a blank title, oversized text, and bad ids", () => {
   assert.equal(normalizeMaterialDraft({ ...base, personIds: ["4"] }).ok, false);
   assert.equal(normalizeMaterialDraft({ ...base, tagIds: [-1] }).ok, false);
   assert.equal(normalizeMaterialDraft({ ...base, description: 1 }).ok, false);
+  assert.equal(normalizeMaterialDraft({ ...base, slug: "Dodaj" }).ok, false);
+  assert.equal(normalizeMaterialDraft({ ...base, slug: "page" }).ok, false);
+  const withSlug = normalizeMaterialDraft({ ...base, slug: " Wentyl-2026 " });
+  assert.equal(withSlug.ok, true);
+  if (withSlug.ok) assert.equal(withSlug.value.slug, "wentyl-2026");
+  const emptySlug = normalizeMaterialDraft(base);
+  assert.equal(emptySlug.ok, true);
+  if (emptySlug.ok) assert.equal(emptySlug.value.slug, "");
 });
 
 test("person tags stay in the chosen order and unknown people fail", () => {

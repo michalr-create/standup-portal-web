@@ -7,11 +7,13 @@ import OptionCombobox from "@/app/components/OptionCombobox";
 import { updateMaterial } from "./actions";
 import {
   MATERIAL_DESCRIPTION_MAX,
+  MATERIAL_SLUG_MAX,
   MATERIAL_TITLE_MAX,
   tagOptionLabel,
   type MaterialEditorData,
   type NamedId,
 } from "@/lib/material-edit";
+import { EXCLUDED_SPECIAL_ITEM_ID, isPublicContentSlug } from "@/lib/slugify";
 
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
@@ -115,6 +117,7 @@ export default function MaterialEditor({ data }: { data: MaterialEditorData }) {
   const [showId, setShowId] = useState<number | null>(data.item.showId);
   const [personIds, setPersonIds] = useState<number[]>(data.personIds);
   const [tagIds, setTagIds] = useState<number[]>(data.tagIds);
+  const [slug, setSlug] = useState(data.item.slug);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -139,6 +142,7 @@ export default function MaterialEditor({ data }: { data: MaterialEditorData }) {
           showId,
           personIds,
           tagIds,
+          slug,
         });
         if (!result.ok) {
           setError(result.error);
@@ -192,6 +196,36 @@ export default function MaterialEditor({ data }: { data: MaterialEditorData }) {
             style={fieldStyle}
             required
           />
+        </label>
+
+        <label className="block text-sm font-bold" htmlFor="material-slug">
+          Slug strony specjalu
+          <input
+            id="material-slug"
+            value={slug}
+            maxLength={MATERIAL_SLUG_MAX}
+            spellCheck={false}
+            disabled={data.item.id === EXCLUDED_SPECIAL_ITEM_ID}
+            onChange={(event) => setSlug(event.target.value)}
+            className={`mono mt-2 ${fieldClass}`}
+            style={fieldStyle}
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+          <span className="mt-2 block text-xs font-normal" style={{ color: "var(--paper-mute)" }}>
+            {data.item.id === EXCLUDED_SPECIAL_ITEM_ID
+              ? "Ten duplikat nie dostaje publicznej strony. Scal go z rekordem kanonicznym."
+              : "Adres /specjale/… dla zatwierdzonego specjalu. Puste pole układa slug z surowego tytułu. Nie zmieniaj go po publikacji bez potrzeby — nie ma jeszcze przekierowania ze starego adresu."}
+          </span>
+          {isPublicContentSlug(slug.trim().toLowerCase()) ? (
+            <a
+              href={`/specjale/${slug.trim().toLowerCase()}`}
+              className={`mt-2 inline-block text-xs font-bold ${focusRing}`}
+              style={{ color: "var(--coral)" }}
+            >
+              {`Podgląd /specjale/${slug.trim().toLowerCase()}`}
+            </a>
+          ) : null}
         </label>
 
         <label className="block text-sm font-bold" htmlFor="material-description">

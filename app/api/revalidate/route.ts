@@ -136,6 +136,7 @@ async function resolveRefs(refs: RevalidateRefs): Promise<ResolvedSlugs> {
     personSlugs: [],
     tagSlugs: [],
     hasShow: refs.showIds.length > 0,
+    itemSlugs: [],
   };
   let supabase: Db;
   try {
@@ -147,11 +148,12 @@ async function resolveRefs(refs: RevalidateRefs): Promise<ResolvedSlugs> {
 
   const categoryIds = new Set(refs.categoryIds);
   const showIds = new Set(refs.showIds);
+  const itemSlugs: string[] = [];
   if (refs.itemIds.length > 0) {
     try {
       const { data, error } = await supabase
         .from("content_items")
-        .select("category_id, show_id")
+        .select("category_id, show_id, slug")
         .in("id", refs.itemIds);
       if (error) logFailure("content_items", error.message);
       else {
@@ -160,6 +162,7 @@ async function resolveRefs(refs: RevalidateRefs): Promise<ResolvedSlugs> {
           const showId = numericId(row.show_id);
           if (categoryId) categoryIds.add(categoryId);
           if (showId) showIds.add(showId);
+          if (typeof row.slug === "string") itemSlugs.push(row.slug);
         }
       }
     } catch (error) {
@@ -179,6 +182,7 @@ async function resolveRefs(refs: RevalidateRefs): Promise<ResolvedSlugs> {
     personSlugs: tags.personSlugs,
     tagSlugs: tags.tagSlugs,
     hasShow: showIds.size > 0,
+    itemSlugs,
   };
 }
 
@@ -224,6 +228,7 @@ export async function POST(req: NextRequest) {
         personSlugs: [],
         tagSlugs: [],
         hasShow: refs.showIds.length > 0,
+        itemSlugs: [],
       })) {
         paths.add(path);
       }
