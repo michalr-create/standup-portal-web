@@ -187,7 +187,7 @@ export default async function CityTourPage({ params, searchParams }: Props) {
               className="m-0 font-black leading-none"
               style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-.025em" }}
             >
-              {`Stand-up w ${city.inCity}`}
+              {`Stand-up ${city.inCity}`}
               <span className="dot-accent">.</span>
             </h1>
             {leadParagraphs.map((paragraph) => (
@@ -216,7 +216,7 @@ export default async function CityTourPage({ params, searchParams }: Props) {
               )}
               {listing.total === 0 ? (
                 <Notice eyebrow="kalendarz" title="Brak terminów">
-                  <p className="m-0">{`Nie ma teraz ogłoszonych występów w ${city.inCity}.`}</p>
+                  <p className="m-0">{`Nie ma teraz ogłoszonych występów ${city.inCity}.`}</p>
                   <Link href="/trasy" className="mt-6 inline-flex min-h-11 items-center font-black" style={{ color: "var(--coral)" }}>
                     Wszystkie trasy
                   </Link>
