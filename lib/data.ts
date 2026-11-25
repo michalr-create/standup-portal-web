@@ -527,6 +527,46 @@ export function getPersonBySlug(slug: string): Promise<Person | null> {
   return personBySlug(slug);
 }
 
+type YoutubeSourceEmbed = {
+  url?: string | null;
+  type?: string | null;
+  is_active?: boolean | null;
+};
+
+/** Active YouTube channel URLs linked through source_default_people. No other networks. */
+export async function getPersonYouTubeUrls(personId: number): Promise<string[]> {
+  if (!Number.isInteger(personId) || personId <= 0) return [];
+  const { data, error } = await supabase
+    .from("source_default_people")
+    .select("sources!inner(url, type, is_active)")
+    .eq("person_id", personId);
+  if (error || !data) {
+    if (error) console.error("Błąd pobierania kanałów YouTube:", error);
+    return [];
+  }
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const row of data as { sources: YoutubeSourceEmbed | YoutubeSourceEmbed[] | null }[]) {
+    const sources = Array.isArray(row.sources) ? row.sources : row.sources ? [row.sources] : [];
+    for (const source of sources) {
+      if ((source.type ?? "").trim().toLowerCase() !== "youtube") continue;
+      if (source.is_active !== true) continue;
+      const url = source.url?.trim() ?? "";
+      if (!url || seen.has(url)) continue;
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") continue;
+      } catch {
+        continue;
+      }
+      seen.add(url);
+      urls.push(url);
+    }
+  }
+  urls.sort((a, b) => a.localeCompare(b));
+  return urls;
+}
+
 // =================================================================
 // QUERY: dane show po slugu (z kategorią) i prowadzącymi
 // =================================================================
@@ -1993,7 +2033,8 @@ async function listUpcomingFacets(now: Date): Promise<EventFacets | null> {
   return null;
 }
 
-// Nadchodzące trasy (RLS: on_sale / sold_out, starts_at >= now()).
+// Nadchodzące trasy. The query keeps on_sale / sold_out and a future starts_at.
+// Leaf pages may also read past public rows; this listing does not.
 // City, date, and status stay in the query. The person filter runs after the
 // merge: a joint bill must still list every comedian when only one of them
 // was selected. Totals count merged shows (see pageMergedEvents).
@@ -2002,18 +2043,26 @@ export async function getTrasyListing(
   page: number,
   pageSize: number,
   now = new Date(),
+  options?: { nationalCatalog?: boolean },
 ): Promise<TrasyListing> {
   const openFilters: TrasyFilters = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" };
   const sqlFilters: TrasyFilters = { ...filters, osoba: "" };
   const catalogSameScan = !hasActiveTrasyFilters(sqlFilters);
+  const skipNational = options?.nationalCatalog === false;
 
   const [scanned, facets, catalogScanned] = await Promise.all([
     scanUpcomingEvents(sqlFilters, now),
     listUpcomingFacets(now),
-    hasActiveTrasyFilters(filters) && !catalogSameScan ? scanUpcomingEvents(openFilters, now) : Promise.resolve(undefined),
+    !skipNational && hasActiveTrasyFilters(filters) && !catalogSameScan
+      ? scanUpcomingEvents(openFilters, now)
+      : Promise.resolve(undefined),
   ]);
 
-  if (!scanned || !facets || (hasActiveTrasyFilters(filters) && !catalogSameScan && catalogScanned == null)) {
+  if (
+    !scanned ||
+    !facets ||
+    (!skipNational && hasActiveTrasyFilters(filters) && !catalogSameScan && catalogScanned == null)
+  ) {
     return { events: [], total: 0, catalogTotal: 0, facets: EMPTY_FACETS, ok: false };
   }
 
@@ -2021,7 +2070,7 @@ export async function getTrasyListing(
     ? scanned.filter((event) => eventPeople(event).some((person) => person.slug === filters.osoba))
     : scanned;
   const listing = pageMergedEvents(merged, page, pageSize);
-  const catalogTotal = catalogSameScan ? scanned.length : catalogScanned!.length;
+  const catalogTotal = skipNational ? merged.length : catalogSameScan ? scanned.length : catalogScanned!.length;
 
   return {
     events: listing.events,
@@ -2030,6 +2079,49 @@ export async function getTrasyListing(
     facets,
     ok: true,
   };
+}
+
+export type PublicEventResult = {
+  event: TourEvent;
+  canonicalId: number;
+};
+
+/** One public show. Upcoming duplicate rows collapse to the smallest id. Past rows stay as stored. */
+async function loadPublicEventById(id: number, now = new Date()): Promise<PublicEventResult | null> {
+  if (!Number.isSafeInteger(id) || id <= 0) return null;
+  const { data, error } = await supabase.from("events").select(UPCOMING_EVENT_COLUMNS).eq("id", id).maybeSingle();
+  if (error || !data) {
+    if (error) console.error("Błąd pobierania występu:", error);
+    return null;
+  }
+  const event = toTourEvent(data as unknown as EventRow);
+  if (!event) return null;
+  const starts = new Date(event.starts_at).getTime();
+  if (Number.isNaN(starts) || starts <= now.getTime()) {
+    return { event, canonicalId: event.id };
+  }
+  try {
+    const merged = await withCoPerformers([event], now);
+    const canonical = merged[0] ?? event;
+    return { event: canonical, canonicalId: canonical.id };
+  } catch (err) {
+    console.error("Błąd pobierania występu:", err);
+    return { event, canonicalId: event.id };
+  }
+}
+
+export const getPublicEventById = cache(loadPublicEventById);
+
+/** Merged upcoming shows for the sitemap. Past dates are omitted. */
+export async function getSitemapEventIds(now = new Date()): Promise<number[]> {
+  try {
+    const events = await scanUpcomingEvents({ osoba: "", miasto: "", od: "", doDnia: "", bilety: "" }, now);
+    if (!events) return [];
+    return events.map((event) => event.id);
+  } catch (err) {
+    console.error("Błąd pobierania występów do sitemapy:", err);
+    return [];
+  }
 }
 
 function positiveIds(values: readonly unknown[]): number[] {

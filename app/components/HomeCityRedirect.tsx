@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { readHomeCity } from "@/app/konto/place-actions";
+import { cityLandingByName, cityLandingHref } from "@/lib/city-landings";
+import { parseTrasySearchParams } from "@/lib/events";
 import { hrefWithDefaultCity, matchHomeCity } from "@/lib/home-city";
 
 /**
@@ -35,6 +37,14 @@ export default function HomeCityRedirect({
       if (window.location.pathname !== pathname) return;
       const href = hrefWithDefaultCity(pathname, window.location.search, match);
       if (!href) return;
+      if (pathname === "/trasy") {
+        const landing = cityLandingByName(match);
+        if (landing) {
+          const parsed = parseTrasySearchParams(Object.fromEntries(current.entries()));
+          router.replace(cityLandingHref(landing.slug, { ...parsed.filters, page: parsed.page }), { scroll: false });
+          return;
+        }
+      }
       router.replace(href, { scroll: false });
     });
     return () => {

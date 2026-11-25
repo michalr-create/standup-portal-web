@@ -1,5 +1,7 @@
 import Link from "next/link";
 import {
+  eventCrumbLabel,
+  eventLeafUsesDate,
   eventPeople,
   formatEventWhen,
   formatPrice,
@@ -10,6 +12,7 @@ import {
   standuperProfileHref,
   statusLabel,
   visibleTicketLinks,
+  wystepHref,
   type TicketLink,
   type TourEvent,
   type TourPerson,
@@ -121,6 +124,9 @@ export default function EventCard({
   const profileHref = standuperProfileHref(lead.slug);
   const films = roster.filter((person) => standuperProfileHref(person.slug) && person.name.trim());
   const { primary, secondary } = visibleTicketLinks(event.links, paidExternalUrl);
+  const leafHref = wystepHref(event.id);
+  const linkDate = eventLeafUsesDate(event);
+  const leafClass = `rounded-sm underline-offset-4 hover:text-white hover:underline ${focusRing}`;
   const cardStyle = { border: "1px solid var(--line)", background: "var(--ink-2)" };
   const statusStyle = onSale
     ? {
@@ -143,29 +149,35 @@ export default function EventCard({
         className="relative aspect-[4/3] w-full overflow-hidden rounded-t-[18px]"
         style={{ aspectRatio: "4 / 3" }}
       >
-        {poster ? (
-          <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 flex flex-col justify-end p-4 sm:p-5"
-            style={{ background: "linear-gradient(180deg, #1A0E0C 0%, var(--coral-deep) 58%, #F2A65A 100%)" }}
-          >
-            <p
-              className="m-0 line-clamp-3 font-black leading-[1.05]"
-              style={{ color: "var(--ink)", fontSize: "clamp(1.5rem, 4vw, 2rem)", letterSpacing: "-.03em" }}
+        <a
+          href={leafHref}
+          aria-label={`Strona występu: ${eventCrumbLabel(event)}`}
+          className={`absolute inset-0 block ${focusRing}`}
+        >
+          {poster ? (
+            <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 flex flex-col justify-end p-4 sm:p-5"
+              style={{ background: "linear-gradient(180deg, #1A0E0C 0%, var(--coral-deep) 58%, #F2A65A 100%)" }}
             >
-              {posterLabel(roster.length > 0 ? roster : [lead])}
-            </p>
-            {event.city ? (
-              <p className="m-0 mt-2 text-sm font-extrabold" style={{ color: "var(--ink)" }}>
-                {event.city}
+              <p
+                className="m-0 line-clamp-3 font-black leading-[1.05]"
+                style={{ color: "var(--ink)", fontSize: "clamp(1.5rem, 4vw, 2rem)", letterSpacing: "-.03em" }}
+              >
+                {posterLabel(roster.length > 0 ? roster : [lead])}
               </p>
-            ) : null}
-          </div>
-        )}
+              {event.city ? (
+                <p className="m-0 mt-2 text-sm font-extrabold" style={{ color: "var(--ink)" }}>
+                  {event.city}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </a>
         <span
-          className="mono absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold uppercase"
+          className="mono absolute right-3 top-3 z-10 rounded-full px-2.5 py-1 text-xs font-bold uppercase"
           style={statusStyle}
         >
           {statusLabel(event.status)}
@@ -173,12 +185,22 @@ export default function EventCard({
       </div>
       <div className="p-4 sm:p-5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <p
-            className="mono m-0 text-xs uppercase"
-            style={{ color: "var(--paper-meta)", letterSpacing: ".06em" }}
-          >
-            {formatEventWhen(event.starts_at)}
-          </p>
+          {linkDate ? (
+            <a
+              href={leafHref}
+              className={`mono m-0 text-xs uppercase ${leafClass}`}
+              style={{ color: "var(--paper-meta)", letterSpacing: ".06em" }}
+            >
+              {formatEventWhen(event.starts_at)}
+            </a>
+          ) : (
+            <p
+              className="mono m-0 text-xs uppercase"
+              style={{ color: "var(--paper-meta)", letterSpacing: ".06em" }}
+            >
+              {formatEventWhen(event.starts_at)}
+            </p>
+          )}
           {relative && (
             <span
               className="mono shrink-0 rounded-full px-2 py-0.5 text-xs"
@@ -210,10 +232,14 @@ export default function EventCard({
             ))
           )}
         </h3>
-        {event.title && (
-          <p className="m-0 mt-1 line-clamp-2" style={{ color: "var(--paper-dim)" }}>
+        {!linkDate && event.title && (
+          <a
+            href={leafHref}
+            className={`m-0 mt-1 line-clamp-2 block ${leafClass}`}
+            style={{ color: "var(--paper-dim)" }}
+          >
             {event.title}
-          </p>
+          </a>
         )}
         <p className="m-0 mt-2">
           {event.city}

@@ -526,3 +526,37 @@ test("event card ignores a poster url that is not http", () => {
   assert.match(html, /Adam Van Bendler/);
   assert.doesNotMatch(html, /javascript:alert/);
 });
+
+test("the tour title or the date links to the event page and the ticket stays on the shop", () => {
+  const titled = renderToStaticMarkup(React.createElement(EventCard, { event: tour(), now: NOW }));
+  assertNoNestedAnchors(titled);
+  const titledLinks = anchors(titled);
+  const titleLink = titledLinks.find((link) => link.text === "Wentyl");
+  assert.ok(titleLink);
+  assert.equal(attr(titleLink.attrs, "href"), "/wystep/1");
+  assert.equal(attr(titleLink.attrs, "target"), null);
+  assert.match(titled, /line-clamp-2/);
+  const poster = titledLinks.find((link) => (attr(link.attrs, "aria-label") ?? "").startsWith("Strona występu:"));
+  assert.ok(poster);
+  assert.equal(attr(poster.attrs, "href"), "/wystep/1");
+  const tickets = titledLinks.filter((link) => attr(link.attrs, "target") === "_blank");
+  assert.equal(attr(tickets[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+  assert.equal(tickets.some((link) => (attr(link.attrs, "href") ?? "").includes("/wystep/")), false);
+  assert.doesNotMatch(titled, /Kup bilet/);
+
+  const repeated = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({ title: "Adam Van Bendler" }),
+      now: NOW,
+    }),
+  );
+  assertNoNestedAnchors(repeated);
+  assert.doesNotMatch(repeated, /line-clamp-2/);
+  const dateLink = anchors(repeated).find(
+    (link) => attr(link.attrs, "href") === "/wystep/1" && link.text.includes("19:00"),
+  );
+  assert.ok(dateLink);
+  assert.equal(anchors(repeated).some((link) => link.text === "Adam Van Bendler" && attr(link.attrs, "href") === "/wystep/1"), false);
+  const shop = anchors(repeated).find((link) => attr(link.attrs, "target") === "_blank");
+  assert.equal(attr(shop?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+});

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson, countUpcomingEventsForPerson } from "@/lib/data";
+import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson, countUpcomingEventsForPerson, getPersonYouTubeUrls } from "@/lib/data";
 import { contentMetadata } from "@/lib/seo";
+import JsonLd from "@/app/components/JsonLd";
+import { personPageGraph } from "@/lib/jsonld";
 import FormatCard from "@/app/components/FormatCard";
 import ScrollRow from "@/app/components/ScrollRow";
 import SectionHead from "@/app/components/SectionHead";
@@ -38,10 +40,11 @@ export default async function StanduperPage({ params }: Props) {
   const person = await personPromise;
   if (!person) notFound();
 
-  const [items, defaultShows, tourCount] = await Promise.all([
+  const [items, defaultShows, tourCount, youtubeUrls] = await Promise.all([
     itemsPromise,
     getDefaultShowsForPerson(person.id),
     countUpcomingEventsForPerson(person.id, now),
+    getPersonYouTubeUrls(person.id),
   ]);
 
   const blocks = buildProfileBlocks(items, defaultShows, {
@@ -54,6 +57,15 @@ export default async function StanduperPage({ params }: Props) {
 
   return (
     <>
+      <JsonLd
+        data={personPageGraph({
+          name: person.name,
+          slug: person.slug,
+          bio: person.bio,
+          photoUrl: person.photo_url,
+          sameAs: youtubeUrls,
+        })}
+      />
       <div className="band">
         <div className="max-w-6xl mx-auto">
           <header>

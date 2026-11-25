@@ -992,6 +992,77 @@ export function formatEventWhen(iso: string): string {
   }).format(new Date(iso));
 }
 
+export function formatEventDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("pl-PL", {
+    timeZone: WARSAW,
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+export function wystepHref(id: number): string {
+  return `/wystep/${id}`;
+}
+
+export function eventIsPast(iso: string, now: Date): boolean {
+  const time = new Date(iso).getTime();
+  return Number.isNaN(time) || time <= now.getTime();
+}
+
+function foldEventText(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("pl");
+}
+
+function billedNames(event: {
+  person?: { name: string } | null;
+  people?: readonly { name: string }[] | null;
+}): string[] {
+  const roster = event.people && event.people.length > 0 ? event.people : event.person ? [event.person] : [];
+  return roster.map((person) => person.name.trim()).filter(Boolean);
+}
+
+/**
+ * The tour-title line repeats a name already in the heading.
+ * Those cards link the date instead of printing the name twice.
+ */
+export function eventLeafUsesDate(event: {
+  title?: string | null;
+  person?: { name: string } | null;
+  people?: readonly { name: string }[] | null;
+}): boolean {
+  const title = (event.title ?? "").trim().replace(/\s+/g, " ");
+  if (!title) return true;
+  const folded = foldEventText(title);
+  return billedNames(event).some((name) => foldEventText(name) === folded);
+}
+
+export function eventHeading(event: {
+  title?: string | null;
+  person?: { name: string } | null;
+  people?: readonly { name: string }[] | null;
+}): string {
+  const title = (event.title ?? "").trim().replace(/\s+/g, " ");
+  const lead = billedNames(event)[0] || "Występ";
+  if (!title || eventLeafUsesDate({ ...event, title })) return lead;
+  return title;
+}
+
+export function eventCrumbLabel(event: {
+  title?: string | null;
+  city: string;
+  person?: { name: string } | null;
+  people?: readonly { name: string }[] | null;
+}): string {
+  const title = (event.title ?? "").trim().replace(/\s+/g, " ");
+  const lead = billedNames(event)[0] || "Występ";
+  const place = event.city.trim();
+  if (title && title.length <= 60 && !eventLeafUsesDate({ ...event, title })) return title;
+  return place ? `${lead}, ${place}` : lead;
+}
+
 /** Inclusive cap: "za 60 dni" still shows; later dates stay absolute-only. */
 export const RELATIVE_WHEN_MAX_DAYS = 60;
 

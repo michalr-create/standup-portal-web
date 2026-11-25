@@ -16,6 +16,8 @@ import SectionHead from "./components/SectionHead";
 import HomeRankings from "./components/HomeRankings";
 import HomeNostalgia from "./components/HomeNostalgia";
 import FilmDeepLink from "./components/FilmDeepLink";
+import JsonLd from "./components/JsonLd";
+import { homePageGraph } from "@/lib/jsonld";
 
 export const revalidate = 120;
 
@@ -42,6 +44,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <JsonLd data={homePageGraph()} />
       <Suspense fallback={null}>
         <FilmDeepLink />
       </Suspense>
