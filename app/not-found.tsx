@@ -1,4 +1,21 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { NOINDEX_ROBOTS, SITE_LOCALE, SITE_NAME } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: { absolute: "Nie ma takiej strony \u2014 parska." },
+  description: "Ten adres nie prowadzi do nagrania, standupera ani formatu.",
+  robots: NOINDEX_ROBOTS,
+  // Replace the layout canonical so a missing page is not treated as the homepage.
+  alternates: {},
+  openGraph: {
+    title: { absolute: "Nie ma takiej strony \u2014 parska." },
+    description: "Ten adres nie prowadzi do nagrania, standupera ani formatu.",
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+    type: "website",
+  },
+};
 
 const LINKS = [
   { href: "/", label: "Start", primary: true },

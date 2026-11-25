@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import { getCategoryBrowse, getCategoryBySlug } from "@/lib/data";
+import { contentMetadata, pageFromSearch } from "@/lib/seo";
 import {
   PUBLIC_LISTING_PAGE_SIZE,
   browsePageHref,
@@ -22,6 +24,18 @@ type Props = {
     q?: string | string[];
   }>;
 };
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const [category, query] = await Promise.all([getCategoryBySlug("standup"), searchParams]);
+  if (!category) notFound();
+  return contentMetadata({
+    title: "Standup \u2014 nagrania i klipy",
+    description: category.description,
+    fallbackDescription: "Pe\u0142ne programy, klipy i nagrania stand-upowe.",
+    pathname: PATHNAME,
+    page: pageFromSearch(query.page),
+  });
+}
 
 export default async function StandupPage({ searchParams }: Props) {
   const params = await searchParams;

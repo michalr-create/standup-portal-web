@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
+import { buildSitemap, SITEMAP_STATIC_PATHS } from "./seo.ts";
 import {
   buildOpenMicView,
   cycleWeekdays,
@@ -327,8 +328,12 @@ test("open mics stay off tours, and the public query hides the contact email", (
   assert.doesNotMatch(drawer, /function withTourLink/);
 
   const sitemap = readFileSync(new URL("../app/sitemap.ts", import.meta.url), "utf8");
-  assert.match(sitemap, /\/open-mic\/dodaj/);
-  assert.match(sitemap, /\/open-mic"/);
+  assert.match(sitemap, /getAllShows/);
+  assert.doesNotMatch(sitemap, /\/open-mic\/dodaj/);
+  assert.ok(SITEMAP_STATIC_PATHS.includes("/open-mic"));
+  const urls = buildSitemap([], []).map((entry) => entry.url);
+  assert.ok(urls.includes("https://parska.pl/open-mic"));
+  assert.equal(urls.some((url) => url.includes("/open-mic/dodaj")), false);
 });
 
 test("open mic migration is additive, public-read only, and keeps contact email off the anon grant", () => {

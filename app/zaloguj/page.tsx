@@ -1,11 +1,13 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import LoginForm from "./LoginForm";
+import { noindexMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Zaloguj się — parska.",
-  description: "Zaloguj się do parska.pl linkiem e-mail albo kontem Google.",
-};
+export const metadata: Metadata = noindexMetadata(
+  "Zaloguj si\u0119",
+  "/zaloguj",
+  "Zaloguj si\u0119 do parska.pl linkiem e-mail albo kontem Google.",
+);
 
 function LoginFallback() {
   return (

@@ -1,8 +1,20 @@
-import { getLatestPerShow } from "@/lib/data";
+import type { Metadata } from "next";
+import { getCategoryBySlug, getLatestPerShow } from "@/lib/data";
 import FormatCard from "@/app/components/FormatCard";
 import { DEFAULT_GRID_CLASS } from "@/app/components/itemsBrowserLayout";
+import { contentMetadata } from "@/lib/seo";
 
 export const revalidate = 120;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const category = await getCategoryBySlug("formaty");
+  return contentMetadata({
+    title: "Formaty stand-up \u2014 cykliczne programy",
+    description: category?.description,
+    fallbackDescription: "Podcasty, talk-show i programy autorskie.",
+    pathname: "/formaty",
+  });
+}
 
 export default async function FormatyPage() {
   const shows = await getLatestPerShow(1);

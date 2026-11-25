@@ -1,13 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { parseListingPage } from "@/lib/category-browse";
+import { noindexMetadata } from "@/lib/seo";
 import FavoriteContent from "./FavoriteContent";
 
 const PATHNAME = "/ulubione/tresci";
 
-export const metadata = {
-  title: "Ulubione — parska.",
-  description: "Wszystkie nagrania obserwowanych osób i formatów.",
-};
+export const metadata: Metadata = noindexMetadata(
+  "Ulubione tre\u015bci",
+  PATHNAME,
+  "Wszystkie nagrania obserwowanych os\u00f3b i format\u00f3w.",
+);
 
 type Props = {
   searchParams: Promise<{ page?: string | string[] }>;

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import ReportForm from "./ReportForm";
 import { REPORT_KINDS, type ReportKind } from "@/lib/content-report";
+import { noindexMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Zgłoś — parska.",
-  description: "Zgłoś brakujący film, występ, open mic, standupera albo błędny tag.",
-};
+export const metadata: Metadata = noindexMetadata(
+  "Zg\u0142o\u015b",
+  "/zglos",
+  "Zg\u0142o\u015b brakuj\u0105cy film, wyst\u0119p, open mic, standupera albo b\u0142\u0119dny tag.",
+);
 
 type Search = {
   material?: string | string[];

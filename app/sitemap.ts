@@ -1,29 +1,13 @@
 import type { MetadataRoute } from "next";
+import { getAllPeople, getAllShows } from "@/lib/data";
+import { buildSitemap } from "@/lib/seo";
 
-const BASE = "https://parska.pl";
+export const revalidate = 120;
 
-const PATHS = [
-  "/",
-  "/standup",
-  "/formaty",
-  "/wywiady",
-  "/shorts",
-  "/kulisy",
-  "/roast",
-  "/standuperzy",
-  "/ulubione",
-  "/trasy",
-  "/specjale",
-  "/rankingi",
-  "/nostalgia",
-  "/open-mic",
-  "/open-mic/dodaj",
-] as const;
-
-export default function sitemap(): MetadataRoute.Sitemap {
-  return PATHS.map((path) => ({
-    url: path === "/" ? `${BASE}/` : `${BASE}${path}`,
-    changeFrequency: path === "/" || path === "/open-mic" || path === "/trasy" ? "daily" : "weekly",
-    priority: path === "/" ? 1 : path === "/open-mic" ? 0.8 : 0.6,
-  }));
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [people, shows] = await Promise.all([getAllPeople(), getAllShows()]);
+  return buildSitemap(
+    people.map((person) => person.slug),
+    shows.map((show) => show.slug),
+  );
 }

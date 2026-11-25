@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import RankingCards from "@/app/components/RankingCards";
 import { getNostalgiaPage } from "@/lib/nostalgia-data";
+import { contentMetadata } from "@/lib/seo";
 
 export const revalidate = 120;
 
-export const metadata: Metadata = {
-  title: "Nostalgia \u2014 parska.",
+export const metadata: Metadata = contentMetadata({
+  title: "Nostalgia",
   description: "P\u00f3\u0142ka dnia: specjale starsze ni\u017c pi\u0119\u0107 lat i nostalgiczne hity.",
-};
+  fallbackDescription: "P\u00f3\u0142ka dnia: specjale starsze ni\u017c pi\u0119\u0107 lat i nostalgiczne hity.",
+  pathname: "/nostalgia",
+});
 
 export default async function NostalgiaPage() {
   const { shelf, hits } = await getNostalgiaPage();

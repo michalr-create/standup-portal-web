@@ -1,0 +1,175 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import {
+  HOME_TITLE,
+  ROBOTS_DISALLOW,
+  SITEMAP_STATIC_PATHS,
+  absoluteUrl,
+  buildSitemap,
+  clipDescription,
+  contentMetadata,
+  fixBrokenDiacritics,
+  isBlockedSitemapPath,
+  listingCanonical,
+  noindexMetadata,
+  pageFromSearch,
+  robotsPolicy,
+  withSiteTitle,
+} from "./seo.ts";
+
+test("canonicals stay on the apex host", () => {
+  assert.equal(absoluteUrl("/"), "https://parska.pl/");
+  assert.equal(absoluteUrl("/standup"), "https://parska.pl/standup");
+  assert.equal(absoluteUrl("/standup/"), "https://parska.pl/standup");
+  assert.equal(listingCanonical("/specjale", 1), "https://parska.pl/specjale");
+  assert.equal(listingCanonical("/specjale", 2), "https://parska.pl/specjale?page=2");
+  assert.equal(listingCanonical("/format/litosci", 3), "https://parska.pl/format/litosci?page=3");
+  assert.equal(pageFromSearch(undefined), 1);
+  assert.equal(pageFromSearch("1"), 1);
+  assert.equal(pageFromSearch("2"), 2);
+  assert.equal(pageFromSearch(["4"]), 4);
+  assert.equal(pageFromSearch("0"), 1);
+  assert.equal(pageFromSearch("page"), 1);
+  for (const url of [
+    absoluteUrl("/"),
+    listingCanonical("/standuper/abelard-giza", 1),
+    listingCanonical("/standup", 2),
+  ]) {
+    assert.equal(url.includes("www."), false);
+    assert.equal(url.startsWith("https://parska.pl"), true);
+  }
+});
+
+test("descriptions clip to 160 and restore broken category diacritics", () => {
+  assert.equal(fixBrokenDiacritics("Krotkie klipy i shorty"), "Kr\u00f3tkie klipy i shorty");
+  assert.equal(
+    fixBrokenDiacritics("Vlogi, relacje z wystepow, zapowiedzi i materialy zza kulis"),
+    "Vlogi, relacje z wyst\u0119p\u00f3w, zapowiedzi i materia\u0142y zza kulis",
+  );
+  const bio = "a".repeat(180);
+  assert.equal(clipDescription(bio, "fallback").length, 160);
+  assert.equal(clipDescription("  ", "Nagrania."), "Nagrania.");
+  assert.equal(clipDescription(null, "Nagrania."), "Nagrania.");
+  assert.equal(clipDescription("Krotkie\nklipy", "fallback"), "Kr\u00f3tkie klipy");
+});
+
+test("public metadata is unique, canonical, and branded once", () => {
+  const profile = contentMetadata({
+    title: "Abelard Giza \u2014 stand-up, nagrania i wyst\u0119py",
+    description: null,
+    fallbackDescription: "Nagrania, specjale, formaty i nadchodz\u0105ce wyst\u0119py: Abelard Giza w polskim stand-upie.",
+    pathname: "/standuper/abelard-giza",
+    openGraphType: "profile",
+  });
+  assert.equal(profile.title && typeof profile.title === "object" && "absolute" in profile.title
+    ? profile.title.absolute
+    : "", withSiteTitle("Abelard Giza \u2014 stand-up, nagrania i wyst\u0119py"));
+  assert.notEqual(profile.title, HOME_TITLE);
+  assert.equal(profile.alternates?.canonical, "https://parska.pl/standuper/abelard-giza");
+  assert.equal(profile.openGraph?.type, "profile");
+  assert.equal(profile.openGraph?.url, "https://parska.pl/standuper/abelard-giza");
+  assert.equal(profile.description?.includes("Abelard Giza"), true);
+
+  const pageTwo = contentMetadata({
+    title: "Specjale stand-up \u2014 pe\u0142ne programy",
+    description: "Pe\u0142nometra\u017cowe programy stand-upowe.",
+    fallbackDescription: "Pe\u0142nometra\u017cowe programy stand-upowe.",
+    pathname: "/specjale",
+    page: 2,
+  });
+  assert.equal(pageTwo.alternates?.canonical, "https://parska.pl/specjale?page=2");
+  assert.equal(String(pageTwo.title && typeof pageTwo.title === "object" && "absolute" in pageTwo.title ? pageTwo.title.absolute : "").includes(HOME_TITLE), false);
+});
+
+test("utility pages are noindex and the sitemap drops them", () => {
+  const search = noindexMetadata("Szukaj", "/szukaj");
+  assert.deepEqual(search.robots, {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  });
+  const policy = robotsPolicy();
+  assert.equal(policy.sitemap, "https://parska.pl/sitemap.xml");
+  assert.equal(policy.host, "https://parska.pl");
+  assert.deepEqual(policy.rules[0]?.disallow, [...ROBOTS_DISALLOW]);
+  for (const path of ["/admin", "/zaloguj", "/ulubione", "/szukaj", "/zglos", "/open-mic/dodaj", "/debug"]) {
+    assert.equal(ROBOTS_DISALLOW.includes(path as (typeof ROBOTS_DISALLOW)[number]), true);
+  }
+
+  const people = Array.from({ length: 3 }, (_, index) => `osoba-${index}`);
+  const shows = ["litosci", "wahanie", "../admin", "Open Mic", "ulubione"];
+  const entries = buildSitemap([...people, "osoba-0", ""], shows);
+  const urls = entries.map((entry) => entry.url);
+  assert.equal(urls[0], "https://parska.pl/");
+  assert.equal(urls.includes("https://parska.pl/open-mic"), true);
+  assert.equal(urls.includes("https://parska.pl/standuper/osoba-0"), true);
+  assert.equal(urls.filter((url) => url === "https://parska.pl/standuper/osoba-0").length, 1);
+  assert.equal(urls.includes("https://parska.pl/format/litosci"), true);
+  assert.equal(urls.includes("https://parska.pl/format/wahanie"), true);
+  assert.equal(urls.includes("https://parska.pl/format/ulubione"), true);
+  assert.equal(urls.includes("https://parska.pl/ulubione"), false);
+  assert.equal(urls.includes("https://parska.pl/open-mic/dodaj"), false);
+  assert.equal(urls.some((url) => url.includes("www.") || url.includes("?")), false);
+  assert.equal(isBlockedSitemapPath("/ulubione"), true);
+  assert.equal(isBlockedSitemapPath("/open-mic"), false);
+  assert.deepEqual(
+    SITEMAP_STATIC_PATHS,
+    [
+      "/",
+      "/standup",
+      "/specjale",
+      "/formaty",
+      "/wywiady",
+      "/shorts",
+      "/kulisy",
+      "/roast",
+      "/standuperzy",
+      "/trasy",
+      "/rankingi",
+      "/nostalgia",
+      "/open-mic",
+    ],
+  );
+});
+
+test("public content pages declare their own metadata", () => {
+  const pages = [
+    "app/standuper/[slug]/page.tsx",
+    "app/format/[slug]/page.tsx",
+    "app/standuperzy/page.tsx",
+    "app/formaty/page.tsx",
+    "app/standup/page.tsx",
+    "app/specjale/page.tsx",
+    "app/wywiady/page.tsx",
+    "app/kulisy/page.tsx",
+    "app/roast/page.tsx",
+    "app/shorts/page.tsx",
+    "app/trasy/page.tsx",
+    "app/nostalgia/page.tsx",
+    "app/rankingi/page.tsx",
+    "app/open-mic/page.tsx",
+  ];
+  for (const path of pages) {
+    const source = readFileSync(new URL("../" + path, import.meta.url), "utf8");
+    assert.match(source, /contentMetadata\(/);
+    assert.doesNotMatch(source, /parska\. \\u2014 polski stand-up w jednym miejscu/);
+  }
+  for (const path of [
+    "app/szukaj/page.tsx",
+    "app/zaloguj/page.tsx",
+    "app/zglos/page.tsx",
+    "app/open-mic/dodaj/page.tsx",
+    "app/ulubione/layout.tsx",
+    "app/ulubione/tresci/page.tsx",
+    "app/admin/layout.tsx",
+  ]) {
+    const source = readFileSync(new URL("../" + path, import.meta.url), "utf8");
+    assert.match(source, /noindexMetadata\(/);
+  }
+  const missing = readFileSync(new URL("../app/not-found.tsx", import.meta.url), "utf8");
+  assert.match(missing, /Nie ma takiej strony/);
+  assert.match(missing, /NOINDEX_ROBOTS/);
+  const dodaj = readFileSync(new URL("../app/open-mic/dodaj/page.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(dodaj, /openGraph:/);
+});

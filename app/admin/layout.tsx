@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
 import { forbidden, redirect } from "next/navigation";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { getAdminAccess } from "@/lib/admin-auth";
+import { noindexMetadata } from "@/lib/seo";
 import LogoutButton from "./components/LogoutButton";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = noindexMetadata("Admin", "/admin");
 
 export default async function AdminLayout({
   children,

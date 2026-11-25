@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { contentMetadata, pageFromSearch } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import EventCard from "./EventCard";
 import EventPlansProvider from "./EventPlansProvider";
@@ -22,16 +23,21 @@ import {
   type TrasySearch,
 } from "@/lib/events";
 
-export const metadata: Metadata = {
-  title: "Trasy — parska.",
-  description: "Nadchodzące terminy polskiego stand-upu i linki do biletów.",
-};
-
 export const revalidate = 120;
 
 type Props = {
   searchParams: Promise<TrasySearch>;
 };
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  return contentMetadata({
+    title: "Trasy",
+    description: "Nadchodz\u0105ce terminy polskiego stand-upu i linki do bilet\u00f3w.",
+    fallbackDescription: "Nadchodz\u0105ce terminy polskiego stand-upu i linki do bilet\u00f3w.",
+    pathname: "/trasy",
+    page: pageFromSearch((await searchParams).page),
+  });
+}
 
 function SectionHead({ title, sub }: { title: string; sub?: string }) {
   return (

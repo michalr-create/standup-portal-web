@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import OpenMicSubmitForm from "../OpenMicSubmitForm";
+import { noindexMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Dodaj open mic — parska.",
-  description: "Zgłoś cykliczny open mic stand-upowy. Sprawdzimy informacje i opublikujemy je na parska.pl.",
-  alternates: { canonical: "https://parska.pl/open-mic/dodaj" },
-  openGraph: {
-    title: "Dodaj open mic — parska.",
-    description: "Zgłoś cykliczny open mic stand-upowy. Sprawdzimy informacje i opublikujemy je na parska.pl.",
-    url: "https://parska.pl/open-mic/dodaj",
-    locale: "pl_PL",
-    type: "website",
-  },
-};
+export const metadata: Metadata = noindexMetadata(
+  "Dodaj open mic",
+  "/open-mic/dodaj",
+  "Zg\u0142o\u015b cykliczny open mic stand-upowy. Sprawdzimy informacje i opublikujemy je na parska.pl.",
+);
 
 export default function DodajOpenMicPage() {
   return (

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { contentMetadata } from "@/lib/seo";
 import RankingCards from "@/app/components/RankingCards";
 import { getRanking } from "@/lib/rankings-data";
 import {
@@ -18,10 +19,12 @@ import { RankingPeople, RankingShows } from "./RankingLists";
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: "Rankingi Top 10 \u2014 parska.",
+export const metadata: Metadata = contentMetadata({
+  title: "Rankingi Top 10",
   description: "Hity tygodnia, trenduj\u0105ce, klasyki, nowo\u015bci i najch\u0119tniej ogl\u0105dani standuperzy.",
-};
+  fallbackDescription: "Hity tygodnia, trenduj\u0105ce, klasyki, nowo\u015bci i najch\u0119tniej ogl\u0105dani standuperzy.",
+  pathname: "/rankingi",
+});
 
 const NOTES: Record<RankingId, string> = {
   hity: "Przyrost od najstarszego pomiaru w oknie.",
