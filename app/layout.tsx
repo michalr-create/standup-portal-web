@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getShowsWithLatestEpisode, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
+import { HOME_DESCRIPTION, HOME_TITLE, SITE_LOCALE, SITE_NAME, SITE_ORIGIN, TITLE_TEMPLATE } from "@/lib/seo";
 import { FOOTER_FORMAT_LIMIT, footerShows } from "@/lib/home-shows";
 import { peopleByActivity } from "@/lib/standuperzy-directory";
 import MobileDrawer from "./components/MobileDrawer";
@@ -15,8 +16,22 @@ import LibraryProvider from "./components/LibraryProvider";
 import ResumeRefresh from "./components/ResumeRefresh";
 
 export const metadata: Metadata = {
-  title: "parska. \u2014 polski stand-up w jednym miejscu",
-  description: "Agregator polskiego stand-upu. Nowe nagrania, specjale, wywiady i formaty.",
+  metadataBase: new URL(SITE_ORIGIN),
+  title: {
+    default: HOME_TITLE,
+    template: TITLE_TEMPLATE,
+  },
+  description: HOME_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: SITE_LOCALE,
+    url: `${SITE_ORIGIN}/`,
+    siteName: SITE_NAME,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+  },
+  twitter: { card: "summary_large_image" },
   manifest: "/manifest.json",
   icons: {
     icon: [

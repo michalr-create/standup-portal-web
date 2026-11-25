@@ -17,21 +17,17 @@ import {
   parseOpenMicSearchParams,
   type OpenMicSearch,
 } from "@/lib/open-mics";
+import { contentMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Open mic — parska.",
-  description:
-    "Cykliczne open miki stand-upowe w Polsce: miasto, scena, zapisy i najbliższe terminy z linkiem do biletów.",
-  alternates: { canonical: "https://parska.pl/open-mic" },
-  openGraph: {
-    title: "Open mic — parska.",
-    description:
-      "Cykliczne open miki stand-upowe w Polsce: miasto, scena, zapisy i najbliższe terminy z linkiem do biletów.",
-    url: "https://parska.pl/open-mic",
-    locale: "pl_PL",
-    type: "website",
-  },
-};
+const OPEN_MIC_DESCRIPTION =
+  "Cykliczne open miki stand-upowe w Polsce: miasto, scena, zapisy i najbli\u017csze terminy z linkiem do bilet\u00f3w.";
+
+export const metadata: Metadata = contentMetadata({
+  title: "Open mic",
+  description: OPEN_MIC_DESCRIPTION,
+  fallbackDescription: OPEN_MIC_DESCRIPTION,
+  pathname: "/open-mic",
+});
 
 export const revalidate = 120;
 

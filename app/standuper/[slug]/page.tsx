@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson, countUpcomingEventsForPerson } from "@/lib/data";
+import { contentMetadata } from "@/lib/seo";
 import FormatCard from "@/app/components/FormatCard";
 import ScrollRow from "@/app/components/ScrollRow";
 import SectionHead from "@/app/components/SectionHead";
@@ -13,6 +15,19 @@ export const revalidate = 120;
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const person = await getPersonBySlug(slug);
+  if (!person) notFound();
+  return contentMetadata({
+    title: `${person.name} \u2014 stand-up, nagrania i wyst\u0119py`,
+    description: person.bio,
+    fallbackDescription: `Nagrania, specjale, formaty i nadchodz\u0105ce wyst\u0119py: ${person.name} w polskim stand-upie.`,
+    pathname: `/standuper/${person.slug}`,
+    openGraphType: "profile",
+  });
+}
 
 export default async function StanduperPage({ params }: Props) {
   const { slug } = await params;

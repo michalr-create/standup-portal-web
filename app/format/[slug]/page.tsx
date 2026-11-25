@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getShowBySlug, getShowEpisodesPage } from "@/lib/data";
+import { contentMetadata, pageFromSearch } from "@/lib/seo";
 import ProgramCatalog from "@/app/components/ProgramCatalog";
 import HeartButton from "@/app/components/HeartButton";
 import Pager from "@/app/components/Pager";
@@ -20,6 +22,19 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string | string[] }>;
 };
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
+  const show = await getShowBySlug(slug);
+  if (!show) notFound();
+  return contentMetadata({
+    title: `${show.name} \u2014 odcinki i nagrania`,
+    description: show.description,
+    fallbackDescription: `Nagrania i odcinki formatu ${show.name} w polskim stand-upie.`,
+    pathname: `/format/${show.slug}`,
+    page: pageFromSearch(query.page),
+  });
+}
 
 export default async function FormatPage({ params, searchParams }: Props) {
   const { slug } = await params;

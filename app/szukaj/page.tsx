@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { noindexMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { searchAll } from "@/lib/data";
 import HighlightedText from "@/app/components/HighlightedText";
@@ -19,6 +21,8 @@ import FocusSearchField from "./FocusSearchField";
 import SearchCategoryChips from "./SearchCategoryChips";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = noindexMetadata("Szukaj", "/szukaj");
 
 type Props = {
   searchParams: Promise<{ q?: string | string[]; kategoria?: string | string[]; page?: string | string[] }>;

@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import { getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
 import StanduperzyList from "@/app/components/StanduperzyList";
+import { contentMetadata } from "@/lib/seo";
 
 export const revalidate = 300;
+
+export const metadata: Metadata = contentMetadata({
+  title: "Standuperzy \u2014 katalog polskiego stand-upu",
+  description: "Lista os\u00f3b ze sceny stand-upowej: profile, nagrania i nadchodz\u0105ce wyst\u0119py.",
+  fallbackDescription: "Lista os\u00f3b ze sceny stand-upowej: profile, nagrania i nadchodz\u0105ce wyst\u0119py.",
+  pathname: "/standuperzy",
+});
 
 export default async function StanduperzyPage() {
   const [people, counts] = await Promise.all([

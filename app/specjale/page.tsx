@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
+import { contentMetadata, pageFromSearch } from "@/lib/seo";
 import { getTagBrowse } from "@/lib/data";
 import FilterableItemsBrowser from "@/app/components/FilterableItemsBrowser";
 import Pager from "@/app/components/Pager";
@@ -42,6 +44,16 @@ function withoutDefiningTag(params: CategoryBrowseSearch): { search: CategoryBro
 type Props = {
   searchParams: Promise<CategoryBrowseSearch>;
 };
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  return contentMetadata({
+    title: "Specjale stand-up \u2014 pe\u0142ne programy",
+    description: "Pe\u0142nometra\u017cowe programy stand-upowe.",
+    fallbackDescription: "Pe\u0142nometra\u017cowe programy stand-upowe.",
+    pathname: PATHNAME,
+    page: pageFromSearch((await searchParams).page),
+  });
+}
 
 export default async function SpecjalePage({ searchParams }: Props) {
   const incoming = await searchParams;
