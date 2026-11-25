@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { IMAGE_SIZE } from "@/lib/image-alt";
 import HeartButton from "./HeartButton";
+import SizedImage from "./SizedImage";
 import ThumbDuration from "./ThumbDuration";
 import { timeAgo } from "@/lib/format";
 
@@ -48,9 +50,11 @@ export default function FormatCard({
           }}
         >
           {thumbnailUrl && (
-            <img
+            <SizedImage
               src={thumbnailUrl}
-              alt=""
+              alt={name}
+              width={IMAGE_SIZE.thumbLandscape.width}
+              height={IMAGE_SIZE.thumbLandscape.height}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           )}

@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { fetchUrlMetadata, createManualEntry } from "../actions-sources";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
+import SizedImage from "@/app/components/SizedImage";
 
 type Props = {
   categories: { id: number; name: string }[];
@@ -23,6 +25,13 @@ export default function ManualEntryForm({ categories, shows, personTags, onClose
   const [metaFetched, setMetaFetched] = useState(false);
   const [error, setError] = useState("");
   const [fetchingMeta, setFetchingMeta] = useState(false);
+
+  const previewAlt =
+    contentThumbnailAlt({
+      title,
+      people: personTags.filter((tag) => selectedTagIds.includes(tag.id)),
+      showName: shows.find((show) => show.id === showId)?.name ?? null,
+    }) || "Podgląd miniatury";
 
   const handleFetchMeta = async () => {
     if (!url.trim()) return;
@@ -109,7 +118,13 @@ export default function ManualEntryForm({ categories, shows, personTags, onClose
           {/* Preview miniaturki */}
           {thumbnailUrl && (
             <div className="rounded-lg overflow-hidden bg-neutral-800">
-              <img src={thumbnailUrl} alt="Preview" className="w-full max-h-48 object-cover" />
+              <SizedImage
+                src={thumbnailUrl}
+                alt={previewAlt}
+                width={IMAGE_SIZE.preview.width}
+                height={IMAGE_SIZE.preview.height}
+                className="w-full max-h-48 object-cover"
+              />
             </div>
           )}
 

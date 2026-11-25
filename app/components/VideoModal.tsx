@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { Item } from "@/lib/data";
 import { itemDisplayTitle } from "@/lib/display-title";
+import { IMAGE_SIZE } from "@/lib/image-alt";
 import { isPublicContentSlug } from "@/lib/slugify";
 import {
   OPEN_YOUTUBE_LABEL,
@@ -42,6 +43,7 @@ import {
 import { bindVideoHistory } from "@/lib/video-history";
 import WatchLaterButton from "./WatchLaterButton";
 import AdminMaterialActions from "./AdminMaterialActions";
+import SizedImage from "./SizedImage";
 import { PLAYER_SESSION_END_EVENT } from "@/lib/resume-refresh";
 import {
   bindInputModality,
@@ -957,10 +959,13 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
       <div className="video-modal-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="video-modal-player" ref={playerRef} aria-busy={!frameReady}>
           <div className={frameReady ? "video-modal-poster is-gone" : "video-modal-poster"} aria-hidden="true">
-            <img
+            <SizedImage
               src={youtubePosterUrl(videoId)}
               alt=""
-              decoding="async"
+              width={IMAGE_SIZE.youtubePoster.width}
+              height={IMAGE_SIZE.youtubePoster.height}
+              lazy={false}
+              decorative
               onError={(event) => {
                 event.currentTarget.hidden = true;
               }}

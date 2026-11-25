@@ -7,6 +7,8 @@ import SectionHead from "@/app/components/SectionHead";
 import SpecialPageActions from "@/app/components/SpecialPageActions";
 import { getAllSpecialSlugs, getRelatedSpecials, getSpecialBySlug } from "@/lib/data";
 import { displayTitle } from "@/lib/display-title";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
+import SizedImage from "@/app/components/SizedImage";
 import { formatDuration } from "@/lib/format";
 import { specialPageGraph } from "@/lib/jsonld";
 import {
@@ -156,7 +158,18 @@ export default async function SpecialPage({ params }: Props) {
                   }}
                 >
                   {special.thumbnail_url ? (
-                    <img src={special.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                    <SizedImage
+                      src={special.thumbnail_url}
+                      alt={contentThumbnailAlt({
+                        title,
+                        people: special.people,
+                        showName: special.showName,
+                      })}
+                      width={IMAGE_SIZE.thumbWide.width}
+                      height={IMAGE_SIZE.thumbWide.height}
+                      priority
+                      className="h-full w-full object-cover"
+                    />
                   ) : null}
                   <span
                     className="absolute left-3 top-3 inline-flex items-center rounded-md px-2 py-1 font-extrabold"

@@ -30,6 +30,8 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   const linkPath = join(dir, "link.cjs");
   const cardPath = join(dir, "card.cjs");
   const plansPath = join(dir, "plans.cjs");
+  const sizedPath = join(dir, "sized.cjs");
+  const altPath = join(dir, "image-alt.cjs");
   const reactPath = require.resolve("react");
   const jsxPath = require.resolve("react/jsx-runtime");
   writeFileSync(comboboxPath, compile(readFileSync(new URL("./combobox.ts", import.meta.url), "utf8"), false));
@@ -39,6 +41,13 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
       'require("./combobox.ts")',
       `require(${JSON.stringify(comboboxPath)})`,
     ),
+  );
+  writeFileSync(altPath, compile(readFileSync(new URL("./image-alt.ts", import.meta.url), "utf8"), false));
+  writeFileSync(
+    sizedPath,
+    compile(readFileSync(new URL("../app/components/SizedImage.tsx", import.meta.url), "utf8"), true)
+      .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
+      .replaceAll('require("react")', `require(${JSON.stringify(reactPath)})`),
   );
   writeFileSync(youtubePath, compile(readFileSync(new URL("./youtube.ts", import.meta.url), "utf8"), false));
   writeFileSync(
@@ -64,7 +73,9 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   );
   const card = compile(readFileSync(new URL("../app/trasy/EventCard.tsx", import.meta.url), "utf8"), true)
     .replaceAll('require("@/lib/events")', `require(${JSON.stringify(eventsPath)})`)
+    .replaceAll('require("@/lib/image-alt")', `require(${JSON.stringify(altPath)})`)
     .replaceAll('require("@/lib/youtube")', `require(${JSON.stringify(youtubePath)})`)
+    .replaceAll('require("../components/SizedImage")', `require(${JSON.stringify(sizedPath)})`)
     .replaceAll('require("./EventPlanActions")', `require(${JSON.stringify(plansPath)})`)
     .replaceAll('require("next/link")', `require(${JSON.stringify(linkPath)})`)
     .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
@@ -283,7 +294,11 @@ test("joint show is one card with both comedians and the same ticket buttons", (
   const images = html.match(/<img\b[^>]*>/g) ?? [];
   assert.equal(images.length, 1);
   assert.match(images[0] ?? "", /src="https:\/\/cdn\.example\/joint\.jpg"/);
-  assert.match(images[0] ?? "", /\balt=""/);
+  assert.match(images[0] ?? "", /alt="Plakat: Pacześ x Lotek Tour 2 - Puławy, Puławy"/);
+  assert.match(images[0] ?? "", /width="800"/);
+  assert.match(images[0] ?? "", /height="600"/);
+  assert.match(images[0] ?? "", /loading="lazy"/);
+  assert.doesNotMatch(images[0] ?? "", /fetchpriority/i);
   assert.match(images[0] ?? "", /object-cover/);
   assert.match(images[0] ?? "", /w-full/);
 });
@@ -414,7 +429,10 @@ test("event card puts a 4:3 poster on top and keeps the name as a link", () => {
   const images = html.match(/<img\b[^>]*>/g) ?? [];
   assert.equal(images.length, 1);
   assert.match(images[0] ?? "", /src="https:\/\/cdn\.example\/wentyl\.jpg"/);
-  assert.match(images[0] ?? "", /\balt=""/);
+  assert.match(images[0] ?? "", /alt="Plakat: Wentyl, Kraków"/);
+  assert.match(images[0] ?? "", /width="800"/);
+  assert.match(images[0] ?? "", /height="600"/);
+  assert.match(images[0] ?? "", /loading="lazy"/);
   assert.match(images[0] ?? "", /object-cover/);
   assert.match(images[0] ?? "", /inset-0/);
   assert.doesNotMatch(html, /cdn\.example\/adam\.jpg/);

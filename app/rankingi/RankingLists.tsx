@@ -6,6 +6,8 @@ import HeartButton from "@/app/components/HeartButton";
 import PendingLink from "@/app/components/PendingLink";
 import ThumbDuration from "@/app/components/ThumbDuration";
 import { DEFAULT_GRID_CLASS } from "@/app/components/itemsBrowserLayout";
+import SizedImage from "@/app/components/SizedImage";
+import { IMAGE_SIZE } from "@/lib/image-alt";
 import type { RankingPersonCard } from "@/lib/rankings-data";
 import type { ShowRank, SpecialProgram } from "@/lib/rankings";
 import { formatViews, odcinekLabel } from "@/lib/view-count";
@@ -119,7 +121,13 @@ export function RankingPeople({ people }: { people: RankingPersonCard[] }) {
                     className="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 overflow-hidden rounded-full"
                     style={{ background: "var(--ink-3)" }}
                   >
-                    <img src={photo} alt="" className="h-full w-full object-cover" />
+                    <SizedImage
+                      src={photo}
+                      alt={person.name.trim() || "Standuper"}
+                      width={IMAGE_SIZE.avatar.width}
+                      height={IMAGE_SIZE.avatar.height}
+                      className="h-full w-full object-cover"
+                    />
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
@@ -166,9 +174,11 @@ export function RankingShows({ shows }: { shows: ShowRank[] }) {
               }}
             >
               {show.thumbnailUrl && (
-                <img
+                <SizedImage
                   src={show.thumbnailUrl}
-                  alt=""
+                  alt={show.name}
+                  width={IMAGE_SIZE.thumbLandscape.width}
+                  height={IMAGE_SIZE.thumbLandscape.height}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               )}

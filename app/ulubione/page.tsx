@@ -17,6 +17,8 @@ import type { Item } from "@/lib/data";
 import ContentCardAction from "@/app/components/ContentCardAction";
 import SpecialProgramLink from "@/app/components/SpecialProgramLink";
 import { itemDisplayTitle } from "@/lib/display-title";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
+import SizedImage from "@/app/components/SizedImage";
 import PaidBadge from "@/app/components/PaidBadge";
 import ThumbDuration from "@/app/components/ThumbDuration";
 import ReportForm from "@/app/zglos/ReportForm";
@@ -218,6 +220,7 @@ export default function UlubionePage() {
                 {laterItems.map((item) => {
                   const isWatched = watched.has(item.url);
                   const title = itemDisplayTitle(item);
+                  const alt = contentThumbnailAlt({ title, people: item.people, showName: item.showName });
                   return (
                     <article key={item.id} className="group vcard relative text-left w-full min-w-0">
                       <ContentCardAction isPaid={item.is_paid} url={item.url} slug={item.slug} onOpen={() => handleClick(item)}>
@@ -226,9 +229,11 @@ export default function UlubionePage() {
                           style={{ aspectRatio: "16/10", borderRadius: "14px", border: "1px solid var(--line)", background: "var(--ink-3)" }}
                         >
                           {item.thumbnail_url && (
-                            <img
+                            <SizedImage
                               src={item.thumbnail_url}
-                              alt={title}
+                              alt={alt}
+                              width={IMAGE_SIZE.thumbLandscape.width}
+                              height={IMAGE_SIZE.thumbLandscape.height}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               style={{ opacity: isWatched ? 0.7 : 1 }}
                             />

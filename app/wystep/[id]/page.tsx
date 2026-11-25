@@ -10,6 +10,7 @@ import {
   eventCrumbLabel,
   eventHeading,
   eventIsPast,
+  eventPosterAlt,
   eventPeople,
   formatEventDate,
   formatEventWhen,
@@ -25,8 +26,10 @@ import {
   type TourPerson,
 } from "@/lib/events";
 import { eventPageGraph } from "@/lib/jsonld";
+import { IMAGE_SIZE } from "@/lib/image-alt";
 import { absoluteUrl, contentMetadata } from "@/lib/seo";
 import { paidExternalUrl } from "@/lib/youtube";
+import SizedImage from "@/app/components/SizedImage";
 
 export const revalidate = 120;
 
@@ -175,7 +178,14 @@ export default async function WystepPage({ params }: Props) {
               style={{ aspectRatio: "4 / 3", borderRadius: "18px", border: "1px solid var(--line)", background: "var(--ink-2)" }}
             >
               {poster ? (
-                <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <SizedImage
+                  src={poster}
+                  alt={eventPosterAlt(event)}
+                  width={IMAGE_SIZE.poster.width}
+                  height={IMAGE_SIZE.poster.height}
+                  priority
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
               ) : (
                 <div
                   aria-hidden="true"

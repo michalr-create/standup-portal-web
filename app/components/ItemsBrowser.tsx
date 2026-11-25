@@ -6,6 +6,7 @@ import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { itemDisplayTitle } from "@/lib/display-title";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
 import { resolveContentOpen } from "@/lib/youtube";
 import CardByline from "./CardByline";
 import HighlightedText from "./HighlightedText";
@@ -13,6 +14,7 @@ import ContentCardAction from "./ContentCardAction";
 import SpecialProgramLink from "./SpecialProgramLink";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
+import SizedImage from "./SizedImage";
 import WatchLaterButton from "./WatchLaterButton";
 import AdminMaterialActions from "./AdminMaterialActions";
 import {
@@ -66,6 +68,8 @@ export default function ItemsBrowser({
           const isWatched = watched.has(item.url);
           const solePerson = item.people.length === 1 ? item.people[0] : null;
           const title = itemDisplayTitle(item);
+          const thumb = layout === "shorts" ? IMAGE_SIZE.thumbPortrait : IMAGE_SIZE.thumbLandscape;
+          const alt = contentThumbnailAlt({ title, people: item.people, showName: item.showName });
 
           return (
             <article key={item.id} className="group vcard relative text-left w-full min-w-0">
@@ -85,9 +89,11 @@ export default function ItemsBrowser({
                   }}
                 >
                   {item.thumbnail_url && (
-                    <img
+                    <SizedImage
                       src={item.thumbnail_url}
-                      alt={title}
+                      alt={alt}
+                      width={thumb.width}
+                      height={thumb.height}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       style={{ opacity: isWatched ? 0.7 : 1 }}
                     />

@@ -6,6 +6,7 @@ import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
 import { useWatchHistory } from "../hooks/useWatchHistory";
 import { itemDisplayTitle } from "@/lib/display-title";
+import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
 import { resolveContentOpen } from "@/lib/youtube";
 import {
   isCenterSnap,
@@ -18,6 +19,7 @@ import ContentCardAction from "./ContentCardAction";
 import SpecialProgramLink from "./SpecialProgramLink";
 import PaidBadge from "./PaidBadge";
 import ThumbDuration from "./ThumbDuration";
+import SizedImage from "./SizedImage";
 import WatchLaterButton from "./WatchLaterButton";
 import AdminMaterialActions from "./AdminMaterialActions";
 
@@ -34,6 +36,7 @@ function ScrollCard({
 }) {
   const solePerson = item.people.length === 1 ? item.people[0] : null;
   const title = itemDisplayTitle(item);
+  const alt = contentThumbnailAlt({ title, people: item.people, showName: item.showName });
 
   return (
     <article
@@ -51,9 +54,11 @@ function ScrollCard({
           }}
         >
           {item.thumbnail_url && (
-            <img
+            <SizedImage
               src={item.thumbnail_url}
-              alt={title}
+              alt={alt}
+              width={IMAGE_SIZE.thumbLandscape.width}
+              height={IMAGE_SIZE.thumbLandscape.height}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               style={{ opacity: isWatched ? 0.7 : 1 }}
             />

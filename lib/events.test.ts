@@ -14,6 +14,7 @@ import {
   filterUpcomingEvents,
   eventCrumbLabel,
   eventHeading,
+  eventPosterAlt,
   eventLeafUsesDate,
   formatEventDate,
   formatEventWhen,
@@ -1103,6 +1104,10 @@ test("a repeated comedian name links the date, a tour title links itself", () =>
   assert.equal(eventHeading(tour), "Stand-up: Kacper Ruciński");
   assert.equal(eventCrumbLabel(tour), "Stand-up: Kacper Ruciński");
   assert.equal(eventLeafUsesDate({ title: null, person, people: [person] }), true);
+  assert.equal(eventPosterAlt(tour), "Plakat: Stand-up: Kacper Ruciński, Kraków");
+  assert.equal(eventPosterAlt({ title: null, person, people: [person], city: "Kutno" }), "Plakat: Kacper Ruciński, Kutno");
+  assert.equal(eventPosterAlt({ title: "Wentyl", city: "Kraków" }), "Plakat: Wentyl, Kraków");
+  assert.equal(eventPosterAlt({ title: "   ", city: "" }), "Plakat: Występ");
   assert.equal(formatEventDate("2027-01-26T18:00:00.000Z"), "26 stycznia 2027");
   assert.equal(formatEventDate("2027-05-12T16:00:00.000Z"), "12 maja 2027");
 });
