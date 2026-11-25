@@ -322,7 +322,7 @@ export default async function WystepPage({ params }: Props) {
                       className={`inline-block py-1 text-sm font-bold underline-offset-4 hover:underline ${focusRing}`}
                       style={{ color: "var(--coral)" }}
                     >
-                      {`Więcej w ${landing.inCity}`}
+                      {`Więcej ${landing.inCity}`}
                     </Link>
                   )}
                 </div>

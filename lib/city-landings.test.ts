@@ -95,16 +95,16 @@ test("ten city landings keep approved descriptions and stable slugs", () => {
   assert.deepEqual(
     CITY_LANDINGS.map((city) => city.inCity),
     [
-      "Warszawie",
-      "Krakowie",
-      "Wrocławiu",
-      "Gdańsku",
-      "Poznaniu",
-      "Bydgoszczy",
-      "Szczecinie",
-      "Łodzi",
-      "Białymstoku",
-      "Gdyni",
+      "w Warszawie",
+      "w Krakowie",
+      "we Wrocławiu",
+      "w Gdańsku",
+      "w Poznaniu",
+      "w Bydgoszczy",
+      "w Szczecinie",
+      "w Łodzi",
+      "w Białymstoku",
+      "w Gdyni",
     ],
   );
   assert.deepEqual(
@@ -136,10 +136,18 @@ test("ten city landings keep approved descriptions and stable slugs", () => {
   assert.match(page, /cityLeadParagraphs\(resolved\.city\.description\)\[0\]/);
   assert.match(page, /description: description \|\| null/);
   assert.match(page, /Nadchodzące występy stand-up:/);
-  assert.match(page, /Stand-up w \$\{city\.inCity\}/);
+  assert.match(page, /Stand-up \$\{city\.inCity\}/);
+  assert.doesNotMatch(page, /Stand-up w \$\{city\.inCity\}/);
+  assert.match(page, /Nie ma teraz ogłoszonych występów \$\{city\.inCity\}\./);
+  assert.doesNotMatch(page, /występów w \$\{city\.inCity\}/);
+  assert.match(page, /Stand-up \$\{resolved\.city\.name\} \\u2014 terminy i bilety/);
   assert.match(page, /max-w-2xl text-\[15px\] md:text-\[17px\]/);
   assert.match(page, /var\(--paper-dim\)/);
   assert.doesNotMatch(page, /\{lead\}/);
+
+  const leaf = readFileSync(new URL("../app/wystep/[id]/page.tsx", import.meta.url), "utf8");
+  assert.match(leaf, /Więcej \$\{landing\.inCity\}/);
+  assert.doesNotMatch(leaf, /Więcej w \$\{landing\.inCity\}/);
 });
 
 test("a city query redirects to the landing and keeps the other filters", () => {
