@@ -11,7 +11,6 @@ import SectionHead from "@/app/components/SectionHead";
 import { useLibrary } from "@/app/components/LibraryProvider";
 import WatchLaterButton from "@/app/components/WatchLaterButton";
 import AdminMaterialActions from "@/app/components/AdminMaterialActions";
-import { useWatchHistory } from "@/app/hooks/useWatchHistory";
 import { resolveContentOpen } from "@/lib/youtube";
 import type { Item } from "@/lib/data";
 import ContentCardAction from "@/app/components/ContentCardAction";
@@ -56,13 +55,11 @@ export default function UlubionePage() {
   const [laterLoadedKey, setLaterLoadedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
-  const { watched, markWatched } = useWatchHistory();
   const slugKeyRef = useRef<string | null>(null);
 
   const handleClick = (item: Item) => {
     const target = resolveContentOpen(item);
     if (target?.type === "modal") {
-      markWatched(item.url);
       setModal({ item, videoId: target.videoId });
     } else if (target?.type === "external") {
       window.open(target.url, "_blank", "noopener,noreferrer");
@@ -175,7 +172,7 @@ export default function UlubionePage() {
                   <Link href="/zaloguj?next=/ulubione" className="font-bold" style={{ color: "var(--coral)" }}>
                     Zaloguj się
                   </Link>
-                  , żeby mieć ulubione, obejrzane i listę „Do obejrzenia” też na innych urządzeniach.
+                  , żeby mieć ulubione i listę „Do obejrzenia” też na innych urządzeniach.
                 </>
               )}
             </p>
@@ -218,7 +215,6 @@ export default function UlubionePage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {laterItems.map((item) => {
-                  const isWatched = watched.has(item.url);
                   const title = itemDisplayTitle(item);
                   const alt = contentThumbnailAlt({ title, people: item.people, showName: item.showName });
                   return (
@@ -235,7 +231,6 @@ export default function UlubionePage() {
                               width={IMAGE_SIZE.thumbLandscape.width}
                               height={IMAGE_SIZE.thumbLandscape.height}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              style={{ opacity: isWatched ? 0.7 : 1 }}
                             />
                           )}
                           <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />

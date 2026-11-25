@@ -12,7 +12,6 @@ import {
 } from "react";
 import {
   loadAccountLibrary,
-  markWatchedOnAccount,
   mergeAccountLibrary,
   renameStoredFavoriteSlugs,
   setFavorite,
@@ -43,10 +42,8 @@ type LibraryController = {
   signedIn: boolean;
   people: string[];
   shows: string[];
-  watched: string[];
   later: number[];
   toggleFavorite: (type: "person" | "show", slug: string) => void;
-  markWatched: (url: string) => void;
   toggleWatchLater: (contentItemId: number) => void;
 };
 
@@ -73,7 +70,7 @@ function browserStore(): KeyValueStore | null {
   }
 }
 
-function replaceList(lists: LibraryLists, key: "people" | "shows" | "watched", value: string, on: boolean): LibraryLists {
+function replaceList(lists: LibraryLists, key: "people" | "shows", value: string, on: boolean): LibraryLists {
   const current = lists[key];
   const has = current.includes(value);
   if (on === has) return lists;
@@ -251,20 +248,6 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
     });
   }, [commit, fail]);
 
-  const markWatched = useCallback((url: string) => {
-    const clean = url.trim();
-    if (!clean) return;
-    const previous = snapshotRef.current;
-    if (previous.watched.includes(clean)) return;
-    const next = replaceList(previous, "watched", clean, true);
-    const generation = ++mutationGen.current;
-    commit(next);
-    if (!signedInRef.current) return;
-    void markWatchedOnAccount(clean).then((result) => {
-      if (!result.ok) fail(result.error, generation);
-    });
-  }, [commit, fail]);
-
   const toggleWatchLater = useCallback((contentItemId: number) => {
     if (!Number.isSafeInteger(contentItemId) || contentItemId <= 0) return;
     const previous = snapshotRef.current;
@@ -285,12 +268,10 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
     signedIn,
     people: snapshot.people,
     shows: snapshot.shows,
-    watched: snapshot.watched,
     later: snapshot.later,
     toggleFavorite,
-    markWatched,
     toggleWatchLater,
-  }), [ready, signedIn, snapshot, toggleFavorite, markWatched, toggleWatchLater]);
+  }), [ready, signedIn, snapshot, toggleFavorite, toggleWatchLater]);
 
   return (
     <LibraryContext.Provider value={value}>

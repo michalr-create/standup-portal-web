@@ -5,7 +5,6 @@ import type { Item } from "@/lib/data";
 import { itemDisplayTitle } from "@/lib/display-title";
 import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
 import { resolveContentOpen } from "@/lib/youtube";
-import { useWatchHistory } from "../hooks/useWatchHistory";
 import { DEFAULT_GRID_CLASS } from "./itemsBrowserLayout";
 import VideoModal from "./VideoModal";
 import HeartButton from "./HeartButton";
@@ -39,13 +38,11 @@ export default function RankingCards({
   layout?: "grid" | "strip";
   showCategoryBadge?: boolean;
 }) {
-  const { watched, markWatched } = useWatchHistory();
   const [modal, setModal] = useState<{ item: Item; videoId: string } | null>(null);
 
   const handleClick = (item: Item) => {
     const target = resolveContentOpen(item);
     if (target?.type === "modal") {
-      markWatched(item.url);
       setModal({ item, videoId: target.videoId });
     } else if (target?.type === "external") {
       window.open(target.url, "_blank", "noopener,noreferrer");
@@ -56,7 +53,6 @@ export default function RankingCards({
 
   const cards = entries.map((entry) => {
     const item = entry.item;
-    const isWatched = watched.has(item.url);
     const solePerson = item.people.length === 1 ? item.people[0] : null;
     const title = itemDisplayTitle(item);
     const alt = contentThumbnailAlt({ title, people: item.people, showName: item.showName });
@@ -84,7 +80,6 @@ export default function RankingCards({
                 width={IMAGE_SIZE.thumbLandscape.width}
                 height={IMAGE_SIZE.thumbLandscape.height}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                style={{ opacity: isWatched ? 0.7 : 1 }}
               />
             )}
             <ThumbDuration seconds={item.duration_seconds} isPaid={item.is_paid} />
@@ -120,14 +115,6 @@ export default function RankingCards({
               </span>
             )}
             {item.is_paid && <PaidBadge url={item.url} />}
-            {isWatched && (
-              <div
-                className={`absolute top-2.5 w-6 h-6 rounded-full flex items-center justify-center ${solePerson ? "right-16" : "right-2.5"}`}
-                style={{ background: "var(--coral)", fontSize: "12px", color: "#fff", fontWeight: 700 }}
-              >
-                {"\u2713"}
-              </div>
-            )}
             {!item.is_paid && (
               <div className="play-overlay">
                 <div className="play-btn" />

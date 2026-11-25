@@ -105,7 +105,7 @@ export default function FavoriteContent({ page }: { page: number }) {
               <Link href={`/zaloguj?next=${PATHNAME}`} className="font-bold" style={{ color: "var(--coral)" }}>
                 Zaloguj się
               </Link>
-              , żeby mieć ulubione, obejrzane i listę „Do obejrzenia” też na innych urządzeniach.
+              , żeby mieć ulubione i listę „Do obejrzenia” też na innych urządzeniach.
             </p>
           )}
         </header>

@@ -7,7 +7,6 @@ import {
   emptyLibrary,
   normalizeIds,
   normalizeLibrary,
-  normalizeUrlList,
   type LibraryLists,
 } from "@/lib/library-sync";
 import { getServerSupabase } from "@/lib/supabase-server";
@@ -275,36 +274,6 @@ export async function setFavorite(type: "person" | "show", slug: string, on: boo
 
   if (result.error) {
     console.error("favorite write", result.error.code);
-    return { ok: false, error: SAVE_ERROR };
-  }
-  return { ok: true };
-}
-
-export async function markWatchedOnAccount(url: string): Promise<ToggleResult> {
-  const { supabase, user } = await requireUser();
-  if (!user) return { ok: false, error: SIGN_IN_ERROR };
-  const clean = normalizeUrlList([url])[0];
-  if (!clean) return { ok: true };
-
-  const { data, error } = await supabase
-    .from("content_items")
-    .select("id")
-    .eq("status", "approved")
-    .eq("url", clean)
-    .limit(1);
-  if (error) {
-    console.error("watched lookup", error.code);
-    return { ok: false, error: SAVE_ERROR };
-  }
-  const id = asPositiveId(data?.[0]?.id);
-  if (id == null) return { ok: true };
-
-  const { error: writeError } = await supabase.from("watched_items").upsert(
-    [{ user_id: user.id, content_item_id: id }],
-    { onConflict: "user_id,content_item_id", ignoreDuplicates: true },
-  );
-  if (writeError) {
-    console.error("watched write", writeError.code);
     return { ok: false, error: SAVE_ERROR };
   }
   return { ok: true };

@@ -13,7 +13,6 @@ import {
 } from "@/lib/film-link";
 import { resolveContentOpen } from "@/lib/youtube";
 import { VIDEO_HISTORY_HASH } from "@/lib/video-history";
-import { useWatchHistory } from "../hooks/useWatchHistory";
 import VideoModal from "./VideoModal";
 
 const DISMISS_KEY = "parskaFilmDismissed";
@@ -72,9 +71,6 @@ export default function FilmDeepLink() {
   const [modal, setModal] = useState<OpenFilm | null>(null);
   const dismissedRef = useRef<number | null>(null);
   const requestRef = useRef(0);
-  const { markWatched } = useWatchHistory();
-  const markRef = useRef(markWatched);
-  markRef.current = markWatched;
 
   const publishLocation = () => {
     const next = readLocation();
@@ -168,7 +164,6 @@ export default function FilmDeepLink() {
           return;
         }
         setModal({ item, videoId: target.videoId });
-        markRef.current(item.url);
       } catch {
         if (controller.signal.aborted || ticket !== requestRef.current || dismissedRef.current === id) return;
         if (!videoId) leave();
