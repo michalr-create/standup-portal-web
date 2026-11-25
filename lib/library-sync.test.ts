@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   applyLibraryDelta,
+  applySlugRenames,
   emptyLibrary,
   mergeLibraries,
   planLibrarySync,
@@ -20,6 +21,24 @@ import {
 
 const USER_A = "11111111-1111-4111-8111-111111111111";
 const USER_B = "22222222-2222-4222-8222-222222222222";
+
+test("stored favorite slugs follow the current slug and ignore unsafe targets", () => {
+  const lists = {
+    ...emptyLibrary(),
+    people: ["ukasz-kowalski", "lukasz-kowalski", "lotek"],
+    shows: ["micha-leja-show"],
+  };
+  const renamed = applySlugRenames(
+    lists,
+    { "ukasz-kowalski": "lukasz-kowalski" },
+    { "micha-leja-show": "michal-leja-show" },
+  );
+  assert.deepEqual(renamed.people, ["lukasz-kowalski", "lotek"]);
+  assert.deepEqual(renamed.shows, ["michal-leja-show"]);
+  assert.equal(applySlugRenames(renamed, { "ukasz-kowalski": "lukasz-kowalski" }, {}), renamed);
+  const unsafe = applySlugRenames(lists, { "ukasz-kowalski": "../admin" }, {});
+  assert.equal(unsafe, lists);
+});
 
 test("merge unions local and account lists without duplicates and keeps local order", () => {
   const merged = mergeLibraries(

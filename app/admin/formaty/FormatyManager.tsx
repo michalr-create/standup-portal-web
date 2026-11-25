@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createShow, updateShow, updateShowDefaultPeople, deleteShow } from "../actions-sources";
+import { slugify } from "@/lib/slugify";
 
 type Show = {
   id: number;
@@ -27,15 +28,6 @@ type Props = {
   categories: Category[];
   people: Person[];
 };
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 function ShowCard({ show, categories, people }: { show: Show; categories: Category[]; people: Person[] }) {
   const [isPending, startTransition] = useTransition();

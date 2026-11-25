@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createSource, toggleSourceActive, updateSourceDefaultPeople, updateSource, createPerson, deleteSource } from "../actions-sources";
+import { slugify } from "@/lib/slugify";
 import { quickFetchSource, fullFetchSource, backfillDurations } from "../actions-fetch";
 
 type Source = {
@@ -24,15 +25,6 @@ type Props = {
   people: { id: number; name: string; slug: string }[];
   shows: { id: number; name: string; slug: string }[];
 };
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 function QuickAddPerson({ onAdded }: { onAdded: (person: { id: number; name: string; slug: string }) => void }) {
   const [open, setOpen] = useState(false);

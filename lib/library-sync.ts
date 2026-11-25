@@ -1,4 +1,5 @@
 import { favoritePersonSlugs } from "./events.ts";
+import { PUBLIC_SLUG } from "./slugify.ts";
 
 /** Personal lists kept in localStorage and, once merged, on the account. */
 export type LibraryLists = {
@@ -158,6 +159,31 @@ export function applyLibraryDelta(base: LibraryLists, before: LibraryLists, afte
       LATER_CAP,
     ).map((value) => Number(value)),
   };
+}
+
+/** Point stored favorites at the current slug. The same list comes back unchanged. */
+export function applySlugRenames(
+  lists: LibraryLists,
+  people: Readonly<Record<string, string>>,
+  shows: Readonly<Record<string, string>>,
+): LibraryLists {
+  const nextPeople = renameSlugList(lists.people, people);
+  const nextShows = renameSlugList(lists.shows, shows);
+  if (sameStrings(nextPeople, lists.people) && sameStrings(nextShows, lists.shows)) return lists;
+  return { ...lists, people: nextPeople, shows: nextShows };
+}
+
+function renameSlugList(values: readonly string[], renames: Readonly<Record<string, string>>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const mapped = renames[value];
+    const next = mapped && PUBLIC_SLUG.test(mapped) ? mapped : value;
+    if (seen.has(next)) continue;
+    seen.add(next);
+    out.push(next);
+  }
+  return out;
 }
 
 export function sameLibrary(left: LibraryLists, right: LibraryLists): boolean {

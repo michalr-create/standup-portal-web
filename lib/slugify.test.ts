@@ -10,6 +10,7 @@ import {
 
 test("ł and Ł become l before other Polish letters are stripped", () => {
   assert.equal(slugify("Łukasz Lotek Lodkowski — Hardcore"), "lukasz-lotek-lodkowski-hardcore");
+  assert.equal(slugify("Łukasz Testowy"), "lukasz-testowy");
   assert.equal(slugify("łukasz"), "lukasz");
   assert.equal(slugify("ĄĆĘŃÓŚŹŻ"), "acenoszz");
   assert.equal(slugify("żółć"), "zolc");

@@ -1,6 +1,7 @@
 "use server";
 
 import { favoritePersonSlugs } from "@/lib/events";
+import { personSlugRenames, showSlugRenames } from "@/lib/slug-alias-lookup";
 import {
   asPositiveId,
   emptyLibrary,
@@ -91,18 +92,49 @@ async function idsForSlugs(
   slugs: string[],
 ): Promise<{ ids: number[] } | null> {
   const ids: number[] = [];
+  const seen = new Set<number>();
+  const push = (value: unknown) => {
+    const id = asPositiveId(value);
+    if (id == null || seen.has(id)) return;
+    seen.add(id);
+    ids.push(id);
+  };
+  const aliasTable = table === "people" ? "people_slug_aliases" : "show_slug_aliases";
+  const aliasColumn = table === "people" ? "person_id" : "show_id";
   for (const group of chunks(slugs, IN_CHUNK)) {
     const { data, error } = await supabase.from(table).select("id, slug").in("slug", group);
     if (error) {
       console.error("library slug lookup", table, error.code);
       return null;
     }
+    const found = new Set<string>();
     for (const row of data ?? []) {
-      const id = asPositiveId(row.id);
-      if (id != null) ids.push(id);
+      push(row.id);
+      if (typeof row.slug === "string") found.add(row.slug);
+    }
+    const missing = group.filter((slug) => !found.has(slug));
+    if (missing.length === 0) continue;
+    const alias = await supabase.from(aliasTable).select(`${aliasColumn}, slug`).in("slug", missing);
+    if (alias.error) {
+      console.error("library slug alias", aliasTable, alias.error.code);
+      continue;
+    }
+    for (const row of alias.data ?? []) {
+      push((row as Record<string, unknown>)[aliasColumn]);
     }
   }
   return { ids };
+}
+
+export async function renameStoredFavoriteSlugs(
+  people: string[],
+  shows: string[],
+): Promise<{ people: Record<string, string>; shows: Record<string, string> }> {
+  const [personMap, showMap] = await Promise.all([
+    personSlugRenames(favoritePersonSlugs(people)),
+    showSlugRenames(favoritePersonSlugs(shows)),
+  ]);
+  return { people: personMap, shows: showMap };
 }
 
 async function contentIdsForUrls(
@@ -222,7 +254,14 @@ export async function setFavorite(type: "person" | "show", slug: string, on: boo
     console.error("favorite lookup", error.code);
     return { ok: false, error: SAVE_ERROR };
   }
-  const id = asPositiveId(data?.id);
+  let id = asPositiveId(data?.id);
+  if (id == null) {
+    const aliasTable = type === "person" ? "people_slug_aliases" : "show_slug_aliases";
+    const column = type === "person" ? "person_id" : "show_id";
+    const alias = await supabase.from(aliasTable).select(column).eq("slug", clean).maybeSingle();
+    if (alias.error) console.error("favorite alias", alias.error.code);
+    else id = asPositiveId((alias.data as Record<string, unknown> | null)?.[column]);
+  }
   if (id == null) return { ok: false, error: type === "person" ? "Nie znaleziono tej osoby." : "Nie znaleziono tego formatu." };
 
   const column = type === "person" ? "person_id" : "show_id";
