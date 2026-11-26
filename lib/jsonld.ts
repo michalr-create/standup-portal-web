@@ -422,6 +422,22 @@ export function personPageGraph(input: {
   };
 }
 
+/** BreadcrumbList for one format page. The trail matches the visible crumbs. */
+export function formatPageGraph(input: { name: string; slug: string }): JsonLdNode {
+  const name = input.name.trim();
+  const url = absoluteUrl(`/format/${input.slug.trim()}`);
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@graph": [
+      breadcrumbList([
+        { name: "Start", url: absoluteUrl("/") },
+        { name: "Formaty", url: absoluteUrl("/formaty") },
+        { name, url },
+      ]),
+    ],
+  };
+}
+
 export function cityPageGraph(name: string, pageUrl: string): JsonLdNode {
   return {
     "@context": SCHEMA_CONTEXT,

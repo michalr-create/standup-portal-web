@@ -41,6 +41,8 @@ type Props = {
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
 
+const performerLink = `rounded-sm underline-offset-4 hover:text-white hover:underline ${focusRing}`;
+
 const OPEN_MIC_FILTERS = { miasto: "", dzien: 0 as const, jezyk: "" as const };
 
 function Notice({
@@ -251,6 +253,22 @@ export default async function CityTourPage({ params, searchParams }: Props) {
               )}
             </TrasyFilters>
           )}
+
+          {listing.ok && listing.performers.length > 0 ? (
+            <section className="mt-14">
+              <SectionHead title={`Standuperzy ${city.inCity}`} />
+              <p className="m-0 text-[15px] leading-relaxed md:text-[17px]">
+                {listing.performers.map((person, index) => (
+                  <span key={person.href}>
+                    {index > 0 ? " · " : null}
+                    <Link href={person.href} className={performerLink}>
+                      {person.name}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            </section>
+          ) : null}
 
           {openMics && openMics.cycles.length > 0 && (
             <section className="mt-14">

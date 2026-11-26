@@ -1,8 +1,10 @@
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import {
+  cityPerformerLinks,
   eventFacets,
   eventPeople,
+  type CityPerformerLink,
   FAVORITE_UPCOMING_SCAN_LIMIT,
   favoritePersonSlugs,
   peopleFromEventRow,
@@ -2022,6 +2024,8 @@ export type TrasyListing = {
   total: number;
   catalogTotal: number;
   facets: EventFacets;
+  /** Profiles with an upcoming date in this city, across every page of the catalog. */
+  performers: CityPerformerLink[];
   ok: boolean;
 };
 
@@ -2194,12 +2198,27 @@ export async function getTrasyListing(
   const sqlFilters: TrasyFilters = { ...filters, osoba: "" };
   const catalogSameScan = !hasActiveTrasyFilters(sqlFilters);
   const skipNational = options?.nationalCatalog === false;
+  // The directory is everyone upcoming in the city, not the current page and
+  // not the calendar's date, ticket, or person filter. An unfiltered city
+  // query is already that scan.
+  const cityPeopleFilters: TrasyFilters | null = filters.miasto
+    ? { osoba: "", miasto: filters.miasto, od: "", doDnia: "", bilety: "" }
+    : null;
+  const cityPeopleSameScan =
+    cityPeopleFilters != null &&
+    sqlFilters.miasto === cityPeopleFilters.miasto &&
+    sqlFilters.od === "" &&
+    sqlFilters.doDnia === "" &&
+    sqlFilters.bilety === "";
 
-  const [scanned, facets, catalogScanned] = await Promise.all([
+  const [scanned, facets, catalogScanned, cityPeopleScanned] = await Promise.all([
     scanUpcomingEvents(sqlFilters, now),
     listUpcomingFacets(now),
     !skipNational && hasActiveTrasyFilters(filters) && !catalogSameScan
       ? scanUpcomingEvents(openFilters, now)
+      : Promise.resolve(undefined),
+    cityPeopleFilters && !cityPeopleSameScan
+      ? scanUpcomingEvents(cityPeopleFilters, now)
       : Promise.resolve(undefined),
   ]);
 
@@ -2208,7 +2227,7 @@ export async function getTrasyListing(
     !facets ||
     (!skipNational && hasActiveTrasyFilters(filters) && !catalogSameScan && catalogScanned == null)
   ) {
-    return { events: [], total: 0, catalogTotal: 0, facets: EMPTY_FACETS, ok: false };
+    return { events: [], total: 0, catalogTotal: 0, facets: EMPTY_FACETS, performers: [], ok: false };
   }
 
   const merged = filters.osoba
@@ -2216,12 +2235,15 @@ export async function getTrasyListing(
     : scanned;
   const listing = pageMergedEvents(merged, page, pageSize);
   const catalogTotal = skipNational ? merged.length : catalogSameScan ? scanned.length : catalogScanned!.length;
+  const peopleSource = !cityPeopleFilters ? [] : cityPeopleSameScan ? scanned : (cityPeopleScanned ?? []);
+  const performers = cityPerformerLinks(peopleSource);
 
   return {
     events: listing.events,
     total: listing.total,
     catalogTotal,
     facets,
+    performers,
     ok: true,
   };
 }

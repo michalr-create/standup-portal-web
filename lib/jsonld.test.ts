@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   cityPageGraph,
   eventBreadcrumbItems,
+  formatPageGraph,
   eventNode,
   eventPageGraph,
   homePageGraph,
@@ -337,4 +338,24 @@ test("home and profile graphs stay within the fields we actually have", () => {
   assert.equal(cityNodes.length, 1);
   assert.equal(cityNodes[0]?.["@type"], "BreadcrumbList");
   assert.equal(JSON.stringify(city).includes("\"Event\""), false);
+});
+
+test("a format page emits the same Start / Formaty / name trail as the visible crumbs", () => {
+  const graph = formatPageGraph({ name: "  Wahanie  ", slug: " wahanie " });
+  const nodes = graph["@graph"] as {
+    "@type": string;
+    itemListElement: { position: number; name: string; item: string }[];
+  }[];
+  assert.equal(nodes.length, 1);
+  assert.equal(nodes[0]?.["@type"], "BreadcrumbList");
+  assert.deepEqual(
+    nodes[0]?.itemListElement.map((item) => [item.position, item.name, item.item]),
+    [
+      [1, "Start", "https://parska.pl/"],
+      [2, "Formaty", "https://parska.pl/formaty"],
+      [3, "Wahanie", "https://parska.pl/format/wahanie"],
+    ],
+  );
+  assert.equal(JSON.stringify(graph).includes("VideoObject"), false);
+  assert.equal(JSON.stringify(graph).includes("Event"), false);
 });
