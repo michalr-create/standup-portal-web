@@ -30,12 +30,16 @@ const STANDUPERKI_SLUG_SET = new Set<string>(STANDUPERKI_SLUGS);
 
 export const STANDUPERKI_PATH = "/standuperki";
 export const STANDUPERKI_H1 = "Standuperki";
-export const STANDUPERKI_TITLE = "Standuperki — polski stand-up";
+/** Passed to contentMetadata. The layout suffix makes the document title end with " — parska." once. */
+export const STANDUPERKI_TITLE = "Standuperki — kobiety w polskim stand-upie";
+export const STANDUPERKI_DOCUMENT_TITLE = "Standuperki — kobiety w polskim stand-upie — parska.";
 export const STANDUPERKI_DESCRIPTION =
-  "Standuperki na polskiej scenie stand-up. Otwarta lista profili, nie ranking najlepszych.";
+  "Polskie standuperki: profile, pełne programy i nagrania. Od Piaseckiej, Szczęśniak i Kubickiej po nowsze nazwiska sceny.";
 
-export const STANDUPERKI_OPEN_NOTE =
-  "To otwarta lista, nie ranking najlepszych. Kolejność nie wynika z popularności ani z alfabetu.";
+/** Approved lead. Names match the meta: Piasecka, Szczęśniak, Kubicka. */
+export const STANDUPERKI_LEAD = STANDUPERKI_DESCRIPTION;
+
+export const STANDUPERKI_OPEN_NOTE = "Lista jest otwarta.";
 
 export type StanduperkaFaq = {
   question: string;
@@ -44,16 +48,12 @@ export type StanduperkaFaq = {
 
 export const STANDUPERKI_FAQS: readonly StanduperkaFaq[] = [
   {
-    question: "Czy to ranking najlepszych standuperki?",
-    answer: "Nie. To otwarta lista profili. Nie układamy jej według ocen ani liczby wyświetleń.",
+    question: "Czy to wszyscy?",
+    answer: "Nie. To osoby, które mają profil na parska.pl. Listę można uzupełniać.",
   },
   {
-    question: "Dlaczego kolejność nie jest alfabetyczna?",
-    answer: "Bo trzymamy ustaloną kolejność tej listy, a nie sortowanie po nazwisku albo popularności.",
-  },
-  {
-    question: "Gdzie są pozostali standuperzy?",
-    answer: "Na stronie wszystkich standuperów.",
+    question: "Gdzie obejrzeć ich programy?",
+    answer: "Przy każdej osobie są linki do pełnych nagrań, o ile takie są.",
   },
 ];
 
@@ -75,15 +75,6 @@ export function standuperkiInOrder<T extends { slug: string }>(people: readonly 
   });
 }
 
-/** Count sentence. The number is whoever is actually on the page. */
-export function standuperkiCountSentence(count: number): string {
-  const n = Math.max(0, Math.trunc(count));
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  const word = n === 1 ? "profil" : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 > 20) ? "profile" : "profili";
-  return `Na tej stronie jest już ${n} ${word}. Zestawienie może urosnąć, gdy pojawią się kolejne profile.`;
-}
-
 export function standuperkiGraph(people: readonly { slug: string; name: string }[]): JsonLdNode {
   const pageUrl = absoluteUrl(STANDUPERKI_PATH);
   const ordered = standuperkiInOrder(people);
@@ -91,7 +82,7 @@ export function standuperkiGraph(people: readonly { slug: string; name: string }
     "@context": SCHEMA_CONTEXT,
     "@graph": [
       breadcrumbList([
-        { name: "Start", url: absoluteUrl("/") },
+        { name: "Strona główna", url: absoluteUrl("/") },
         { name: "Standuperzy", url: absoluteUrl("/standuperzy") },
         { name: "Standuperki", url: pageUrl },
       ]),

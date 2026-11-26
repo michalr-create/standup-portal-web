@@ -9,11 +9,11 @@ import {
   STANDUPERKI_DESCRIPTION,
   STANDUPERKI_FAQS,
   STANDUPERKI_H1,
+  STANDUPERKI_LEAD,
   STANDUPERKI_OPEN_NOTE,
   STANDUPERKI_PATH,
   STANDUPERKI_SLUGS,
   STANDUPERKI_TITLE,
-  standuperkiCountSentence,
   standuperkiGraph,
   standuperkiInOrder,
 } from "@/lib/standuperki";
@@ -52,10 +52,10 @@ export default async function StanduperkiPage() {
         ]}
         intro={
           <>
-            <p className="m-0">{STANDUPERKI_OPEN_NOTE}</p>
-            <p className="m-0 mt-3">{standuperkiCountSentence(ordered.length)}</p>
+            <p className="m-0">{STANDUPERKI_LEAD}</p>
             <p className="m-0 mt-3">
-              {"Pełny katalog osób jest na "}
+              {STANDUPERKI_OPEN_NOTE}
+              {" Pełny katalog osób jest na "}
               <a href="/standuperzy" className={textLink}>
                 stronie wszystkich standuperów
               </a>
@@ -65,17 +65,7 @@ export default async function StanduperkiPage() {
         }
         faqs={STANDUPERKI_FAQS.map((faq) => ({
           question: faq.question,
-          answer: faq.question.startsWith("Gdzie") ? (
-            <>
-              {"Na "}
-              <a href="/standuperzy" className={textLink}>
-                stronie wszystkich standuperów
-              </a>
-              .
-            </>
-          ) : (
-            faq.answer
-          ),
+          answer: faq.answer,
         }))}
       >
         {ordered.length === 0 ? (

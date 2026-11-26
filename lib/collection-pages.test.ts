@@ -18,12 +18,15 @@ import {
 } from "./special-year.ts";
 import {
   STANDUPERKI_DESCRIPTION,
+  STANDUPERKI_DOCUMENT_TITLE,
+  STANDUPERKI_FAQS,
   STANDUPERKI_H1,
+  STANDUPERKI_LEAD,
+  STANDUPERKI_OPEN_NOTE,
   STANDUPERKI_PATH,
   STANDUPERKI_SLUGS,
   STANDUPERKI_TITLE,
   isStanduperka,
-  standuperkiCountSentence,
   standuperkiGraph,
   standuperkiInOrder,
 } from "./standuperki.ts";
@@ -93,8 +96,9 @@ test("2026 specials use the Warsaw publication year, newest first, and keep paid
   assert.equal(view.lead.includes("18"), false);
 
   const graph = specialsYearGraph(view.items);
-  const nodes = graph["@graph"] as { "@type": string; itemListElement?: { url: string }[]; mainEntity?: unknown[] }[];
+  const nodes = graph["@graph"] as { "@type": string; itemListElement?: { name?: string; url: string }[]; mainEntity?: unknown[] }[];
   assert.deepEqual(nodes.map((node) => node["@type"]), ["BreadcrumbList", "ItemList", "FAQPage"]);
+  assert.deepEqual(nodes[0]?.itemListElement?.map((item) => item.name), ["Strona główna", "Specjale", "2026"]);
   assert.deepEqual(
     nodes[1]?.itemListElement?.map((item) => item.url),
     view.items.map((item) => `https://parska.pl/specjale/${item.slug}`),
@@ -112,16 +116,29 @@ test("standuperki keep the approved order and are not a popularity sort", () => 
   assert.equal(STANDUPERKI_SLUGS.length, 18);
   assert.equal(isStanduperka("Katarzyna-Piasecka"), true);
   assert.equal(isStanduperka("rafal-paczes"), false);
-  assert.match(standuperkiCountSentence(18), /18 profili/);
-  assert.match(standuperkiCountSentence(1), /1 profil/);
-  assert.match(standuperkiCountSentence(2), /2 profile/);
+  assert.equal(STANDUPERKI_LEAD, STANDUPERKI_DESCRIPTION);
+  assert.match(STANDUPERKI_LEAD, /Piaseckiej, Szczęśniak i Kubickiej/);
+  assert.equal(STANDUPERKI_OPEN_NOTE, "Lista jest otwarta.");
+  assert.deepEqual(STANDUPERKI_FAQS.map((faq) => faq.question), [
+    "Czy to wszyscy?",
+    "Gdzie obejrzeć ich programy?",
+  ]);
+  assert.equal(STANDUPERKI_FAQS[1]?.answer, "Przy każdej osobie są linki do pełnych nagrań, o ile takie są.");
   const graph = standuperkiGraph([
     { slug: "gosia-rozalska", name: "Gosia Rozalska" },
     { slug: "katarzyna-piasecka", name: "Katarzyna Piasecka" },
   ]);
-  const nodes = graph["@graph"] as { "@type": string; itemListElement?: { name: string; url: string }[] }[];
+  const nodes = graph["@graph"] as {
+    "@type": string;
+    itemListElement?: { name: string; url: string }[];
+    mainEntity?: { name: string }[];
+  }[];
   assert.deepEqual(nodes.map((node) => node["@type"]), ["BreadcrumbList", "ItemList", "FAQPage"]);
-  assert.deepEqual(nodes[0]?.itemListElement?.map((item) => item.name), ["Start", "Standuperzy", "Standuperki"]);
+  assert.deepEqual(nodes[0]?.itemListElement?.map((item) => item.name), ["Strona główna", "Standuperzy", "Standuperki"]);
+  assert.deepEqual(nodes[2]?.mainEntity?.map((item) => item.name), [
+    "Czy to wszyscy?",
+    "Gdzie obejrzeć ich programy?",
+  ]);
   assert.equal(nodes[1]?.itemListElement?.[0]?.url, "https://parska.pl/standuper/katarzyna-piasecka");
   assert.equal(nodes[1]?.itemListElement?.[1]?.url, "https://parska.pl/standuper/gosia-rozalska");
 });
@@ -203,6 +220,15 @@ test("the three collection routes are reserved, canonical, and in the sitemap", 
   assert.equal(bestMeta.description, MOST_VIEWED_DESCRIPTION);
   assert.equal(String(bestMeta.alternates?.canonical).includes("rankingi"), false);
   assert.equal(womenMeta.alternates?.canonical, "https://parska.pl/standuperki");
+  assert.equal(womenMeta.description, STANDUPERKI_DESCRIPTION);
+  assert.equal(
+    womenMeta.title && typeof womenMeta.title === "object" && "absolute" in womenMeta.title
+      ? womenMeta.title.absolute
+      : "",
+    STANDUPERKI_DOCUMENT_TITLE,
+  );
+  assert.equal(STANDUPERKI_DOCUMENT_TITLE, `${STANDUPERKI_TITLE} — parska.`);
+  assert.equal((STANDUPERKI_DOCUMENT_TITLE.match(/parska\./g) ?? []).length, 1);
   assert.equal(SITEMAP_STATIC_PATHS.includes("/specjale/2026"), true);
   assert.equal(SITEMAP_STATIC_PATHS.includes("/specjale/najlepsze"), true);
   assert.equal(SITEMAP_STATIC_PATHS.includes("/standuperki"), true);
@@ -257,6 +283,11 @@ test("collection pages render the headings, crumbs, ranking links, and paid mark
   assert.match(womenPage, /standuperkiInOrder/);
   assert.match(womenPage, /aria-label="Lista standuperki"/);
   assert.doesNotMatch(womenPage, /sortPeopleByName|gender|płeć/);
+  assert.match(womenPage, /STANDUPERKI_LEAD/);
+  assert.match(womenPage, /STANDUPERKI_OPEN_NOTE/);
+  assert.match(womenPage, /label: "Start"/);
+  assert.doesNotMatch(womenPage, /ranking najlepszych standuperki|obejrzech/);
+  assert.match(yearPage, /label: "Start"/);
 
   assert.match(rankingPage, /href="\/specjale\/najlepsze"/);
   assert.match(rankingPage, /query\.ranking === "specjale" \|\| query\.ranking === "klasyki"/);

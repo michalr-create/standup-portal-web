@@ -107,7 +107,7 @@ export function specialsYearGraph(items: readonly Pick<YearSpecial, "slug" | "ti
     "@context": SCHEMA_CONTEXT,
     "@graph": [
       breadcrumbList([
-        { name: "Start", url: absoluteUrl("/") },
+        { name: "Strona główna", url: absoluteUrl("/") },
         { name: "Specjale", url: absoluteUrl("/specjale") },
         { name: "2026", url: pageUrl },
       ]),
