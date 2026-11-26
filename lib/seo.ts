@@ -1,5 +1,6 @@
 import type { Metadata, MetadataRoute } from "next";
 import { CITY_LANDINGS } from "./city-landings.ts";
+import { OPEN_MIC_CITIES } from "./open-mic-cities.ts";
 import { isPublicContentSlug, PUBLIC_SLUG } from "./slugify.ts";
 
 /** Canonical origin. Public URLs stay on the apex host, never www. */
@@ -137,6 +138,12 @@ type ContentMetadataInput = {
   page?: number;
   openGraphType?: "website" | "profile" | "video.other";
   image?: string | null;
+  /**
+   * Keep an approved description that is already final.
+   * Open-mic city templates are 162–167 characters; clipping them at 160
+   * would cut the last sentence. Every other page stays clipped.
+   */
+  preserveDescription?: boolean;
 };
 
 function absoluteImage(image: string | null | undefined): string | null {
@@ -148,7 +155,10 @@ function absoluteImage(image: string | null | undefined): string | null {
 }
 
 export function contentMetadata(input: ContentMetadataInput): Metadata {
-  const description = clipDescription(input.description, input.fallbackDescription);
+  const preserved = fixBrokenDiacritics((input.description ?? "").replace(/\s+/g, " ").trim());
+  const description = input.preserveDescription
+    ? preserved || clipDescription(null, input.fallbackDescription)
+    : clipDescription(input.description, input.fallbackDescription);
   const url = listingCanonical(input.pathname, input.page ?? 1);
   const socialTitle = withSiteTitle(input.title);
   const image = absoluteImage(input.image);
@@ -290,6 +300,7 @@ export function isBlockedSitemapPath(pathname: string): boolean {
 function sitemapPriority(pathname: string): { changeFrequency: SitemapChangeFrequency; priority: number } {
   if (pathname === "/") return { changeFrequency: "daily", priority: 1 };
   if (pathname === "/open-mic") return { changeFrequency: "daily", priority: 0.8 };
+  if (pathname.startsWith("/open-mic/")) return { changeFrequency: "weekly", priority: 0.7 };
   if (pathname === "/trasy") return { changeFrequency: "daily", priority: 0.6 };
   if (pathname.startsWith("/trasy/")) return { changeFrequency: "weekly", priority: 0.7 };
   if (pathname.startsWith("/wystep/")) return { changeFrequency: "daily", priority: 0.5 };
@@ -328,6 +339,10 @@ function citySitemapPaths(): string[] {
   return CITY_LANDINGS.map((city) => `/trasy/${city.slug}`).sort((a, b) => a.localeCompare(b));
 }
 
+function openMicCitySitemapPaths(): string[] {
+  return OPEN_MIC_CITIES.map((city) => `/open-mic/${city.slug}`).sort((a, b) => a.localeCompare(b));
+}
+
 export function buildSitemap(
   peopleSlugs: readonly string[],
   showSlugs: readonly string[],
@@ -362,7 +377,7 @@ export function buildSitemap(
       ...(row.lastModified ? { lastModified: row.lastModified } : {}),
     });
   }
-  for (const pathname of [...citySitemapPaths(), ...eventSitemapPaths(eventIds)]) {
+  for (const pathname of [...citySitemapPaths(), ...openMicCitySitemapPaths(), ...eventSitemapPaths(eventIds)]) {
     if (isBlockedSitemapPath(pathname) || seen.has(pathname)) continue;
     seen.add(pathname);
     const cadence = sitemapPriority(pathname);

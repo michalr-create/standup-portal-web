@@ -1,29 +1,27 @@
-import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import OpenMicCard from "./OpenMicCard";
-import OpenMicDates from "./OpenMicDates";
-import OpenMicFilters from "./OpenMicFilters";
-import HomeCityRedirect from "@/app/components/HomeCityRedirect";
+import { permanentRedirect, redirect } from "next/navigation";
+import JsonLd from "@/app/components/JsonLd";
 import { hasBlankCityParam } from "@/lib/home-city";
+import {
+  OPEN_MIC_DESCRIPTION,
+  OPEN_MIC_FAQS,
+  OPEN_MIC_INTRO,
+  OPEN_MIC_TITLE,
+  openMicCityByName,
+} from "@/lib/open-mic-cities";
 import { getOpenMicCatalog } from "@/lib/open-mic-data";
+import { openMicPageGraph } from "@/lib/open-mic-jsonld";
 import {
   buildOpenMicView,
-  cyklLabel,
-  hasActiveOpenMicFilters,
-  nextOpenMicDate,
   openMicFacetRedirect,
   parseOpenMicSearchParams,
   type OpenMicSearch,
 } from "@/lib/open-mics";
-import { contentMetadata } from "@/lib/seo";
-
-const OPEN_MIC_DESCRIPTION =
-  "Cykliczne open miki stand-upowe w Polsce: miasto, scena, zapisy i najbli\u017csze terminy z linkiem do bilet\u00f3w.";
+import { absoluteUrl, contentMetadata } from "@/lib/seo";
+import OpenMicScreen from "./OpenMicScreen";
 
 export const metadata: Metadata = contentMetadata({
-  title: "Open mic",
+  title: OPEN_MIC_TITLE,
   description: OPEN_MIC_DESCRIPTION,
   fallbackDescription: OPEN_MIC_DESCRIPTION,
   pathname: "/open-mic",
@@ -35,41 +33,14 @@ type Props = {
   searchParams: Promise<OpenMicSearch>;
 };
 
-const addClass =
-  "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2.5 text-sm font-black text-[var(--ink)] transition-colors hover:bg-[var(--coral-hi)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--paper)] sm:w-auto";
-
-function Notice({
-  eyebrow,
-  title,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className="rounded-[18px] px-6 py-16 text-center"
-      style={{ border: "1px dashed var(--line-2)", background: "var(--ink-2)" }}
-    >
-      <p className="mono mb-4 text-xs uppercase" style={{ color: "var(--coral)", letterSpacing: ".16em" }}>
-        {eyebrow}
-      </p>
-      <h2 className="m-0 font-black" style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-.03em" }}>
-        {title}
-        <span className="dot-accent">.</span>
-      </h2>
-      <div className="mx-auto mt-4 max-w-md text-[16px] leading-relaxed" style={{ color: "var(--paper-dim)" }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export default async function OpenMicPage({ searchParams }: Props) {
   const raw = await searchParams;
   const explicitAllCities = hasBlankCityParam(raw);
   const parsed = parseOpenMicSearchParams(raw);
+  if (!parsed.filters.dzien && !parsed.filters.jezyk) {
+    const landing = openMicCityByName(parsed.filters.miasto);
+    if (landing) permanentRedirect(`/open-mic/${landing.slug}`);
+  }
   if (parsed.redirectHref) redirect(parsed.redirectHref);
 
   const now = new Date();
@@ -80,86 +51,31 @@ export default async function OpenMicPage({ searchParams }: Props) {
     if (unknownCity) redirect(unknownCity);
   }
 
-  const filtered = hasActiveOpenMicFilters(parsed.filters);
-  const countLabel = !catalog.ok
-    ? "błąd wczytywania"
-    : view.catalogCount === 0
-      ? "na razie pusto"
-      : filtered
-        ? `${view.cycles.length} z ${view.catalogCount}`
-        : `${view.catalogCount} ${cyklLabel(view.catalogCount)}`;
+  const pageUrl = absoluteUrl("/open-mic");
 
   return (
-    <div className="band">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="mb-2 flex flex-wrap items-baseline gap-4">
-              <h1
-                className="m-0 font-black leading-none"
-                style={{ fontSize: "clamp(32px, 4vw, 44px)", letterSpacing: "-.025em" }}
-              >
-                Open mic
-                <span className="dot-accent">.</span>
-              </h1>
-              <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
-                {countLabel}
-              </span>
-            </div>
-            <p className="m-0 max-w-2xl text-[15px] md:text-[17px]" style={{ color: "var(--paper-dim)" }}>
-              Cykliczne open miki stand-upowe. Na karcie jest scena, zapisy i najbliższy termin, a bilety otwierają się w nowej karcie.
-            </p>
-          </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <Link href="/open-mic/dodaj" className={addClass}>
-              Dodaj swój open mic
-            </Link>
-            <Link
-              href="/zglos?rodzaj=open-mic"
-              className="inline-flex min-h-11 items-center justify-center text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
-              style={{ color: "var(--paper-dim)" }}
-            >
-              Zgłoś brakujący open mic
-            </Link>
-          </div>
-        </header>
-
-        {catalog.ok && view.catalogCount > 0 && (
-          <>
-            <HomeCityRedirect pathname="/open-mic" cities={view.cities} />
-            <OpenMicFilters filters={parsed.filters} cities={view.cities} explicitAllCities={explicitAllCities} />
-          </>
-        )}
-
-        {!catalog.ok ? (
-          <Notice eyebrow="open mic" title="Coś poszło nie tak">
-            Nie udało się wczytać open miców. Odśwież stronę za chwilę.
-          </Notice>
-        ) : view.catalogCount === 0 ? (
-          <Notice eyebrow="open mic" title="Brak open miców">
-            <p className="m-0">
-              Nie ma jeszcze ogłoszonych cykli. Gdy pojawią się open miki, zobaczysz tu miasto, scenę, zapisy i najbliższe terminy.
-            </p>
-          </Notice>
-        ) : view.cycles.length === 0 ? (
-          <Notice eyebrow="filtry" title="Brak wyników">
-            <p className="m-0">Żaden open mic nie pasuje do tych filtrów.</p>
-            <Link href="/open-mic?miasto=" className="mt-6 inline-flex min-h-11 items-center font-black" style={{ color: "var(--coral)" }}>
-              Wyczyść filtry
-            </Link>
-          </Notice>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {view.cycles.map((cycle) => (
-              <OpenMicCard key={cycle.id} cycle={cycle} next={nextOpenMicDate(cycle, view.dates)} now={now} />
-            ))}
-          </div>
-        )}
-
-        {catalog.ok && view.cycles.length > 0 && (
-          <OpenMicDates dates={view.dates} cycles={view.cycles} now={now} filtered={filtered} />
-        )}
-      </div>
-    </div>
+    <>
+      <JsonLd
+        data={openMicPageGraph({
+          pageUrl,
+          cycles: view.cycles,
+          dates: view.dates,
+          now,
+          faqs: OPEN_MIC_FAQS,
+        })}
+      />
+      <OpenMicScreen
+        h1="Open mic stand-up w Polsce"
+        intro={OPEN_MIC_INTRO}
+        showCityLinks
+        faqs={OPEN_MIC_FAQS}
+        showHomeCityRedirect
+        filters={parsed.filters}
+        explicitAllCities={explicitAllCities}
+        catalogOk={catalog.ok}
+        view={view}
+        now={now}
+      />
+    </>
   );
 }

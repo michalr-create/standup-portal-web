@@ -171,6 +171,7 @@ test("public content pages declare their own metadata", () => {
     "app/nostalgia/page.tsx",
     "app/rankingi/page.tsx",
     "app/open-mic/page.tsx",
+    "app/open-mic/[miasto]/page.tsx",
   ];
   for (const path of pages) {
     const source = readFileSync(new URL("../" + path, import.meta.url), "utf8");
