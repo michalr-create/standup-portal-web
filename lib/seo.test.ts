@@ -374,7 +374,8 @@ test("sitemap lists city landings and event leaves, not filter queries", () => {
   assert.doesNotMatch(home, /SearchAction/);
   assert.match(leaf, /eventPageGraph/);
   assert.match(leaf, /revalidate = 120/);
-  assert.match(leaf, /Kup bilet/);
+  assert.match(leaf, /ticketCtaLabel\(primary\.link\.ticket_provider, primary\.href\)/);
+  assert.doesNotMatch(leaf, /<span>\{providerLabel\(primary/);
   assert.match(cityPage, /cityPageGraph/);
   assert.match(cityPage, /hideCityChips/);
   assert.doesNotMatch(cityPage, /description:\s*"/);
