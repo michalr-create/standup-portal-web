@@ -6,6 +6,7 @@ import {
   eventPeople,
   formatEventWhen,
   standuperProfileHref,
+  ticketCtaLabel,
   trasyHref,
   type FavoriteUpcomingEvent,
 } from "@/lib/events";
@@ -43,14 +44,16 @@ function TicketCta({ event }: { event: FavoriteUpcomingEvent }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-black transition-colors hover:bg-[rgba(232,89,74,.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+      className="inline-flex max-w-full min-h-11 min-w-0 items-center gap-1.5 whitespace-normal break-words rounded-full px-3 py-2 text-left text-sm font-black leading-snug transition-colors hover:bg-[rgba(232,89,74,.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
       style={
         soldOut
           ? { color: "var(--paper-dim)", border: "1px solid var(--line-2)" }
           : { color: "var(--coral)", border: "1px solid var(--coral)" }
       }
     >
-      {soldOut ? "Wyprzedane" : "Bilety"}
+      <span className="min-w-0">
+        {soldOut ? "Wyprzedane" : ticketCtaLabel(event.ticket_provider ?? "other", href)}
+      </span>
       <ExternalIcon />
       <span className="sr-only">, otwiera się w nowej karcie</span>
     </a>

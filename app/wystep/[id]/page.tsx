@@ -19,6 +19,7 @@ import {
   providerLabel,
   standuperProfileHref,
   statusLabel,
+  ticketCtaLabel,
   trasyHref,
   visibleTicketLinks,
   wystepHref,
@@ -277,11 +278,10 @@ export default async function WystepPage({ params }: Props) {
                     href={primary.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`inline-flex min-h-12 items-center gap-2 rounded-full px-5 text-base font-black hover:bg-[var(--coral-hi)] ${focusRing}`}
+                    className={`inline-flex max-w-full min-h-12 min-w-0 items-center gap-2 whitespace-normal break-words rounded-full px-5 py-2.5 text-left text-base font-black leading-snug hover:bg-[var(--coral-hi)] ${focusRing}`}
                     style={{ background: "var(--coral)", color: "var(--ink)" }}
                   >
-                    Kup bilet
-                    <span>{providerLabel(primary.link.ticket_provider)}</span>
+                    <span className="min-w-0">{ticketCtaLabel(primary.link.ticket_provider, primary.href)}</span>
                     <ExternalIcon />
                     <span className="sr-only">, otwiera się w nowej karcie</span>
                   </a>
