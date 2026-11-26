@@ -10,8 +10,16 @@ export const SITE_LOCALE = "pl_PL";
 
 export const HOME_TITLE = "parska. \u2014 polski stand-up w jednym miejscu";
 export const HOME_DESCRIPTION =
-  "Agregator polskiego stand-upu. Nowe nagrania, specjale, wywiady i formaty.";
+  "Wyst\u0119py, nagrania i open miki polskiego stand-upu w jednym miejscu.";
 export const TITLE_TEMPLATE = "%s \u2014 parska.";
+
+/** Brand card when a page has no portrait, thumbnail, or poster of its own. */
+export const OG_DEFAULT_IMAGE = {
+  url: "/og-default.png",
+  width: 1200,
+  height: 630,
+  alt: "parska. \u2014 ca\u0142y polski stand-up w jednym miejscu",
+} as const;
 
 const META_DESCRIPTION_MAX = 160;
 
@@ -162,6 +170,7 @@ export function contentMetadata(input: ContentMetadataInput): Metadata {
   const url = listingCanonical(input.pathname, input.page ?? 1);
   const socialTitle = withSiteTitle(input.title);
   const image = absoluteImage(input.image);
+  const images = image ? [{ url: image }] : [OG_DEFAULT_IMAGE];
   return {
     // Absolute so the layout template cannot append a second " — parska.".
     title: { absolute: socialTitle },
@@ -174,13 +183,13 @@ export function contentMetadata(input: ContentMetadataInput): Metadata {
       siteName: SITE_NAME,
       title: socialTitle,
       description,
-      ...(image ? { images: [{ url: image }] } : {}),
+      images,
     },
     twitter: {
       card: "summary_large_image",
       title: socialTitle,
       description,
-      ...(image ? { images: [image] } : {}),
+      images,
     },
   };
 }
