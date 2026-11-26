@@ -16,6 +16,11 @@ type SizedImageProps = {
   lazy?: boolean;
   /** Empty alt plus aria-hidden. The picture is not content. */
   decorative?: boolean;
+  /**
+   * Fetch hint when this image must not compete with LCP.
+   * `priority` still forces "high" and ignores this.
+   */
+  fetchPriority?: "high" | "low" | "auto";
   onError?: (event: SyntheticEvent<HTMLImageElement>) => void;
 };
 
@@ -39,6 +44,7 @@ export default function SizedImage({
   priority = false,
   lazy = true,
   decorative = false,
+  fetchPriority,
   onError,
 }: SizedImageProps) {
   const eager = priority || !lazy;
@@ -55,5 +61,6 @@ export default function SizedImage({
   };
   if (decorative) props["aria-hidden"] = true;
   if (priority) props.fetchpriority = "high";
+  else if (fetchPriority && fetchPriority !== "auto") props.fetchpriority = fetchPriority;
   return <img {...props} />;
 }

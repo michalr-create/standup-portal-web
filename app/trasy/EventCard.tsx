@@ -12,6 +12,7 @@ import {
   providerLabel,
   standuperProfileHref,
   statusLabel,
+  ticketCtaLabel,
   visibleTicketLinks,
   wystepHref,
   type TicketLink,
@@ -19,9 +20,8 @@ import {
   type TourPerson,
 } from "@/lib/events";
 import { cityLandingPath } from "@/lib/city-landings";
-import { IMAGE_SIZE } from "@/lib/image-alt";
 import { paidExternalUrl } from "@/lib/youtube";
-import SizedImage from "../components/SizedImage";
+import EventPoster from "../components/EventPoster";
 import EventPlanActions from "./EventPlanActions";
 
 function ExternalIcon() {
@@ -69,10 +69,10 @@ function TicketCta({ href, label }: { href: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-black transition-colors hover:bg-[var(--coral-hi)] ${focusRing}`}
+      className={`inline-flex max-w-full min-h-10 min-w-0 items-center gap-1.5 whitespace-normal break-words text-balance rounded-full px-3.5 py-2 text-left text-sm font-black leading-snug transition-colors hover:bg-[var(--coral-hi)] ${focusRing}`}
       style={{ background: "var(--coral)", color: "var(--ink)" }}
     >
-      {label}
+      <span className="min-w-0">{label}</span>
       <ExternalIcon />
       <span className="sr-only">, otwiera się w nowej karcie</span>
     </a>
@@ -167,13 +167,7 @@ export default function EventCard({
           className={`absolute inset-0 block ${focusRing}`}
         >
           {poster ? (
-            <SizedImage
-              src={poster}
-              alt={eventPosterAlt(event)}
-              width={IMAGE_SIZE.poster.width}
-              height={IMAGE_SIZE.poster.height}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+            <EventPoster src={poster} alt={eventPosterAlt(event)} />
           ) : (
             <div
               aria-hidden="true"
@@ -289,7 +283,7 @@ export default function EventCard({
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-4 sm:px-5 sm:pb-5">
-        {primary && <TicketCta href={primary.href} label={providerLabel(primary.link.ticket_provider)} />}
+        {primary && <TicketCta href={primary.href} label={ticketCtaLabel(primary.link.ticket_provider, primary.href)} />}
         {secondary.map((item) => (
           <PortalBadge key={`${item.link.ticket_provider}:${item.link.external_id}`} link={item.link} href={item.href} />
         ))}
