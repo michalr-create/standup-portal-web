@@ -50,6 +50,20 @@ export const PROVIDER_LABELS: Record<TicketProvider, string> = {
 };
 
 /**
+ * Storefront host on the buy button. `other` is omitted and the ticket URL
+ * hostname is used instead. going.pl redirects to the Going storefront.
+ */
+export const PROVIDER_DOMAINS: Partial<Record<TicketProvider, string>> = {
+  kupbilecik: "kupbilecik.pl",
+  going: "going.pl",
+  ebilet: "ebilet.pl",
+  ticketmaster: "ticketmaster.pl",
+  eventim: "eventim.pl",
+  biletomat: "biletomat.pl",
+  bilety24: "bilety24.pl",
+};
+
+/**
  * Bilety24 only redirects to Kupbilecik. It stays in the provider enum because
  * older `event_ticket_links` rows still use it, but it is not a storefront:
  * tour cards leave it out.
@@ -1139,6 +1153,27 @@ export function statusLabel(status: ListedEventStatus): string {
 
 export function providerLabel(provider: TicketProvider): string {
   return PROVIDER_LABELS[provider];
+}
+
+function hostnameWithoutWww(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  try {
+    return new URL(trimmed).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/** Public host for a ticket link. Known portals win over the URL hostname. */
+export function ticketPortalDomain(provider: TicketProvider, ticketUrl: string): string {
+  return PROVIDER_DOMAINS[provider] ?? hostnameWithoutWww(ticketUrl);
+}
+
+/** Primary buy button: "Kup bilet na kupbilecik.pl". */
+export function ticketCtaLabel(provider: TicketProvider, ticketUrl: string): string {
+  const domain = ticketPortalDomain(provider, ticketUrl);
+  return domain ? `Kup bilet na ${domain}` : "Kup bilet";
 }
 
 export type ResolvedTicketLink = {

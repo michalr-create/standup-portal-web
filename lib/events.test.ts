@@ -37,6 +37,8 @@ import {
   profileWatchLabel,
   providerLabel,
   standuperProfileHref,
+  ticketCtaLabel,
+  ticketPortalDomain,
   terminLabel,
   topFacetCities,
   toTourEvent,
@@ -468,6 +470,19 @@ test("rows normalize prices and drop events that are not publicly listed", () =>
   assert.equal(isVisibleTicketProvider("bilety24"), false);
   assert.equal(isVisibleTicketProvider("kupbilecik"), true);
   assert.equal(providerLabel("other"), "Inny portal");
+});
+
+test("buy button uses the portal domain, then the ticket host without www", () => {
+  assert.equal(ticketCtaLabel("kupbilecik", "https://www.kupbilecik.pl/pl/event/1"), "Kup bilet na kupbilecik.pl");
+  assert.equal(ticketPortalDomain("going", "https://goingapp.pl/wydarzenie/x"), "going.pl");
+  assert.equal(ticketCtaLabel("going", "https://goingapp.pl/wydarzenie/x"), "Kup bilet na going.pl");
+  assert.equal(ticketCtaLabel("ebilet", "https://www.ebilet.pl/x"), "Kup bilet na ebilet.pl");
+  assert.equal(ticketCtaLabel("ticketmaster", "https://www.ticketmaster.pl/event/1"), "Kup bilet na ticketmaster.pl");
+  assert.equal(ticketCtaLabel("eventim", "https://www.eventim.pl/event/1"), "Kup bilet na eventim.pl");
+  assert.equal(ticketCtaLabel("biletomat", "https://biletomat.pl/event/1"), "Kup bilet na biletomat.pl");
+  assert.equal(ticketCtaLabel("other", "https://www.Sklep.Example/bilet"), "Kup bilet na sklep.example");
+  assert.equal(ticketCtaLabel("other", "https://bilety.przyklad.pl/a"), "Kup bilet na bilety.przyklad.pl");
+  assert.equal(ticketCtaLabel("other", "not a url"), "Kup bilet");
 });
 
 test("ticket buttons keep the primary storefront and real sellers", () => {

@@ -31,6 +31,7 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   const cardPath = join(dir, "card.cjs");
   const plansPath = join(dir, "plans.cjs");
   const sizedPath = join(dir, "sized.cjs");
+  const posterPath = join(dir, "poster.cjs");
   const altPath = join(dir, "image-alt.cjs");
   const slugifyPath = join(dir, "slugify.cjs");
   const landingsPath = join(dir, "landings.cjs");
@@ -55,6 +56,14 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   writeFileSync(
     sizedPath,
     compile(readFileSync(new URL("../app/components/SizedImage.tsx", import.meta.url), "utf8"), true)
+      .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
+      .replaceAll('require("react")', `require(${JSON.stringify(reactPath)})`),
+  );
+  writeFileSync(
+    posterPath,
+    compile(readFileSync(new URL("../app/components/EventPoster.tsx", import.meta.url), "utf8"), true)
+      .replaceAll('require("./SizedImage")', `require(${JSON.stringify(sizedPath)})`)
+      .replaceAll('require("@/lib/image-alt")', `require(${JSON.stringify(altPath)})`)
       .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
       .replaceAll('require("react")', `require(${JSON.stringify(reactPath)})`),
   );
@@ -83,9 +92,8 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   const card = compile(readFileSync(new URL("../app/trasy/EventCard.tsx", import.meta.url), "utf8"), true)
     .replaceAll('require("@/lib/events")', `require(${JSON.stringify(eventsPath)})`)
     .replaceAll('require("@/lib/city-landings")', `require(${JSON.stringify(landingsPath)})`)
-    .replaceAll('require("@/lib/image-alt")', `require(${JSON.stringify(altPath)})`)
     .replaceAll('require("@/lib/youtube")', `require(${JSON.stringify(youtubePath)})`)
-    .replaceAll('require("../components/SizedImage")', `require(${JSON.stringify(sizedPath)})`)
+    .replaceAll('require("../components/EventPoster")', `require(${JSON.stringify(posterPath)})`)
     .replaceAll('require("./EventPlanActions")', `require(${JSON.stringify(plansPath)})`)
     .replaceAll('require("next/link")', `require(${JSON.stringify(linkPath)})`)
     .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
@@ -155,6 +163,40 @@ function attr(attrs: string, name: string): string | null {
   return match?.[1] ?? null;
 }
 
+function assertContainedPoster(html: string, src: string, alt: string) {
+  const images = html.match(/<img\b[^>]*>/g) ?? [];
+  assert.equal(images.length, 2);
+  const backdrop = images[0] ?? "";
+  const poster = images[1] ?? "";
+  const srcAttr = `src="${src}"`;
+  assert.match(backdrop, new RegExp(srcAttr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(poster, new RegExp(srcAttr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(backdrop, /alt=""/);
+  assert.match(backdrop, /aria-hidden="true"/);
+  assert.match(backdrop, /object-cover/);
+  assert.match(backdrop, /blur-\[24px\]/);
+  assert.match(backdrop, /scale-110/);
+  assert.match(backdrop, /brightness-50/);
+  assert.match(backdrop, /loading="lazy"/);
+  assert.match(backdrop, /fetchpriority="low"/i);
+  assert.doesNotMatch(backdrop, /fetchpriority="high"/i);
+  assert.doesNotMatch(backdrop, /object-contain/);
+  assert.match(poster, /object-contain/);
+  assert.match(poster, /object-center/);
+  assert.match(poster, /width="800"/);
+  assert.match(poster, /height="600"/);
+  assert.match(poster, /loading="lazy"/);
+  assert.match(poster, new RegExp(`alt="${alt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+  assert.doesNotMatch(poster, /object-cover/);
+  assert.doesNotMatch(poster, /fetchpriority/i);
+  assert.doesNotMatch(poster, /aria-hidden/);
+  const mediaAt = html.indexOf("aspect-[4/3]");
+  const backdropAt = html.indexOf(backdrop);
+  const posterAt = html.indexOf(poster);
+  const badgeAt = html.indexOf("absolute right-3 top-3 z-10");
+  assert.ok(mediaAt !== -1 && backdropAt > mediaAt && posterAt > backdropAt && badgeAt > posterAt);
+}
+
 function assertPosterSlot(html: string, status: string) {
   assert.match(html, /aspect-\[4\/3\]/);
   assert.match(html, /rounded-t-\[18px\]/);
@@ -219,7 +261,7 @@ test("event card sends the name to the profile and tickets to a new tab", () => 
     assert.match(link.text, /otwiera się w nowej karcie/);
     assert.match(attr(link.attrs, "rel") ?? "", /noopener/);
   }
-  const kupbilecik = external.find((link) => link.text.startsWith("Kupbilecik"));
+  const kupbilecik = external.find((link) => link.text.startsWith("Kup bilet na kupbilecik.pl"));
   const going = external.find((link) => link.text.startsWith("Going"));
   assert.ok(kupbilecik);
   assert.equal(attr(kupbilecik.attrs, "href"), "https://kupbilecik.pl/adam");
@@ -292,7 +334,7 @@ test("joint show is one card with both comedians and the same ticket buttons", (
   const external = links.filter((link) => attr(link.attrs, "target") === "_blank");
   assert.deepEqual(
     external.map((link) => link.text.replace(/, otwiera się w nowej karcie/, "").trim()),
-    ["Going", "Kupbilecik"],
+    ["Kup bilet na going.pl", "Kupbilecik"],
   );
   assert.match(attr(external[0]?.attrs ?? "", "style") ?? "", /background:var\(--coral\)/);
   assert.doesNotMatch(html, /Bilety24/);
@@ -301,16 +343,8 @@ test("joint show is one card with both comedians and the same ticket buttons", (
   assert.doesNotMatch(html, /h-12 w-12/);
   assert.doesNotMatch(html, /cdn\.example\/rafal\.jpg/);
   assertPosterSlot(html, "W sprzedaży");
-  const images = html.match(/<img\b[^>]*>/g) ?? [];
-  assert.equal(images.length, 1);
-  assert.match(images[0] ?? "", /src="https:\/\/cdn\.example\/joint\.jpg"/);
-  assert.match(images[0] ?? "", /alt="Plakat: Pacześ x Lotek Tour 2 - Puławy, Puławy"/);
-  assert.match(images[0] ?? "", /width="800"/);
-  assert.match(images[0] ?? "", /height="600"/);
-  assert.match(images[0] ?? "", /loading="lazy"/);
-  assert.doesNotMatch(images[0] ?? "", /fetchpriority/i);
-  assert.match(images[0] ?? "", /object-cover/);
-  assert.match(images[0] ?? "", /w-full/);
+  assertContainedPoster(html, "https://cdn.example/joint.jpg", "Plakat: Pacześ x Lotek Tour 2 - Puławy, Puławy");
+  assert.match(html, /aspect-\[4\/3\]/);
 });
 
 test("event card without a slug has no profile link", () => {
@@ -326,7 +360,7 @@ test("event card without a slug has no profile link", () => {
   assert.doesNotMatch(html, /Obejrzyj próbkę|Filmy artysty|Obejrzyj filmy|Nagrania:/);
   const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
   assert.equal(external.length, 2);
-  assert.ok(external.some((link) => link.text.startsWith("Kupbilecik")));
+  assert.ok(external.some((link) => link.text.startsWith("Kup bilet na kupbilecik.pl")));
   assert.ok(external.some((link) => link.text.startsWith("Going")));
   assert.equal(external.some((link) => link.text.startsWith("Bilety")), false);
 });
@@ -349,7 +383,10 @@ test("event card shows one Kupbilecik button when that is the only seller", () =
   );
   const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
   assert.equal(external.length, 1);
-  assert.equal(external[0]?.text.startsWith("Kupbilecik"), true);
+  assert.equal(external[0]?.text.startsWith("Kup bilet na kupbilecik.pl"), true);
+  assert.match(attr(external[0]?.attrs ?? "", "class") ?? "", /max-w-full/);
+  assert.match(attr(external[0]?.attrs ?? "", "class") ?? "", /whitespace-normal/);
+  assert.match(attr(external[0]?.attrs ?? "", "class") ?? "", /break-words/);
   assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
   assert.doesNotMatch(html, /Link do biletów niedostępny/);
   assert.doesNotMatch(html, /Bilety24/);
@@ -392,7 +429,7 @@ test("event card hides Bilety24 and does not repeat the primary provider", () =>
   const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
   assert.deepEqual(
     external.map((link) => link.text.replace(/, otwiera się w nowej karcie/, "").trim()),
-    ["Kupbilecik", "Going"],
+    ["Kup bilet na kupbilecik.pl", "Going"],
   );
   assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
   assert.equal(attr(external[1]?.attrs ?? "", "href"), "https://goingapp.pl/adam");
@@ -436,15 +473,8 @@ test("event card puts a 4:3 poster on top and keeps the name as a link", () => {
   );
   assertNoNestedAnchors(html);
   assertPosterSlot(html, "W sprzedaży");
-  const images = html.match(/<img\b[^>]*>/g) ?? [];
-  assert.equal(images.length, 1);
-  assert.match(images[0] ?? "", /src="https:\/\/cdn\.example\/wentyl\.jpg"/);
-  assert.match(images[0] ?? "", /alt="Plakat: Wentyl, Kraków"/);
-  assert.match(images[0] ?? "", /width="800"/);
-  assert.match(images[0] ?? "", /height="600"/);
-  assert.match(images[0] ?? "", /loading="lazy"/);
-  assert.match(images[0] ?? "", /object-cover/);
-  assert.match(images[0] ?? "", /inset-0/);
+  assertContainedPoster(html, "https://cdn.example/wentyl.jpg", "Plakat: Wentyl, Kraków");
+  assert.match(html, /inset-0/);
   assert.doesNotMatch(html, /cdn\.example\/adam\.jpg/);
   assert.doesNotMatch(html, /h-12 w-12/);
   assert.doesNotMatch(html, /aria-label="Profil:/);
@@ -570,7 +600,12 @@ test("the tour title or the date links to the event page and the ticket stays on
   const tickets = titledLinks.filter((link) => attr(link.attrs, "target") === "_blank");
   assert.equal(attr(tickets[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
   assert.equal(tickets.some((link) => (attr(link.attrs, "href") ?? "").includes("/wystep/")), false);
-  assert.doesNotMatch(titled, /Kup bilet/);
+  const shopLabel = titledLinks.find((link) => link.text.startsWith("Kup bilet na kupbilecik.pl"));
+  assert.ok(shopLabel);
+  assert.equal(attr(shopLabel.attrs, "href"), "https://kupbilecik.pl/adam");
+  assert.equal(attr(shopLabel.attrs, "target"), "_blank");
+  assert.match(attr(shopLabel.attrs, "class") ?? "", /max-w-full/);
+  assert.match(attr(shopLabel.attrs, "class") ?? "", /whitespace-normal/);
 
   const repeated = renderToStaticMarkup(
     React.createElement(EventCard, {
@@ -621,4 +656,46 @@ test("the city name links to its landing and a city without one stays text", () 
     false,
   );
   assert.doesNotMatch(koszalin, /\/trasy\/koszalin/);
+});
+
+test("event card names an unknown portal from the ticket host", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({
+        ticket_url: "https://www.Sklep.Example/bilet",
+        ticket_provider: "other",
+        links: [
+          {
+            ticket_url: "https://www.Sklep.Example/bilet",
+            ticket_provider: "other",
+            external_id: "o-1",
+            is_primary: true,
+          },
+        ],
+      }),
+      now: NOW,
+    }),
+  );
+  const external = anchors(html).filter((link) => attr(link.attrs, "target") === "_blank");
+  assert.equal(external.length, 1);
+  assert.equal(external[0]?.text.startsWith("Kup bilet na sklep.example"), true);
+  assert.match(external[0]?.text ?? "", /otwiera się w nowej karcie/);
+  assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://www.Sklep.Example/bilet");
+});
+
+test("the event page shows the same uncropped poster", () => {
+  const page = readFileSync(new URL("../app/wystep/[id]/page.tsx", import.meta.url), "utf8");
+  const poster = readFileSync(new URL("../app/components/EventPoster.tsx", import.meta.url), "utf8");
+  assert.match(page, /<EventPoster src=\{poster\} alt=\{eventPosterAlt\(event\)\} priority \/>/);
+  assert.doesNotMatch(page, /object-cover/);
+  const backdrop = poster.indexOf('fetchPriority="low"');
+  const foreground = poster.indexOf("priority={priority}");
+  assert.ok(backdrop !== -1 && foreground > backdrop);
+  assert.match(poster, /object-contain/);
+  assert.match(poster, /blur-\[24px\]/);
+  assert.match(poster, /scale-110/);
+  assert.match(poster, /brightness-50/);
+  assert.match(poster, /decorative/);
+  assert.equal(poster.includes("priority={priority}") && poster.includes('fetchPriority="low"'), true);
+  assert.equal((poster.match(/src=\{src\}/g) ?? []).length, 2);
 });
