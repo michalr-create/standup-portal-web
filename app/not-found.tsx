@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { NOINDEX_ROBOTS, SITE_LOCALE, SITE_NAME } from "@/lib/seo";
+import { NOINDEX_ROBOTS, OG_DEFAULT_IMAGE, SITE_LOCALE, SITE_NAME } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: { absolute: "Nie ma takiej strony \u2014 parska." },
@@ -14,6 +14,11 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     locale: SITE_LOCALE,
     type: "website",
+    images: [OG_DEFAULT_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 

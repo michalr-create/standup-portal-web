@@ -75,4 +75,7 @@ test("ulubione city shows are the saved city, with favorites only when no city i
   assert.match(section, /target="_blank"/);
   assert.match(section, /rel="noopener noreferrer"/);
   assert.match(section, /paidExternalUrl\(event\.ticket_url\)/);
+  assert.match(section, /ticketCtaLabel\(event\.ticket_provider \?\? "other", href\)/);
+  assert.match(section, /Wyprzedane/);
+  assert.doesNotMatch(section, /: "Bilety"/);
 });

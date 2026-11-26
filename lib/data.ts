@@ -2412,6 +2412,7 @@ export async function getUpcomingEventsForPersonSlugs(
       city: event.city,
       status: event.status,
       ticket_url: paidExternalUrl(event.ticket_url) ?? "",
+      ticket_provider: event.ticket_provider,
       person: { name: lead.name, slug: lead.slug },
       people: roster.map((person) => ({ name: person.name, slug: person.slug })),
     };
@@ -2452,6 +2453,7 @@ export async function getUpcomingEventsInCity(
         city: event.city,
         status: event.status,
         ticket_url: paidExternalUrl(event.ticket_url) ?? "",
+        ticket_provider: event.ticket_provider,
         person: { name: lead.name, slug: lead.slug },
         people: roster.map((person) => ({ name: person.name, slug: person.slug })),
       };

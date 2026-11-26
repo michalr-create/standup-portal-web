@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+  HOME_DESCRIPTION,
   HOME_TITLE,
+  OG_DEFAULT_IMAGE,
   ROBOTS_DISALLOW,
   SITEMAP_STATIC_PATHS,
   absoluteUrl,
@@ -253,8 +255,10 @@ test("special titles name the performer once and paid pages are not videos", () 
   assert.equal(paid.alternates?.canonical, "https://parska.pl/specjale/abelard-giza-wentyl-2026");
   assert.equal(paid.description?.includes("Płatny VOD"), true);
   const images = paid.openGraph?.images;
+  assert.equal(Array.isArray(images) ? images.length : 0, 1);
   const imageUrl = Array.isArray(images) ? images[0] : images;
   assert.equal(typeof imageUrl === "object" && imageUrl && "url" in imageUrl ? imageUrl.url : "", "https://abelardgiza.pl/wentyl.jpg");
+  assert.equal(JSON.stringify(images).includes("og-default.png"), false);
 
   const free = contentMetadata({
     title: "Piniata — specjal stand-up",
@@ -265,6 +269,78 @@ test("special titles name the performer once and paid pages are not videos", () 
     image: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
   });
   assert.equal(free.openGraph?.type, "video.other");
+});
+
+test("homepage and imageless listings use the default Open Graph card", () => {
+  assert.equal(HOME_TITLE, "parska. \u2014 polski stand-up w jednym miejscu");
+  assert.equal(
+    HOME_DESCRIPTION,
+    "Wyst\u0119py, nagrania i open miki polskiego stand-upu w jednym miejscu.",
+  );
+  assert.deepEqual(OG_DEFAULT_IMAGE, {
+    url: "/og-default.png",
+    width: 1200,
+    height: 630,
+    alt: "parska. \u2014 ca\u0142y polski stand-up w jednym miejscu",
+  });
+
+  const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  assert.match(layout, /title:\s*HOME_TITLE/);
+  assert.match(layout, /description:\s*HOME_DESCRIPTION/);
+  assert.match(layout, /openGraph:\s*\{[\s\S]*?images:\s*\[OG_DEFAULT_IMAGE\]/);
+  assert.match(layout, /twitter:\s*\{[\s\S]*?card:\s*"summary_large_image"[\s\S]*?images:\s*\[OG_DEFAULT_IMAGE\]/);
+
+  const notFound = readFileSync(new URL("../app/not-found.tsx", import.meta.url), "utf8");
+  assert.match(notFound, /images:\s*\[OG_DEFAULT_IMAGE\]/);
+
+  for (const pathname of ["/specjale", "/trasy", "/open-mic", "/trasy/warszawa", "/formaty", "/rankingi", "/nostalgia"]) {
+    const listing = contentMetadata({
+      title: "Listing",
+      description: "Opis listingu.",
+      fallbackDescription: "Opis listingu.",
+      pathname,
+    });
+    assert.deepEqual(listing.openGraph?.images, [OG_DEFAULT_IMAGE]);
+    assert.deepEqual(listing.twitter?.images, [OG_DEFAULT_IMAGE]);
+    assert.equal(listing.twitter?.card, "summary_large_image");
+  }
+
+  for (const image of [null, undefined, "", "   "]) {
+    const blank = contentMetadata({
+      title: "Formaty",
+      description: null,
+      fallbackDescription: "Formaty.",
+      pathname: "/formaty",
+      image,
+    });
+    assert.deepEqual(blank.openGraph?.images, [OG_DEFAULT_IMAGE]);
+    assert.deepEqual(blank.twitter?.images, [OG_DEFAULT_IMAGE]);
+  }
+
+  const portrait = contentMetadata({
+    title: "Abelard Giza \u2014 stand-up, nagrania i wyst\u0119py",
+    description: null,
+    fallbackDescription: "Nagrania.",
+    pathname: "/standuper/abelard-giza",
+    image: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+  });
+  assert.deepEqual(portrait.openGraph?.images, [{ url: "https://i.ytimg.com/vi/abc/hqdefault.jpg" }]);
+  assert.deepEqual(portrait.twitter?.images, [{ url: "https://i.ytimg.com/vi/abc/hqdefault.jpg" }]);
+
+  const poster = contentMetadata({
+    title: "Wyst\u0119p",
+    description: null,
+    fallbackDescription: "Wyst\u0119p.",
+    pathname: "/wystep/1033",
+    image: "/plakaty/wentyl.jpg",
+  });
+  assert.deepEqual(poster.openGraph?.images, [{ url: "https://parska.pl/plakaty/wentyl.jpg" }]);
+  assert.deepEqual(poster.twitter?.images, [{ url: "https://parska.pl/plakaty/wentyl.jpg" }]);
+  assert.equal(JSON.stringify(poster.openGraph?.images).includes("og-default.png"), false);
+
+  const hidden = noindexMetadata("Szukaj", "/szukaj");
+  assert.equal(hidden.openGraph?.images, undefined);
+  assert.equal(hidden.twitter?.images, undefined);
 });
 
 test("sitemap lists city landings and event leaves, not filter queries", () => {
@@ -304,7 +380,8 @@ test("sitemap lists city landings and event leaves, not filter queries", () => {
   assert.doesNotMatch(home, /SearchAction/);
   assert.match(leaf, /eventPageGraph/);
   assert.match(leaf, /revalidate = 120/);
-  assert.match(leaf, /Kup bilet/);
+  assert.match(leaf, /ticketCtaLabel\(primary\.link\.ticket_provider, primary\.href\)/);
+  assert.doesNotMatch(leaf, /<span>\{providerLabel\(primary/);
   assert.match(cityPage, /cityPageGraph/);
   assert.match(cityPage, /hideCityChips/);
   assert.doesNotMatch(cityPage, /description:\s*"/);

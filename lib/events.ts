@@ -50,6 +50,20 @@ export const PROVIDER_LABELS: Record<TicketProvider, string> = {
 };
 
 /**
+ * Storefront host on the buy button. `other` is omitted and the ticket URL
+ * hostname is used instead. going.pl redirects to the Going storefront.
+ */
+export const PROVIDER_DOMAINS: Partial<Record<TicketProvider, string>> = {
+  kupbilecik: "kupbilecik.pl",
+  going: "going.pl",
+  ebilet: "ebilet.pl",
+  ticketmaster: "ticketmaster.pl",
+  eventim: "eventim.pl",
+  biletomat: "biletomat.pl",
+  bilety24: "bilety24.pl",
+};
+
+/**
  * Bilety24 only redirects to Kupbilecik. It stays in the provider enum because
  * older `event_ticket_links` rows still use it, but it is not a storefront:
  * tour cards leave it out.
@@ -135,6 +149,8 @@ export type FavoriteUpcomingEvent = {
   city: string;
   status: ListedEventStatus;
   ticket_url: string;
+  /** Storefront for the buy label. Missing on older payloads; the URL host is used. */
+  ticket_provider?: TicketProvider;
   person: { name: string; slug: string };
   people?: { name: string; slug: string }[];
 };
@@ -1139,6 +1155,52 @@ export function statusLabel(status: ListedEventStatus): string {
 
 export function providerLabel(provider: TicketProvider): string {
   return PROVIDER_LABELS[provider];
+}
+
+function hostnameWithoutWww(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  try {
+    return new URL(trimmed).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/** Shop hosts that should read as the public domain, including Going's app host. */
+const CANONICAL_TICKET_HOSTS: ReadonlyArray<{ domain: string; hosts: readonly string[] }> = [
+  { domain: "kupbilecik.pl", hosts: ["kupbilecik.pl"] },
+  { domain: "going.pl", hosts: ["going.pl", "goingapp.pl"] },
+  { domain: "ebilet.pl", hosts: ["ebilet.pl"] },
+  { domain: "ticketmaster.pl", hosts: ["ticketmaster.pl"] },
+  { domain: "eventim.pl", hosts: ["eventim.pl"] },
+  { domain: "biletomat.pl", hosts: ["biletomat.pl"] },
+  { domain: "bilety24.pl", hosts: ["bilety24.pl"] },
+];
+
+function hostMatches(host: string, root: string): boolean {
+  return host === root || host.endsWith(`.${root}`);
+}
+
+/** Hostname without www, rewritten to the public storefront when we know it. */
+function canonicalTicketHost(url: string): string {
+  const host = hostnameWithoutWww(url);
+  if (!host) return "";
+  for (const entry of CANONICAL_TICKET_HOSTS) {
+    if (entry.hosts.some((root) => hostMatches(host, root))) return entry.domain;
+  }
+  return host;
+}
+
+/** Public host for a ticket link. Known portals win over the URL hostname. */
+export function ticketPortalDomain(provider: TicketProvider, ticketUrl: string): string {
+  return PROVIDER_DOMAINS[provider] ?? canonicalTicketHost(ticketUrl);
+}
+
+/** Primary buy button: "Kup bilet na kupbilecik.pl". */
+export function ticketCtaLabel(provider: TicketProvider, ticketUrl: string): string {
+  const domain = ticketPortalDomain(provider, ticketUrl);
+  return domain ? `Kup bilet na ${domain}` : "Kup bilet";
 }
 
 export type ResolvedTicketLink = {
