@@ -9,6 +9,7 @@ import { getAllSpecialSlugs, getRelatedSpecials, getSpecialBySlug } from "@/lib/
 import { displayTitle } from "@/lib/display-title";
 import { IMAGE_SIZE, contentThumbnailAlt } from "@/lib/image-alt";
 import SizedImage from "@/app/components/SizedImage";
+import YoutubeClickToLoad from "@/app/components/YoutubeClickToLoad";
 import { formatDuration } from "@/lib/format";
 import { specialPageGraph } from "@/lib/jsonld";
 import {
@@ -137,14 +138,7 @@ export default async function SpecialPage({ params }: Props) {
                   background: "var(--ink-3)",
                 }}
               >
-                <iframe
-                  className="absolute inset-0 h-full w-full"
-                  src={`https://www.youtube.com/embed/${videoId}`}
-                  title={title}
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
+                <YoutubeClickToLoad videoId={videoId} title={title} posterUrl={special.thumbnail_url} />
               </div>
             ) : special.is_paid ? (
               <div>

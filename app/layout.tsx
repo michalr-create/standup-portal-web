@@ -15,6 +15,9 @@ import AdminModeProvider from "./components/AdminMode";
 import AdminNavLink from "./components/AdminNavLink";
 import LibraryProvider from "./components/LibraryProvider";
 import ResumeRefresh from "./components/ResumeRefresh";
+import ConsentBanner from "./components/ConsentBanner";
+import ParskaAnalytics from "./components/ParskaAnalytics";
+import SiteLegalLinks from "./components/SiteLegalLinks";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
@@ -262,7 +265,12 @@ export default async function RootLayout({
             <span>{"\u00a9 2026 parska.pl \u00b7 r\u0119czna moderacja, codziennie"}</span>
             <span>{"Agregator tre\u015bci. Wszystkie prawa nale\u017c\u0105 do tw\u00f3rc\u00f3w."}</span>
           </div>
+          <div className="max-w-6xl mx-auto mt-4">
+            <SiteLegalLinks />
+          </div>
         </footer>
+        <ConsentBanner />
+        <ParskaAnalytics />
         </AdminModeProvider>
         </LibraryProvider>
       </body>

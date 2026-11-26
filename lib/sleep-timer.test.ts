@@ -61,11 +61,14 @@ test("end of video waits until this film finishes or another one starts", () => 
   assert.equal(shouldStopAtEnd({ ...playing, videoId: "next" }, "abc", false), true);
 });
 
-test("accepts only youtube.com widget origins and addresses the player", () => {
+test("accepts youtube.com and youtube-nocookie.com widget origins", () => {
   assert.equal(isYouTubeOrigin("https://www.youtube.com"), true);
   assert.equal(isYouTubeOrigin("https://youtube.com"), true);
+  assert.equal(isYouTubeOrigin("https://www.youtube-nocookie.com"), true);
+  assert.equal(isYouTubeOrigin("https://youtube-nocookie.com"), true);
   assert.equal(isYouTubeOrigin("https://notyoutube.com"), false);
   assert.equal(isYouTubeOrigin("https://www.youtube.com.evil.com"), false);
+  assert.equal(isYouTubeOrigin("https://notyoutube-nocookie.com"), false);
   assert.deepEqual(ytCommand("pauseVideo", "parska-yt"), {
     event: "command",
     func: "pauseVideo",

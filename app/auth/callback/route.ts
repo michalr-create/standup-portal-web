@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNextPath } from "@/lib/safe-next";
+import { trackParska } from "@/lib/analytics-server";
 
 const EMAIL_OTP_TYPES: readonly EmailOtpType[] = [
   "email",
@@ -11,6 +12,18 @@ const EMAIL_OTP_TYPES: readonly EmailOtpType[] = [
   "recovery",
   "email_change",
 ];
+
+async function recordLogin(method: "email" | "google", isNewUser?: boolean): Promise<void> {
+  try {
+    await trackParska("login_success", {
+      method,
+      ...(typeof isNewUser === "boolean" ? { is_new_user: isNewUser } : {}),
+    });
+    if (isNewUser) await trackParska("sign_up_success", { method });
+  } catch {
+    // The session is already valid. A failed log must not bounce the visitor.
+  }
+}
 
 function parseEmailOtpType(value: string | null): EmailOtpType | null {
   return value && (EMAIL_OTP_TYPES as readonly string[]).includes(value)
@@ -57,6 +70,8 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.redirect(failureUrl);
     }
+    const isNewUser = type === "signup" ? true : type === "magiclink" || type === "email" ? false : undefined;
+    await recordLogin("email", isNewUser);
     return response;
   }
 
@@ -66,5 +81,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(failureUrl);
   }
 
+  await recordLogin("google");
   return response;
 }

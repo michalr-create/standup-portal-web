@@ -8,6 +8,7 @@ import { containTab } from "@/lib/focus-trap";
 import { DRAWER_PRIMARY_LINKS, DRAWER_SECONDARY_LINKS, type DrawerLink } from "@/lib/drawer-nav";
 import AuthStatus from "./AuthStatus";
 import AdminNavLink from "./AdminNavLink";
+import SiteLegalLinks from "./SiteLegalLinks";
 
 function HeartIcon() {
   return (
@@ -193,6 +194,7 @@ export default function MobileDrawer() {
               <AuthStatus variant="drawer" onNavigate={close} />
               <AdminNavLink variant="drawer" onNavigate={close} />
               <AuthStatus variant="drawer" slot="sign-out" onNavigate={close} />
+              <SiteLegalLinks tone="drawer" onNavigate={close} />
             </div>
           </div>
         </div>,

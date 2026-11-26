@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 import { authCallbackUrl } from "@/lib/safe-next";
+import { trackParska } from "@/lib/analytics";
+import { legalPagesAreReady } from "@/lib/legal/publish";
 import {
   CALLBACK_ERROR_MESSAGE,
   LINK_SENT_MESSAGE,
@@ -42,11 +45,13 @@ export default function LoginForm() {
       return;
     }
 
+    trackParska("login_magic_link_sent");
     setStatus("sent");
     setMessage(LINK_SENT_MESSAGE);
   };
 
   const handleGoogle = async () => {
+    trackParska("login_google_start");
     setStatus("submitting");
     setMessage("");
 
@@ -153,6 +158,17 @@ export default function LoginForm() {
       <p className="mt-6 mb-0 text-xs leading-relaxed" style={{ color: "var(--paper-mute)" }}>
         Rejestracja nowych kont jest na razie wyłączona. Link zadziała, jeśli ten adres ma już konto.
       </p>
+      {legalPagesAreReady() ? (
+        <p className="mt-4 mb-0 text-xs leading-relaxed" style={{ color: "var(--paper-mute)" }}>
+          <Link href="/regulamin" className="font-bold underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]" style={{ color: "var(--coral)" }}>
+            Regulamin
+          </Link>
+          {" · "}
+          <Link href="/polityka-prywatnosci" className="font-bold underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]" style={{ color: "var(--coral)" }}>
+            Polityka prywatności
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { personAliasTarget } from "@/lib/slug-alias-lookup";
 import { slugRedirectPath } from "@/lib/slug-redirect";
 import ProfilePortrait, { ProfilePortraitCredit } from "./ProfilePortrait";
 import ProfileTour from "./ProfileTour";
+import ProfileVisit from "./ProfileVisit";
 
 export const revalidate = 120;
 
@@ -108,6 +109,7 @@ export default async function StanduperPage({ params }: Props) {
 
   return (
     <>
+      <ProfileVisit slug={person.slug} />
       <JsonLd
         data={personPageGraph({
           name: personName,

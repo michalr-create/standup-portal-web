@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { trackParska } from "@/lib/analytics";
 import Link from "next/link";
 import { useLibrary } from "@/app/components/LibraryProvider";
 import { iosNeedsHomeScreen, subscribeForPush } from "@/lib/push-client";
@@ -151,6 +152,7 @@ export default function PushNotifications() {
       setEndpoint(result.endpoint);
       setDenied(false);
       setNote("Włączone na tym urządzeniu.");
+      trackParska("push_wlaczony", { result: "ok" });
     } catch {
       setError("Nie udało się włączyć powiadomień na tym urządzeniu.");
     } finally {

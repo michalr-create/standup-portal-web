@@ -514,6 +514,56 @@ html[data-input="pointer"] .vcard :is(a, button):focus-visible {
   border-bottom: 16px solid transparent;
   margin-left: 6px;
 }
+.video-modal-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  text-align: center;
+  background: rgba(11, 11, 11, 0.72);
+}
+.video-modal-gate-play {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 20px;
+  background: var(--coral);
+  color: var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+}
+.video-modal-gate-play:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 3px;
+}
+.video-modal-gate-copy {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--paper);
+}
+.video-modal-gate-remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 36rem;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--paper-dim);
+}
+.video-modal-gate-remember input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--coral);
+}
 .video-modal-player-bar {
   display: none;
   position: absolute;
