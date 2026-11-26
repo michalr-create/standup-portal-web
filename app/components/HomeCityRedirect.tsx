@@ -6,6 +6,8 @@ import { readHomeCity } from "@/app/konto/place-actions";
 import { cityLandingByName, cityLandingHref } from "@/lib/city-landings";
 import { parseTrasySearchParams } from "@/lib/events";
 import { hrefWithDefaultCity, matchHomeCity } from "@/lib/home-city";
+import { publicOpenMicHref } from "@/lib/open-mic-cities";
+import { parseOpenMicSearchParams } from "@/lib/open-mics";
 
 /**
  * If the URL has no miasto key, replace it with the saved city when that city
@@ -44,6 +46,11 @@ export default function HomeCityRedirect({
           router.replace(cityLandingHref(landing.slug, { ...parsed.filters, page: parsed.page }), { scroll: false });
           return;
         }
+      }
+      if (pathname === "/open-mic") {
+        const parsed = parseOpenMicSearchParams(Object.fromEntries(current.entries()));
+        router.replace(publicOpenMicHref({ ...parsed.filters, miasto: match }), { scroll: false });
+        return;
       }
       router.replace(href, { scroll: false });
     });

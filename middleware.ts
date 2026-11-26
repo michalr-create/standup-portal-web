@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { openMicMiddlewareRedirect } from "@/lib/open-mic-cities";
 import { aliasRedirectUrl, aliasSection, lookupAliasSlug } from "@/lib/slug-alias-middleware";
 import { shouldRefreshSession } from "@/lib/session-path";
 
@@ -31,6 +32,9 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const aliasRedirect = await historicalSlugRedirect(request);
   if (aliasRedirect) return aliasRedirect;
+
+  const openMicTarget = openMicMiddlewareRedirect(request.nextUrl);
+  if (openMicTarget) return NextResponse.redirect(openMicTarget, 308);
 
   let response = continueWithPath(request, pathname);
 
@@ -85,5 +89,7 @@ export const config = {
     "/zglos/:path*",
     "/standuper/:slug",
     "/format/:slug",
+    "/open-mic",
+    "/open-mic/:path*",
   ],
 };

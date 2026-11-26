@@ -9,11 +9,11 @@ import {
   OPEN_MIC_WEEKDAYS,
   hasActiveOpenMicFilters,
   languageLabel,
-  openMicHref,
   type OpenMicFilters,
   type OpenMicLanguage,
   type OpenMicWeekday,
 } from "@/lib/open-mics";
+import { publicOpenMicHref } from "@/lib/open-mic-cities";
 
 const labelStyle: CSSProperties = { color: "var(--paper-mute)", letterSpacing: ".14em" };
 
@@ -59,7 +59,7 @@ export default function OpenMicFilters({
       keepBlankCity = next.miasto === "";
       blankCity.current = keepBlankCity;
     }
-    router.push(openMicHref(merged, { keepBlankCity }), { scroll: false });
+    router.push(publicOpenMicHref(merged, { keepBlankCity }), { scroll: false });
   };
 
   return (

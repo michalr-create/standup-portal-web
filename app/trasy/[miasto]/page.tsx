@@ -10,6 +10,7 @@ import { cityLandingHref, cityLeadParagraphs, resolveCityParam } from "@/lib/cit
 import { PUBLIC_LISTING_PAGE_SIZE, clampListingPage } from "@/lib/category-browse";
 import { listingCountLabel } from "@/lib/listing-count";
 import { getOpenMicCatalog } from "@/lib/open-mic-data";
+import { openMicCityByName } from "@/lib/open-mic-cities";
 import {
   buildOpenMicView,
   nextOpenMicDate,
@@ -157,7 +158,10 @@ export default async function CityTourPage({ params, searchParams }: Props) {
   const openMics = catalog.ok
     ? buildOpenMicView(catalog.cycles, catalog.dates, { ...OPEN_MIC_FILTERS, miasto: city.name }, now)
     : null;
-  const openMicHrefForCity = openMicHref({ miasto: city.name });
+  const openMicLanding = openMicCityByName(city.name);
+  const openMicHrefForCity = openMicLanding
+    ? `/open-mic/${openMicLanding.slug}`
+    : openMicHref({ miasto: city.name });
 
   return (
     <>
