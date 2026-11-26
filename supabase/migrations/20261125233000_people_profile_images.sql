@@ -10,10 +10,12 @@
 -- (YouTube Developer Policies III.E.4). image_fetched_at is that timestamp.
 -- The site hides a YouTube URL once that timestamp is older than 30 days.
 --
--- Seed is table A only: 36 confirmed channels whose avatar is a face, plus
--- 3 confirmed channels with no avatar (Giza, Szczęśniak, Gosiński — link
--- only). Section B and section C are not included. Czarek Sikora's Commons
--- file is not included.
+-- Seed is table A plus these 5 from section B (Michał OK 2026-11-26):
+-- Mieszko Minkiewicz (21), Damian Skóra (51), Łukasz Wolski (82),
+-- Katarzyna Piasecka (86), Mateusz Marek (139). That is 41 channels whose
+-- avatar is a face, plus 3 confirmed channels with no avatar (Giza,
+-- Szczęśniak, Gosiński — link only). Section C is not included. Czarek
+-- Sikora's Commons file is not included.
 --
 -- Commons files live in public/standuperzy/ (proportional Wikimedia
 -- thumbnails, except Sumowski, which is a square crop — "przycięte" —
@@ -97,6 +99,7 @@ begin
       (16::bigint, 'Antoni Syrek-Dąbrowski', 'UCedyiiOaSc5NEIf-DAvY9Sw', 'https://www.youtube.com/@AntoniSyrek-Dabrowski', 'yt'),
       (18::bigint, 'Adam Van Bendler', 'UCCS84tq6qv1Km2Jbj-L0p1w', 'https://www.youtube.com/@VanBendler', 'yt'),
       (19::bigint, 'Olka Szczęśniak', 'UCBIJOolC_Cypoka4i106Kvw', 'https://www.youtube.com/@olkaszczesniak', 'link'),
+      (21::bigint, 'Mieszko Minkiewicz', 'UCvU5_wLhO1cMYVxlYdX5psQ', 'https://www.youtube.com/@MieszkoMinkiewicz', 'yt'),
       (22::bigint, 'Piotr Zola Szulowski', 'UC-rZIa3NCQAzJ5YwU3IZ1mg', 'https://www.youtube.com/@PiotrZolaSzulowski', 'yt'),
       (23::bigint, 'Wiolka Walaszczyk', 'UCAW0vXKntCEAejoytc_RR9Q', 'https://www.youtube.com/@WiolkaWalaszczyk', 'yt'),
       (25::bigint, 'Michał Kutek', 'UCx78LgIGldMLt73H1DfEHlQ', 'https://www.youtube.com/@kutekmichal', 'yt'),
@@ -105,6 +108,7 @@ begin
       (34::bigint, 'Kuba Śliwka', 'UCGxocJfdqNfo6djInYVN50Q', 'https://www.youtube.com/@Kuba%C5%9Aliwka', 'yt'),
       (42::bigint, 'Darek Gadowski', 'UC0kxyBBCEiYC6yrkprIjEjg', 'https://www.youtube.com/@DarekGadowski', 'yt'),
       (50::bigint, 'Kacper Ruciński', 'UCK_44aJIt-FD4eo-qJ9hWsA', 'https://www.youtube.com/@KacperRucinskiStandUp', 'yt'),
+      (51::bigint, 'Damian Skóra', 'UCVR5AZ6habc8LS3wZXRaysA', 'https://www.youtube.com/@damianskora2498', 'yt'),
       (52::bigint, 'Paulina Potocka', 'UCmu-MBkpor06-a0Y1nifAdw', 'https://www.youtube.com/@PaulinaPotocka', 'yt'),
       (56::bigint, 'Magda Kubicka', 'UCcUGXpH--EuzPEEVGCb1YIQ', 'https://www.youtube.com/@magdakubicka.standup', 'yt'),
       (57::bigint, 'Grzegorz Dolniak', 'UCW2f4bapVhKFkpYxRpbviXA', 'https://www.youtube.com/@GrzegorzDolniakYT', 'yt'),
@@ -115,7 +119,9 @@ begin
       (63::bigint, 'Daniel Midas', 'UCFlcFC68BS4WE-u7zZMpe7g', 'https://www.youtube.com/@tendanielmidas', 'yt'),
       (69::bigint, 'Patryk Gosiński', 'UCzaSARYYwTfDCHWXHWww-_A', 'https://www.youtube.com/@patrykgosinski', 'link'),
       (74::bigint, 'Tomek Machnicki', 'UCCfv0DRfhqhXlw7r5bHR8xg', 'https://www.youtube.com/@TomekMachnicki', 'yt'),
+      (82::bigint, 'Łukasz Wolski', 'UCTJvtYiwmSHgrYfKQYXwB3w', 'https://www.youtube.com/@Wolski_stand-up', 'yt'),
       (84::bigint, 'Tomek Skrzypek', 'UC4NfWXJWOF6JXx5fNG524yg', 'https://www.youtube.com/@TomekSkrzypek', 'yt'),
+      (86::bigint, 'Katarzyna Piasecka', 'UC4zHhAs_pT7WhBgU-cLR2cA', 'https://www.youtube.com/@KatarzynaPiasecka', 'yt'),
       (96::bigint, 'Wojtek Pięta', 'UCPdW0f8H-AghPvLlCEVAICA', 'https://www.youtube.com/@pietawebshow', 'yt'),
       (104::bigint, 'Janusz Pietruszka', 'UCtCgJ0vtRLNPCE3nLKok3yQ', 'https://www.youtube.com/@januszpietruszkaYT', 'yt'),
       (112::bigint, 'Marcin Zbigniew Wojciech', 'UC_R0iqDV5Jq3PV6J6-W-p_Q', 'https://www.youtube.com/@MarcinZbigniewWojciech', 'yt'),
@@ -123,6 +129,7 @@ begin
       (115::bigint, 'Krzysztof Jahns', 'UCIoLx_11D7IxKaAKfvFnVFA', 'https://www.youtube.com/@KrzysztofJahns', 'yt'),
       (118::bigint, 'Damian Viking Usewicz', 'UC9MrWAIFgyucKNJa5eKxbOw', 'https://www.youtube.com/@DamianVikingUsewicz', 'yt'),
       (127::bigint, 'Paweł Reszela', 'UCa5JuausbX258NxX8Gx9fsg', 'https://www.youtube.com/@Pawe%C5%82Reszela', 'yt'),
+      (139::bigint, 'Mateusz Marek', 'UC0zEXcL8TaZvtxdozzp03qQ', 'https://www.youtube.com/@mateuszmarekstandup', 'yt'),
       (152::bigint, 'Waldek Nowak', 'UCZYXzE44Mzbpo1LMurxpBWg', 'https://www.youtube.com/@waldeknowak3580', 'yt')
     ) as v(id, name, channel_id, channel_url, kind)
   loop
@@ -210,8 +217,8 @@ begin
   if (select count(*) from public.people where id in (19, 69) and youtube_channel_id is not null and image_source is null and fetch_youtube_avatar = false) <> 2 then
     raise exception 'link-only channels were not saved';
   end if;
-  if (select count(*) from public.people where fetch_youtube_avatar = true) <> 36 then
-    raise exception 'expected 36 YouTube avatars to refresh';
+  if (select count(*) from public.people where fetch_youtube_avatar = true) <> 41 then
+    raise exception 'expected 41 YouTube avatars to refresh';
   end if;
 end $$;
 

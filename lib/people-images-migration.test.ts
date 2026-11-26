@@ -18,6 +18,7 @@ const FACE = [
   ["15", "UCpuNyigzfdVjvvZbOgx_2RQ"],
   ["16", "UCedyiiOaSc5NEIf-DAvY9Sw"],
   ["18", "UCCS84tq6qv1Km2Jbj-L0p1w"],
+  ["21", "UCvU5_wLhO1cMYVxlYdX5psQ"],
   ["22", "UC-rZIa3NCQAzJ5YwU3IZ1mg"],
   ["23", "UCAW0vXKntCEAejoytc_RR9Q"],
   ["25", "UCx78LgIGldMLt73H1DfEHlQ"],
@@ -26,6 +27,7 @@ const FACE = [
   ["34", "UCGxocJfdqNfo6djInYVN50Q"],
   ["42", "UC0kxyBBCEiYC6yrkprIjEjg"],
   ["50", "UCK_44aJIt-FD4eo-qJ9hWsA"],
+  ["51", "UCVR5AZ6habc8LS3wZXRaysA"],
   ["52", "UCmu-MBkpor06-a0Y1nifAdw"],
   ["56", "UCcUGXpH--EuzPEEVGCb1YIQ"],
   ["57", "UCW2f4bapVhKFkpYxRpbviXA"],
@@ -35,7 +37,9 @@ const FACE = [
   ["62", "UCaP8rHML0N0t-YOEfKYn7lg"],
   ["63", "UCFlcFC68BS4WE-u7zZMpe7g"],
   ["74", "UCCfv0DRfhqhXlw7r5bHR8xg"],
+  ["82", "UCTJvtYiwmSHgrYfKQYXwB3w"],
   ["84", "UC4NfWXJWOF6JXx5fNG524yg"],
+  ["86", "UC4zHhAs_pT7WhBgU-cLR2cA"],
   ["96", "UCPdW0f8H-AghPvLlCEVAICA"],
   ["104", "UCtCgJ0vtRLNPCE3nLKok3yQ"],
   ["112", "UC_R0iqDV5Jq3PV6J6-W-p_Q"],
@@ -43,6 +47,7 @@ const FACE = [
   ["115", "UCIoLx_11D7IxKaAKfvFnVFA"],
   ["118", "UC9MrWAIFgyucKNJa5eKxbOw"],
   ["127", "UCa5JuausbX258NxX8Gx9fsg"],
+  ["139", "UC0zEXcL8TaZvtxdozzp03qQ"],
   ["152", "UCZYXzE44Mzbpo1LMurxpBWg"],
 ] as const;
 
@@ -51,14 +56,6 @@ const LINK_ONLY = [
   ["19", "UCBIJOolC_Cypoka4i106Kvw"],
   ["69", "UCzaSARYYwTfDCHWXHWww-_A"],
 ] as const;
-
-const REJECTED = [
-  "UCvU5_wLhO1cMYVxlYdX5psQ",
-  "UCTJvtYiwmSHgrYfKQYXwB3w",
-  "UCVR5AZ6habc8LS3wZXRaysA",
-  "UC0zEXcL8TaZvtxdozzp03qQ",
-  "UC4zHhAs_pT7WhBgU-cLR2cA",
-];
 
 function jpegSize(buf: Buffer): { width: number; height: number } {
   let offset = 2;
@@ -90,17 +87,16 @@ test("the migration adds the profile columns and the source check", () => {
   assert.doesNotMatch(sql, /photo_url\s*=/);
 });
 
-test("table A is seeded and section B, section C, and Sikora are not", () => {
-  assert.equal(FACE.length, 36);
+test("table A and the five approved section B channels are seeded; section C and Sikora are not", () => {
+  assert.equal(FACE.length, 41);
   for (const [id, channel] of [...FACE, ...LINK_ONLY]) {
     assert.equal(channel.length, 24);
     assert.match(sql, new RegExp(`\\(${id}::bigint,.*${channel}`));
   }
-  for (const channel of REJECTED) assert.equal(sql.includes(channel), false);
   assert.doesNotMatch(sql, /Czarek_Sikora/);
   assert.doesNotMatch(sql, /\(93::bigint/);
-  assert.doesNotMatch(sql, /\(21::bigint/);
-  assert.match(sql, /fetch_youtube_avatar = true\) <> 36/);
+  assert.match(sql, /fetch_youtube_avatar = true\) <> 41/);
+  assert.match(sql, /Michał OK 2026-11-26/);
 });
 
 test("Commons assignments follow the review: Giza primary, Lotek primary, two backups", () => {
