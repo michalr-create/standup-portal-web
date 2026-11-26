@@ -328,7 +328,7 @@ test("open mics stay off tours, and the public query hides the contact email", (
   assert.doesNotMatch(drawer, /function withTourLink/);
 
   const sitemap = readFileSync(new URL("../app/sitemap.ts", import.meta.url), "utf8");
-  assert.match(sitemap, /getAllShows/);
+  assert.match(sitemap, /getSitemapShows/);
   assert.doesNotMatch(sitemap, /\/open-mic\/dodaj/);
   assert.ok(SITEMAP_STATIC_PATHS.includes("/open-mic"));
   const urls = buildSitemap([], []).map((entry) => entry.url);

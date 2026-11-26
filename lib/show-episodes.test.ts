@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PUBLIC_LISTING_PAGE_SIZE } from "./category-browse.ts";
-import { mergeShowEpisodes, pageShowEpisodes, type EpisodeStamp } from "./show-episodes.ts";
+import { mergeShowEpisodes, pageShowEpisodes, showSlugsWithEpisodes, type EpisodeStamp } from "./show-episodes.ts";
 
 function stamp(id: number, published_at: string | null): EpisodeStamp {
   return { id, published_at };
@@ -46,4 +46,27 @@ test("episode page total is the full show, including a window past the end", () 
   const empty = pageShowEpisodes([], 48, PUBLIC_LISTING_PAGE_SIZE);
   assert.equal(empty.total, 0);
   assert.deepEqual(empty.episodes, []);
+});
+
+test("a format with no episodes is left out, including one that only shares a name", () => {
+  const shows = [
+    { id: 1, slug: "hamburger-show" },
+    { id: 24, slug: "hamburger-show-blazej-krajewski" },
+    { id: 3, slug: "litosci" },
+    { id: 4, slug: "  " },
+  ];
+  const slugs = showSlugsWithEpisodes(
+    shows,
+    [
+      { showId: 1, sourceId: null },
+      { showId: null, sourceId: 9 },
+      { showId: 1, sourceId: 9 },
+    ],
+    [
+      { id: 9, showId: 3 },
+      { id: 10, showId: null },
+    ],
+  );
+  assert.deepEqual(slugs, ["hamburger-show", "litosci"]);
+  assert.equal(slugs.includes("hamburger-show-blazej-krajewski"), false);
 });

@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getShowsWithLatestEpisode, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
+import { CITY_LANDINGS, cityLandingFooterLink } from "@/lib/city-landings";
 import { HOME_DESCRIPTION, HOME_TITLE, SITE_LOCALE, SITE_NAME, SITE_ORIGIN, TITLE_TEMPLATE } from "@/lib/seo";
 import { FOOTER_FORMAT_LIMIT, footerShows } from "@/lib/home-shows";
 import { peopleByActivity } from "@/lib/standuperzy-directory";
@@ -179,6 +180,11 @@ export default async function RootLayout({
                     Trasy
                   </Link>
                 </li>
+                <li>
+                  <Link href="/specjale" className="text-sm hover:text-white transition-colors" style={{ color: "var(--paper-dim)" }}>
+                    Specjale
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -222,6 +228,28 @@ export default async function RootLayout({
               </ul>
             </div>
           </div>
+
+          <nav aria-label="Miasta" className="max-w-6xl mx-auto mt-8">
+            <h5 className="mono text-xs uppercase mb-2" style={{ color: "var(--paper-mute)", letterSpacing: ".18em" }}>
+              Miasta
+            </h5>
+            <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0">
+              {CITY_LANDINGS.map((city) => {
+                const link = cityLandingFooterLink(city);
+                return (
+                  <li key={city.slug}>
+                    <Link
+                      href={link.href}
+                      className="text-xs hover:text-white transition-colors"
+                      style={{ color: "var(--paper-mute)" }}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
           <div
             className="max-w-6xl mx-auto mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 mono text-xs uppercase"

@@ -143,6 +143,36 @@ export function publicTrasyHref(
   return cityLandingHref(landing.slug, filters);
 }
 
+/** `/trasy/{slug}` when this city has a landing. Other cities stay plain text. */
+export function cityLandingPath(name: string): string | null {
+  const landing = cityLandingByName(name);
+  return landing ? `/trasy/${landing.slug}` : null;
+}
+
+/**
+ * City chip and the small landing row. Other filters stay; `page` does not.
+ * The city that is already selected toggles off (`?miasto=`), so a saved city
+ * is not written back. A landing city goes to `/trasy/{slug}`.
+ */
+export function trasyCityChipHref(filters: TrasyFilters, city: string): string {
+  const pressed = filters.miasto === city;
+  return publicTrasyHref(
+    {
+      osoba: filters.osoba,
+      miasto: pressed ? "" : city,
+      od: filters.od,
+      doDnia: filters.doDnia,
+      bilety: filters.bilety,
+    },
+    pressed ? { keepBlankCity: true } : undefined,
+  );
+}
+
+/** Footer link for one landing. Label is `Stand-up {name}`. */
+export function cityLandingFooterLink(city: CityLanding): { href: string; label: string } {
+  return { href: `/trasy/${city.slug}`, label: `Stand-up ${city.name}` };
+}
+
 export function resolveCityParam(param: string): { city: CityLanding; redirect: boolean } | null {
   const trimmed = param.trim();
   const direct = cityLandingBySlug(trimmed);
