@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   cityPageGraph,
+  eventBreadcrumbItems,
   eventNode,
   eventPageGraph,
   homePageGraph,
@@ -201,6 +202,37 @@ test("event 1033 matches the real Kraków show and skips fields we do not have",
   });
   assert.equal(summer?.startDate, "2027-05-12T18:00:00+02:00");
   assert.equal(String(summer?.startDate).endsWith("Z"), false);
+});
+
+test("event breadcrumbs add the city landing and skip a city that has none", () => {
+  const warsaw = eventBreadcrumbItems("Warszawa", "Wentyl — Warszawa", "https://parska.pl/wystep/10");
+  assert.deepEqual(
+    warsaw.map((item) => item.name),
+    ["Start", "Trasy", "Warszawa", "Wentyl — Warszawa"],
+  );
+  assert.equal(warsaw[2]?.url, "https://parska.pl/trasy/warszawa");
+  assert.equal(warsaw[3]?.url, "https://parska.pl/wystep/10");
+
+  const graph = eventPageGraph({
+    ...RUCINSKI,
+    id: 10,
+    city: "Warszawa",
+    crumb: "Wentyl — Warszawa",
+    pageUrl: "https://parska.pl/wystep/10",
+  });
+  const list = (graph["@graph"] as { "@type": string; itemListElement: { name: string; item: string }[] }[])[0];
+  assert.equal(list?.["@type"], "BreadcrumbList");
+  assert.equal(list?.itemListElement.length, 4);
+  assert.equal(list?.itemListElement[2]?.name, "Warszawa");
+  assert.equal(list?.itemListElement[2]?.item, "https://parska.pl/trasy/warszawa");
+
+  const koszalin = eventBreadcrumbItems("Koszalin", "Show — Koszalin", "https://parska.pl/wystep/11");
+  assert.deepEqual(
+    koszalin.map((item) => item.name),
+    ["Start", "Trasy", "Show — Koszalin"],
+  );
+  assert.equal(JSON.stringify(koszalin).includes("/trasy/koszalin"), false);
+  assert.equal(eventBreadcrumbItems("  ", "Sam występ", "https://parska.pl/wystep/12").length, 3);
 });
 
 test("a show without a street address, or one that already started, has no Event", () => {

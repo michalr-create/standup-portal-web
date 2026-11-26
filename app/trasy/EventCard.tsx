@@ -18,6 +18,7 @@ import {
   type TourEvent,
   type TourPerson,
 } from "@/lib/events";
+import { cityLandingPath } from "@/lib/city-landings";
 import { IMAGE_SIZE } from "@/lib/image-alt";
 import { paidExternalUrl } from "@/lib/youtube";
 import SizedImage from "../components/SizedImage";
@@ -75,6 +76,16 @@ function TicketCta({ href, label }: { href: string; label: string }) {
       <ExternalIcon />
       <span className="sr-only">, otwiera się w nowej karcie</span>
     </a>
+  );
+}
+
+function CityName({ city }: { city: string }) {
+  const href = cityLandingPath(city);
+  if (!href) return city;
+  return (
+    <Link href={href} className={`rounded-sm hover:text-white ${focusRing}`}>
+      {city}
+    </Link>
   );
 }
 
@@ -249,7 +260,7 @@ export default function EventCard({
           </a>
         )}
         <p className="m-0 mt-2">
-          {event.city}
+          <CityName city={event.city} />
           <span style={{ color: "var(--paper-meta)" }}> · </span>
           {event.venue}
         </p>

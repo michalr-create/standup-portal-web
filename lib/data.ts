@@ -44,7 +44,7 @@ import { canonicalPersonSlugs } from "@/lib/slug-alias-lookup";
 import { supabase } from "@/lib/supabase";
 import { HOME_FEATURED_LIMIT } from "@/lib/featured";
 import { PUBLIC_LISTING_PAGE_SIZE } from "@/lib/category-browse";
-import { mergeShowEpisodes, pageShowEpisodes } from "@/lib/show-episodes";
+import { mergeShowEpisodes, pageShowEpisodes, showSlugsWithEpisodes } from "@/lib/show-episodes";
 import { collapseBy } from "@/lib/program-parts";
 import { normalizeHomeCity } from "@/lib/home-city";
 import { EXCLUDED_SPECIAL_ITEM_ID, isPublicContentSlug } from "@/lib/slugify";
@@ -1233,6 +1233,87 @@ export async function getShowEpisodesPage(
     items: await hydrateItems(ordered),
     total: window.total,
   };
+}
+
+const SITEMAP_LINK_PAGE = 1000;
+const SITEMAP_LINK_CAP = 100;
+
+function sitemapLinkId(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+async function scanSitemapLinks(
+  load: (from: number, to: number) => PromiseLike<{
+    data: unknown;
+    error: { message?: string } | null;
+  }>,
+): Promise<Record<string, unknown>[] | null> {
+  const rows: Record<string, unknown>[] = [];
+  for (let page = 0; page < SITEMAP_LINK_CAP; page += 1) {
+    const from = page * SITEMAP_LINK_PAGE;
+    const { data, error } = await load(from, from + SITEMAP_LINK_PAGE - 1);
+    if (error) {
+      console.error("Blad odcinkow do sitemapy:", error);
+      return null;
+    }
+    const batch = (data ?? []) as Record<string, unknown>[];
+    rows.push(...batch);
+    if (batch.length < SITEMAP_LINK_PAGE) return rows;
+  }
+  console.error("Blad odcinkow do sitemapy: przekroczono limit skanu");
+  return null;
+}
+
+/**
+ * Active shows that have at least one public episode.
+ * Same episode as the format page: approved, not a short, not merged,
+ * attached by show_id or by a source of that show.
+ * A failed scan returns every active show, so a transient error does not
+ * drop the whole format list from the sitemap.
+ */
+export async function getSitemapShows(): Promise<Show[]> {
+  const [shows, shortsCat, sourceRows] = await Promise.all([
+    getAllShows(),
+    supabase.from("categories").select("id").eq("slug", "shorts").maybeSingle(),
+    scanSitemapLinks((from, to) =>
+      supabase
+        .from("sources")
+        .select("id, show_id")
+        .not("show_id", "is", null)
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+  ]);
+  const shortsCatId = shortsCat.data?.id ?? null;
+
+  const episodeRows = await scanSitemapLinks((from, to) => {
+    let query = supabase
+      .from("content_items")
+      .select("show_id, source_id")
+      .eq("status", "approved")
+      .neq("content_type", "short")
+      .is("merged_into_id", null)
+      .order("id", { ascending: true });
+    if (shortsCatId != null) query = query.neq("category_id", shortsCatId);
+    return query.range(from, to);
+  });
+
+  if (!episodeRows || !sourceRows) return shows;
+
+  const allowed = new Set(
+    showSlugsWithEpisodes(
+      shows.map((show) => ({ id: show.id, slug: show.slug })),
+      episodeRows.map((row) => ({
+        showId: sitemapLinkId(row.show_id),
+        sourceId: sitemapLinkId(row.source_id),
+      })),
+      sourceRows.map((row) => ({
+        id: sitemapLinkId(row.id) ?? -1,
+        showId: sitemapLinkId(row.show_id),
+      })),
+    ),
+  );
+  return shows.filter((show) => allowed.has(show.slug));
 }
 
 // =================================================================

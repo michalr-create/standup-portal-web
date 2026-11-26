@@ -4,10 +4,13 @@ import { test } from "node:test";
 import {
   CITY_LANDINGS,
   cityLandingByName,
+  cityLandingFooterLink,
   cityLandingHref,
+  cityLandingPath,
   cityLeadParagraphs,
   publicTrasyHref,
   resolveCityParam,
+  trasyCityChipHref,
   trasyLandingRedirect,
 } from "./city-landings.ts";
 import { clipDescription } from "./seo.ts";
@@ -173,4 +176,31 @@ test("a city query redirects to the landing and keeps the other filters", () => 
   assert.equal(publicTrasyHref({ miasto: "Poznań", bilety: "wyprzedane" }), "/trasy/poznan?bilety=wyprzedane");
   assert.equal(publicTrasyHref({ miasto: "Hel" }), "/trasy?miasto=Hel");
   assert.equal(publicTrasyHref({ miasto: "" }, { keepBlankCity: true }), "/trasy?miasto=");
+});
+
+test("city chips and the footer use landing paths, and a city without a landing does not", () => {
+  const empty = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" as const };
+  assert.equal(trasyCityChipHref(empty, "Gdynia"), "/trasy/gdynia");
+  assert.equal(trasyCityChipHref(empty, "Wrocław"), "/trasy/wroclaw");
+  assert.equal(trasyCityChipHref(empty, "Lublin"), "/trasy?miasto=Lublin");
+  assert.equal(trasyCityChipHref(empty, "Koszalin"), "/trasy?miasto=Koszalin");
+  assert.equal(
+    trasyCityChipHref({ ...empty, osoba: "abelard-giza", od: "2026-12-01" }, "Warszawa"),
+    "/trasy/warszawa?osoba=abelard-giza&od=2026-12-01",
+  );
+  assert.equal(trasyCityChipHref({ ...empty, miasto: "Lublin", bilety: "dostepne" }, "Lublin"), "/trasy?miasto=&bilety=dostepne");
+  assert.equal(trasyCityChipHref({ ...empty, miasto: "Lublin", page: 4 } as typeof empty, "Gdynia"), "/trasy/gdynia");
+  assert.equal(cityLandingPath("Warszawa"), "/trasy/warszawa");
+  assert.equal(cityLandingPath("  wrocław "), "/trasy/wroclaw");
+  assert.equal(cityLandingPath("Koszalin"), null);
+  assert.equal(cityLandingPath(""), null);
+
+  assert.deepEqual(
+    CITY_LANDINGS.map(cityLandingFooterLink),
+    CITY_LANDINGS.map((city) => ({ href: `/trasy/${city.slug}`, label: `Stand-up ${city.name}` })),
+  );
+  assert.equal(CITY_LANDINGS.length, 10);
+  assert.equal(cityLandingFooterLink(CITY_LANDINGS[0]).label, "Stand-up Warszawa");
+  assert.equal(cityLandingFooterLink(CITY_LANDINGS[CITY_LANDINGS.length - 1]).label, "Stand-up Gdynia");
+  assert.equal(CITY_LANDINGS.map(cityLandingFooterLink).some((link) => link.href === "/trasy/gdynia"), true);
 });

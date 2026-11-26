@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { publicTrasyHref } from "@/lib/city-landings";
+import { CITY_LANDINGS, publicTrasyHref, trasyCityChipHref } from "@/lib/city-landings";
 import {
   BILETY_OPTIONS,
   activeTrasyFilterCount,
@@ -227,22 +228,44 @@ export default function TrasyFilters({
             {cityChips.map((city) => {
               const pressed = filters.miasto === city;
               return (
-                <button
+                <Link
                   key={city}
-                  type="button"
+                  href={trasyCityChipHref(filters, city)}
+                  scroll={false}
                   className={
                     pressed
-                      ? "chip active min-h-10 shrink-0 whitespace-nowrap"
-                      : "chip min-h-10 shrink-0 whitespace-nowrap"
+                      ? "chip active inline-flex items-center font-[inherit] min-h-10 shrink-0 whitespace-nowrap"
+                      : "chip inline-flex items-center font-[inherit] min-h-10 shrink-0 whitespace-nowrap"
                   }
                   aria-pressed={pressed}
-                  onClick={() => go({ miasto: pressed ? "" : city })}
                 >
                   {city}
-                </button>
+                </Link>
               );
             })}
           </div>
+        )}
+
+        {!hideCityChips && (
+          <nav
+            aria-label="Strony miast"
+            className="order-1 flex max-w-full flex-wrap items-baseline gap-x-3 gap-y-1 lg:order-none"
+          >
+            <span className="mono text-xs uppercase" style={{ color: "var(--paper-mute)", letterSpacing: ".14em" }}>
+              Miasta
+            </span>
+            {CITY_LANDINGS.map((city) => (
+              <Link
+                key={city.slug}
+                href={trasyCityChipHref(filters, city.name)}
+                scroll={false}
+                className="text-xs underline-offset-4 hover:text-white hover:underline"
+                style={{ color: "var(--paper-mute)" }}
+              >
+                {city.name}
+              </Link>
+            ))}
+          </nav>
         )}
 
         <div id="trasy-filter-status" className={statusClass}>
@@ -252,7 +275,7 @@ export default function TrasyFilters({
               <button
                 key={option.label}
                 type="button"
-                className={pressed ? "chip active min-h-10" : "chip min-h-10"}
+                className={pressed ? "chip active font-[inherit] min-h-10" : "chip font-[inherit] min-h-10"}
                 aria-pressed={pressed}
                 onClick={() => {
                   if (filters.bilety !== option.value) go({ bilety: option.value });

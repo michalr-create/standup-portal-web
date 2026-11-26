@@ -32,6 +32,8 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   const plansPath = join(dir, "plans.cjs");
   const sizedPath = join(dir, "sized.cjs");
   const altPath = join(dir, "image-alt.cjs");
+  const slugifyPath = join(dir, "slugify.cjs");
+  const landingsPath = join(dir, "landings.cjs");
   const reactPath = require.resolve("react");
   const jsxPath = require.resolve("react/jsx-runtime");
   writeFileSync(comboboxPath, compile(readFileSync(new URL("./combobox.ts", import.meta.url), "utf8"), false));
@@ -43,6 +45,13 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
     ),
   );
   writeFileSync(altPath, compile(readFileSync(new URL("./image-alt.ts", import.meta.url), "utf8"), false));
+  writeFileSync(slugifyPath, compile(readFileSync(new URL("./slugify.ts", import.meta.url), "utf8"), false));
+  writeFileSync(
+    landingsPath,
+    compile(readFileSync(new URL("./city-landings.ts", import.meta.url), "utf8"), false)
+      .replaceAll('require("./events.ts")', `require(${JSON.stringify(eventsPath)})`)
+      .replaceAll('require("./slugify.ts")', `require(${JSON.stringify(slugifyPath)})`),
+  );
   writeFileSync(
     sizedPath,
     compile(readFileSync(new URL("../app/components/SizedImage.tsx", import.meta.url), "utf8"), true)
@@ -73,6 +82,7 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   );
   const card = compile(readFileSync(new URL("../app/trasy/EventCard.tsx", import.meta.url), "utf8"), true)
     .replaceAll('require("@/lib/events")', `require(${JSON.stringify(eventsPath)})`)
+    .replaceAll('require("@/lib/city-landings")', `require(${JSON.stringify(landingsPath)})`)
     .replaceAll('require("@/lib/image-alt")', `require(${JSON.stringify(altPath)})`)
     .replaceAll('require("@/lib/youtube")', `require(${JSON.stringify(youtubePath)})`)
     .replaceAll('require("../components/SizedImage")', `require(${JSON.stringify(sizedPath)})`)
@@ -577,4 +587,38 @@ test("the tour title or the date links to the event page and the ticket stays on
   assert.equal(anchors(repeated).some((link) => link.text === "Adam Van Bendler" && attr(link.attrs, "href") === "/wystep/1"), false);
   const shop = anchors(repeated).find((link) => attr(link.attrs, "target") === "_blank");
   assert.equal(attr(shop?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+});
+
+test("the city name links to its landing and a city without one stays text", () => {
+  const warsaw = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({ city: "Warszawa", venue: "Stodoła" }),
+      now: NOW,
+    }),
+  );
+  assertNoNestedAnchors(warsaw);
+  const warsawLinks = anchors(warsaw);
+  const city = warsawLinks.filter((link) => attr(link.attrs, "href") === "/trasy/warszawa");
+  assert.equal(city.length, 1);
+  assert.equal(city[0]?.text, "Warszawa");
+  assert.equal(warsawLinks.some((link) => link.text.includes("Stodoła")), false);
+  assert.match(warsaw, /Stodoła/);
+  const cityClass = attr(city[0]?.attrs ?? "", "class") ?? "";
+  assert.match(cityClass, /hover:text-white/);
+  assert.match(cityClass, /rounded-sm/);
+
+  const koszalin = renderToStaticMarkup(
+    React.createElement(EventCard, {
+      event: tour({ city: "Koszalin", venue: "Amfiteatr" }),
+      now: NOW,
+    }),
+  );
+  assertNoNestedAnchors(koszalin);
+  assert.match(koszalin, /Koszalin/);
+  assert.match(koszalin, /Amfiteatr/);
+  assert.equal(
+    anchors(koszalin).some((link) => (attr(link.attrs, "href") ?? "").startsWith("/trasy/")),
+    false,
+  );
+  assert.doesNotMatch(koszalin, /\/trasy\/koszalin/);
 });

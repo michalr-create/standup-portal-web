@@ -49,6 +49,15 @@ test("trasy standuper filter is one combobox and dates share a row", () => {
     /order-1 flex max-w-full items-center gap-2 overflow-x-auto scrollbar-hide lg:order-none lg:flex-wrap lg:overflow-visible/,
   );
   assert.match(filters, /aria-label="Popularne miasta"/);
+  assert.match(filters, /const cityChips = topFacetCities\(facets\.cities\)/);
+  assert.match(filters, /trasyCityChipHref\(filters, city\)/);
+  assert.match(filters, /CITY_LANDINGS\.map/);
+  assert.match(filters, /aria-label="Strony miast"/);
+  assert.match(filters, /scroll=\{false\}/);
+  assert.match(filters, /"chip active inline-flex items-center font-\[inherit\] min-h-10 shrink-0 whitespace-nowrap"/);
+  assert.match(filters, /"chip inline-flex items-center font-\[inherit\] min-h-10 shrink-0 whitespace-nowrap"/);
+  assert.doesNotMatch(filters, /onClick=\{\(\) => go\(\{ miasto:/);
+  assert.doesNotMatch(filters, /TOP_CITY_LIMIT|chips\.length = 11|Gdynia" \}/);
   assert.doesNotMatch(filters, /Portal|filters\.portal|facets\.portals|providerLabel/);
 
   const page = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");

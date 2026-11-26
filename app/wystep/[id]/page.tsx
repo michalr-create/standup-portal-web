@@ -166,6 +166,14 @@ export default async function WystepPage({ params }: Props) {
             <Link href="/trasy" className={`hover:text-white ${focusRing}`}>
               Trasy
             </Link>
+            {landing && (
+              <>
+                <span aria-hidden="true">{" / "}</span>
+                <Link href={`/trasy/${landing.slug}`} className={`hover:text-white ${focusRing}`}>
+                  {landing.name}
+                </Link>
+              </>
+            )}
             <span aria-hidden="true">{" / "}</span>
             <span aria-current="page" style={{ color: "var(--paper-dim)" }}>
               {crumb}
@@ -248,7 +256,13 @@ export default async function WystepPage({ params }: Props) {
               )}
 
               <p className="m-0 mt-3">
-                {event.city}
+                {landing ? (
+                  <Link href={`/trasy/${landing.slug}`} className={`rounded-sm hover:text-white ${focusRing}`}>
+                    {event.city}
+                  </Link>
+                ) : (
+                  event.city
+                )}
                 <span style={{ color: "var(--paper-meta)" }}> · </span>
                 {event.venue}
               </p>

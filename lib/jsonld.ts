@@ -1,3 +1,4 @@
+import { cityLandingByName } from "./city-landings.ts";
 import { absoluteUrl, SITE_NAME, SITE_ORIGIN } from "./seo.ts";
 import { PUBLIC_SLUG } from "./slugify.ts";
 
@@ -312,13 +313,20 @@ export function eventNode(input: EventJsonInput): JsonLdNode | null {
   return node;
 }
 
+export function eventBreadcrumbItems(city: string, crumb: string, pageUrl: string): BreadcrumbItem[] {
+  const items: BreadcrumbItem[] = [
+    { name: "Start", url: absoluteUrl("/") },
+    { name: "Trasy", url: absoluteUrl("/trasy") },
+  ];
+  const landing = cityLandingByName(city);
+  if (landing) items.push({ name: landing.name, url: absoluteUrl(`/trasy/${landing.slug}`) });
+  items.push({ name: crumb, url: pageUrl });
+  return items;
+}
+
 export function eventPageGraph(input: EventJsonInput & { crumb: string; pageUrl: string }): JsonLdNode {
   const graph: JsonLdNode[] = [
-    breadcrumbList([
-      { name: "Start", url: absoluteUrl("/") },
-      { name: "Trasy", url: absoluteUrl("/trasy") },
-      { name: input.crumb, url: input.pageUrl },
-    ]),
+    breadcrumbList(eventBreadcrumbItems(input.city, input.crumb, input.pageUrl)),
   ];
   const event = eventNode(input);
   if (event) graph.push(event);

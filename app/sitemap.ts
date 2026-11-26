@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getAllPeople, getAllShows, getAllSpecialSlugs, getSitemapEventIds } from "@/lib/data";
+import { getAllPeople, getAllSpecialSlugs, getSitemapEventIds, getSitemapShows } from "@/lib/data";
 import { buildSitemap, specialLastModified } from "@/lib/seo";
 
 export const revalidate = 120;
@@ -7,7 +7,7 @@ export const revalidate = 120;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [people, shows, specials, eventIds] = await Promise.all([
     getAllPeople(),
-    getAllShows(),
+    getSitemapShows(),
     getAllSpecialSlugs(),
     getSitemapEventIds(),
   ]);
