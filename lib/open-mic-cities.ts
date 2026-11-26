@@ -149,6 +149,16 @@ export function openMicCityHeading(city: OpenMicCity): string {
   return `Open mic ${city.inCity}`;
 }
 
+/**
+ * Counter on a city landing. `inCity` is the same phrase as the H1
+ * ("w Krakowie", "we Wrocławiu"), including the preposition, so this
+ * does not build a second locative table. The number is that city's
+ * cycle count — the same figure previously shown before "z".
+ */
+export function openMicCityCountLabel(count: number, city: OpenMicCity): string {
+  return `${count} ${city.inCity}`;
+}
+
 export function openMicCityDescription(city: OpenMicCity): string {
   return `Open miki stand-upowe ${city.inCity}: sceny, zapisy i najbliższe terminy. Część wieczorów ma wstęp wolny, część bilety. parska.pl nie sprzedaje biletów we własnej kasie.`;
 }
