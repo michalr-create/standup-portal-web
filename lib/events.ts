@@ -847,6 +847,27 @@ export function eventFacets(events: readonly EventFacetSource[]): EventFacets {
   };
 }
 
+export type CityPerformerLink = {
+  name: string;
+  href: string;
+};
+
+/**
+ * Comedians billed on the events passed in. One profile link per slug, Polish
+ * name order. Callers pass the whole city catalog, not one page of it.
+ * A blank name or a slug that is not a public profile is left out.
+ */
+export function cityPerformerLinks(events: readonly EventFacetSource[]): CityPerformerLink[] {
+  const links: CityPerformerLink[] = [];
+  for (const person of eventFacets(events).people) {
+    const href = standuperProfileHref(person.slug);
+    const name = person.name.trim();
+    if (!href || !name) continue;
+    links.push({ name, href });
+  }
+  return links;
+}
+
 const TOP_CITY_LIMIT = 10;
 
 // Largest tour cities, in chip order. A name is included only when facets.cities has it.

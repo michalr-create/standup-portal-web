@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getPersonBySlug, getItemsByPersonSlug, getDefaultShowsForPerson, countUpcomingEventsForPerson, getPersonYouTubeUrls } from "@/lib/data";
 import { contentMetadata } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
@@ -21,6 +22,9 @@ export const revalidate = 120;
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+const focusRing =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
 
 async function redirectLegacyPerson(slug: string): Promise<void> {
   const path = slugRedirectPath("standuper", slug, await personAliasTarget(slug));
@@ -72,6 +76,7 @@ export default async function StanduperPage({ params }: Props) {
   const videoCount = profileVideoCount(blocks);
   const formatCount = defaultShows.length;
   const portrait = resolvePersonPortrait(person);
+  const personName = person.name.trim();
   const headerBody = (
     <>
       <div className="mono text-xs uppercase mb-3" style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}>
@@ -105,7 +110,7 @@ export default async function StanduperPage({ params }: Props) {
     <>
       <JsonLd
         data={personPageGraph({
-          name: person.name,
+          name: personName,
           slug: person.slug,
           bio: person.bio,
           image: portrait ? portraitJsonLd(portrait) : null,
@@ -114,6 +119,23 @@ export default async function StanduperPage({ params }: Props) {
       />
       <div className="band">
         <div className="max-w-6xl mx-auto">
+          <nav
+            aria-label="Okruszki"
+            className="mono mb-5 text-xs uppercase"
+            style={{ color: "var(--paper-mute)", letterSpacing: ".16em" }}
+          >
+            <Link href="/" className={`hover:text-white ${focusRing}`}>
+              Start
+            </Link>
+            <span aria-hidden="true">{" / "}</span>
+            <Link href="/standuperzy" className={`hover:text-white ${focusRing}`}>
+              Standuperzy
+            </Link>
+            <span aria-hidden="true">{" / "}</span>
+            <span aria-current="page" style={{ color: "var(--paper-dim)" }}>
+              {personName}
+            </span>
+          </nav>
           <header>
             {portrait ? (
               <div className="flex items-start gap-4">

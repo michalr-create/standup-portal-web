@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+  cityPerformerLinks,
   eventFacets,
   eventsForFavoritePeople,
   mergeAccountUpcoming,
@@ -1110,4 +1111,50 @@ test("a repeated comedian name links the date, a tour title links itself", () =>
   assert.equal(eventPosterAlt({ title: "   ", city: "" }), "Plakat: Występ");
   assert.equal(formatEventDate("2027-01-26T18:00:00.000Z"), "26 stycznia 2027");
   assert.equal(formatEventDate("2027-05-12T16:00:00.000Z"), "12 maja 2027");
+});
+
+test("city performer links cover the whole listing, including a later page and a co-bill", () => {
+  const pageSize = 24;
+  const firstPage = Array.from({ length: pageSize }, (_, index) => ({
+    city: "Warszawa",
+    person: { slug: `adam-${index}`, name: `Adam ${index}` },
+  }));
+  const later = {
+    city: "Warszawa",
+    person: { slug: "abelard-giza", name: "Abelard Giza" },
+    people: [
+      { slug: "abelard-giza", name: "Abelard Giza" },
+      { slug: "rafal-paczes", name: "Rafał Pacześ" },
+    ],
+  };
+  const events = [...firstPage, later];
+  const page = pageMergedEvents(events, 1, pageSize);
+  assert.equal(
+    page.events.some((event) => event.person.slug === "abelard-giza"),
+    false,
+  );
+
+  const links = cityPerformerLinks(events);
+  assert.equal(links.some((link) => link.href === "/standuper/abelard-giza" && link.name === "Abelard Giza"), true);
+  assert.equal(links.some((link) => link.href === "/standuper/rafal-paczes" && link.name === "Rafał Pacześ"), true);
+  assert.equal(links.length, pageSize + 2);
+  assert.deepEqual(cityPerformerLinks([]), []);
+  assert.deepEqual(
+    cityPerformerLinks([{ city: "Warszawa", person: { slug: "nie slug", name: "Ktoś" } }]),
+    [],
+  );
+  assert.deepEqual(
+    cityPerformerLinks([{ city: "Warszawa", person: { slug: "ktos", name: "   " } }]),
+    [],
+  );
+
+  const ordered = cityPerformerLinks([
+    { city: "Warszawa", person: { slug: "lotek", name: "Łukasz Lotek Lodkowski" } },
+    { city: "Warszawa", person: { slug: "lotek", name: "Łukasz Lotek Lodkowski" } },
+    { city: "Kraków", person: { slug: "kacper-rucinski", name: "Kacper Ruciński" } },
+  ]);
+  assert.deepEqual(
+    ordered.map((link) => link.href),
+    ["/standuper/kacper-rucinski", "/standuper/lotek"],
+  );
 });
