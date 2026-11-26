@@ -10,6 +10,7 @@ import {
   OPEN_MIC_TITLE,
   openMicCityByName,
   openMicCityBySlug,
+  openMicCityCountLabel,
   openMicCityDescription,
   openMicCityFaqs,
   openMicCityHeading,
@@ -100,6 +101,13 @@ test("only the seven cities with two or more public cycles get a landing", () =>
   assert.equal(openMicCityBySlug("wroclaw")?.inCity, "we Wrocławiu");
   assert.equal(openMicCityBySlug("lublin")?.inCity, "w Lublinie");
   assert.equal(cityLandingByName("Lublin"), null);
+
+  assert.equal(openMicCityCountLabel(4, openMicCityBySlug("krakow")!), "4 w Krakowie");
+  assert.equal(openMicCityCountLabel(5, openMicCityBySlug("wroclaw")!), "5 we Wrocławiu");
+  assert.equal(openMicCityCountLabel(3, openMicCityBySlug("lublin")!), "3 w Lublinie");
+  for (const entry of OPEN_MIC_CITIES) {
+    assert.equal(openMicCityCountLabel(2, entry), `2 ${entry.inCity}`, entry.name);
+  }
 
   const clipped = contentMetadata({
     title: "Open mic Wrocław — terminy i zapisy",
@@ -229,7 +237,14 @@ test("pages keep the approved copy, crawlable city links, and the existing contr
   assert.match(screen, /Open mic stand-up w Polsce|\{h1\}/);
   assert.match(screen, /Dodaj swój open mic/);
   assert.match(screen, /Zgłoś brakujący open mic/);
+  assert.match(screen, /city\s*\?\s*openMicCityCountLabel\(view\.cycles\.length, city\)/);
+  assert.match(screen, /\$\{view\.cycles\.length\} z \$\{view\.catalogCount\}/);
   assert.match(screen, /\$\{view\.catalogCount\} \$\{cyklLabel\(view\.catalogCount\)\}/);
+  assert.match(screen, /className="mono text-xs uppercase"/);
+  assert.match(cityPage, /city=\{city\}/);
+  assert.doesNotMatch(page, /openMicCityCountLabel/);
+  assert.doesNotMatch(page, /\bcity=/);
+  assert.doesNotMatch(page, /w Krakowie|we Wrocławiu|w Lublinie/);
   assert.match(screen, /href=\{`\/open-mic\/\$\{city\.slug\}`\}/);
   assert.match(screen, /Open miki w miastach:/);
   assert.match(screen, /<OpenMicCard/);

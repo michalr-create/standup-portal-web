@@ -5,7 +5,7 @@ import OpenMicDates from "./OpenMicDates";
 import OpenMicFilters from "./OpenMicFilters";
 import { focusRing } from "./ui";
 import HomeCityRedirect from "@/app/components/HomeCityRedirect";
-import { OPEN_MIC_CITIES } from "@/lib/open-mic-cities";
+import { OPEN_MIC_CITIES, openMicCityCountLabel, type OpenMicCity } from "@/lib/open-mic-cities";
 import {
   cyklLabel,
   hasActiveOpenMicFilters,
@@ -60,6 +60,7 @@ function Notice({
 
 export default function OpenMicScreen({
   h1,
+  city = null,
   intro,
   showCityLinks = false,
   breadcrumbs,
@@ -73,6 +74,8 @@ export default function OpenMicScreen({
   now,
 }: {
   h1: string;
+  /** Set only on `/open-mic/{miasto}`. The national list leaves this empty. */
+  city?: OpenMicCity | null;
   intro: readonly string[];
   showCityLinks?: boolean;
   breadcrumbs?: readonly OpenMicCrumb[];
@@ -90,9 +93,11 @@ export default function OpenMicScreen({
     ? "błąd wczytywania"
     : view.catalogCount === 0
       ? "na razie pusto"
-      : filtered
-        ? `${view.cycles.length} z ${view.catalogCount}`
-        : `${view.catalogCount} ${cyklLabel(view.catalogCount)}`;
+      : city
+        ? openMicCityCountLabel(view.cycles.length, city)
+        : filtered
+          ? `${view.cycles.length} z ${view.catalogCount}`
+          : `${view.catalogCount} ${cyklLabel(view.catalogCount)}`;
 
   return (
     <div className="band">

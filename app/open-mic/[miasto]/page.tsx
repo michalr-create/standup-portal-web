@@ -73,6 +73,7 @@ export default async function OpenMicCityPage({ params }: Props) {
       />
       <OpenMicScreen
         h1={openMicCityHeading(city)}
+        city={city}
         intro={city.intro}
         breadcrumbs={[
           { name: "Start", href: "/" },
