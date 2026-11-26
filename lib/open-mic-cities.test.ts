@@ -100,7 +100,7 @@ test("only the seven cities with two or more public cycles get a landing", () =>
 
   assert.equal(openMicCityBySlug("wroclaw")?.inCity, "we Wrocławiu");
   assert.equal(openMicCityBySlug("lublin")?.inCity, "w Lublinie");
-  assert.equal(cityLandingByName("Lublin"), null);
+  assert.equal(cityLandingByName("Lublin")?.inCity, "w Lublinie");
 
   assert.equal(openMicCityCountLabel(4, openMicCityBySlug("krakow")!), "4 w Krakowie");
   assert.equal(openMicCityCountLabel(5, openMicCityBySlug("wroclaw")!), "5 we Wrocławiu");

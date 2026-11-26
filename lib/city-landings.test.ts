@@ -77,9 +77,37 @@ const APPROVED_PARAGRAPHS: Record<string, readonly string[]> = {
     "W serwisie jest również open mic w Gdyni: cykl Noc Open Mic – Waber i Natan w PIF PAF. Aktualną datę i zasady zapisów sprawdzisz na stronie open miców; nie podajemy tu wieczoru, którego nie ma jeszcze w kalendarzu.",
     "parska.pl nie sprzedaje biletów we własnej kasie. Od występu przechodzisz do sklepu. Strona stand-up Gdynia jest po to, żeby szybko zobaczyć, co gra w mieście, i wrócić, gdy w kalendarzu pojawi się kolejny termin. Open mic i występy w sąsiednim Gdańsku nie zastępują tej listy — tu zostają tylko gdyńskie daty plus wyraźna adnotacja, gdy duża hala leży na granicy miast.",
   ],
+  lublin: [
+    "Stand-up Lublin na parska.pl to lista nadchodzących występów: kluby, domy kultury i większe sale, plus link do biletów przy każdej dacie.",
+    "W kalendarzu najczęściej pojawiają się Fabryka Kultury Zgrzyt, Pub Just Crafted i Kultowa Klubokawiarnia. Są też terminy m.in. w Klubie Graffiti, w Centrum Spotkania Kultur, w Hali Globus, w Centrum Kongresowym Uniwersytetu Przyrodniczego i w Collegium Maius Uniwersytetu Medycznego.",
+    "Jeśli chcesz wejść na scenę albo zobaczyć nowe twarze, zajrzyj na open mic Lublin. W serwisie są cykle w Pubie Just Crafted: Stand-up Open Mic – Lubelscy Komicy oraz Lublin English Stand-Up Open Mic (niedziele, co 2–3 tygodnie). Daty, godziny i zasady zapisów są przy konkretnych open micach.",
+    "Bilety kupujesz u organizatora albo w sklepie podlinkowanym przy występie. Kalendarz stand-up Lublin uzupełniamy na bieżąco, więc warto tu wracać po nowe terminy.",
+  ],
+  olsztyn: [
+    "Stand-up Olsztyn na parska.pl to kalendarz nadchodzących występów w klubach, pubach i salach. Przy każdej dacie jest miejsce, godzina i link do biletów.",
+    "W kalendarzu najczęściej pojawiają się Baza, Irish Pub Carpenter Inn i Aula im. Anny Wasilewskiej. Są też terminy w Kuźni Społecznej i w Kot Art Barze. Przy większych koncertach pojawia się też Hala URANIA.",
+    "W serwisie jest również open mic w Olsztynie: cykl Stand-up Warmia – Open Mic w Irish Pub Carpenter Inn (ok. raz w miesiącu, sezon jesień–wiosna). Czy jest już najbliższa zatwierdzona data, widać na stronie open miców; nie podajemy tu wieczoru, którego nie ma jeszcze w kalendarzu.",
+    "Biletów nie sprzedajemy sami — przy występie jest odnośnik do sklepu. Kalendarz stand-up Olsztyn aktualizujemy, gdy pojawiają się kolejne terminy, więc warto tu wracać przed weekendem albo przed wyjściem na open mic.",
+  ],
+  czestochowa: [
+    "Stand-up Częstochowa na parska.pl to lista realnych terminów: kluby, domy kultury i większe sale, plus link do biletów przy każdym występie.",
+    "Najczęściej w kalendarzu pojawia się Jagair. Są też terminy w Akademickim Centrum Kultury – Klubie Politechnik, w Bristolu, w Miejskim Domu Kultury oraz — przy większych wydarzeniach — w Hali Sportowej Częstochowa.",
+    "Bilety kupujesz u organizatora albo w sklepie podlinkowanym przy dacie. Ta strona jest po to, żeby w jednym miejscu zobaczyć, co gra w Częstochowie w najbliższym czasie, i wrócić, gdy pojawi się kolejny termin.",
+  ],
+  "zielona-gora": [
+    "Stand-up Zielona Góra na parska.pl to lista nadchodzących występów w klubach i salach. Przy każdej dacie jest miejsce, godzina i link do biletów.",
+    "Najczęściej w kalendarzu pojawiają się Piwnica Artystyczna KAWON i Cafe Noir. Jest też termin w Auli Uniwersytetu Zielonogórskiego, a przy większych wydarzeniach — w Hali CRS.",
+    "Jeśli chcesz wejść na scenę albo zobaczyć nowe twarze, zajrzyj na open mic Zielona Góra. W serwisie jest cykl „Raz Kozie Śmiech” w Piwnicy Teatru 4 Kąty. Aktualną datę i zasady zapisów sprawdzisz na stronie open miców.",
+    "Bilety kupujesz u organizatora albo w podlinkowanym sklepie. Kalendarz stand-up Zielona Góra uzupełniamy na bieżąco, więc warto tu wracać po nowe terminy.",
+  ],
+  katowice: [
+    "Stand-up Katowice na parska.pl to kalendarz występów w klubach, domach kultury i halach. Przy każdej dacie jest miejsce, godzina i link do biletów.",
+    "Najczęściej w kalendarzu pojawia się Scena Gliwicka 120 (ul. Gliwicka w Katowicach). Są też terminy m.in. w Katowice Miasto Ogrodów, w klubie Królestwo, w klubie Pieron, w Miejskim Domu Kultury Szopienice-Giszowiec oraz — przy większych koncertach — w Spodku.",
+    "parska.pl nie sprzedaje biletów we własnej kasie. Od występu przechodzisz do sklepu. Strona stand-up Katowice jest po to, żeby szybko zobaczyć, co gra w mieście, i wrócić, gdy w kalendarzu pojawi się kolejny termin.",
+  ],
 };
 
-test("ten city landings keep approved descriptions and stable slugs", () => {
+test("city landings keep approved descriptions and stable slugs", () => {
   assert.deepEqual(
     CITY_LANDINGS.map((city) => city.name),
     [
@@ -93,6 +121,11 @@ test("ten city landings keep approved descriptions and stable slugs", () => {
       "Łódź",
       "Białystok",
       "Gdynia",
+      "Lublin",
+      "Olsztyn",
+      "Częstochowa",
+      "Zielona Góra",
+      "Katowice",
     ],
   );
   assert.deepEqual(
@@ -108,11 +141,32 @@ test("ten city landings keep approved descriptions and stable slugs", () => {
       "w Łodzi",
       "w Białymstoku",
       "w Gdyni",
+      "w Lublinie",
+      "w Olsztynie",
+      "w Częstochowie",
+      "w Zielonej Górze",
+      "w Katowicach",
     ],
   );
   assert.deepEqual(
     CITY_LANDINGS.map((city) => city.slug),
-    ["warszawa", "krakow", "wroclaw", "gdansk", "poznan", "bydgoszcz", "szczecin", "lodz", "bialystok", "gdynia"],
+    [
+      "warszawa",
+      "krakow",
+      "wroclaw",
+      "gdansk",
+      "poznan",
+      "bydgoszcz",
+      "szczecin",
+      "lodz",
+      "bialystok",
+      "gdynia",
+      "lublin",
+      "olsztyn",
+      "czestochowa",
+      "zielona-gora",
+      "katowice",
+    ],
   );
   for (const city of CITY_LANDINGS) {
     const expected = APPROVED_PARAGRAPHS[city.slug];
@@ -130,6 +184,9 @@ test("ten city landings keep approved descriptions and stable slugs", () => {
   }
   assert.equal(CITY_LANDINGS.find((city) => city.name === "Łódź")?.slug, "lodz");
   assert.equal(CITY_LANDINGS.find((city) => city.name === "Gdańsk")?.slug, "gdansk");
+  const katowice = CITY_LANDINGS.find((city) => city.slug === "katowice");
+  assert.equal(katowice?.inCity, "w Katowicach");
+  assert.equal(/open mic/i.test(katowice?.description ?? ""), false);
   assert.deepEqual(cityLeadParagraphs(""), []);
 
   const source = readFileSync(new URL("./city-landings.ts", import.meta.url), "utf8");
@@ -164,6 +221,14 @@ test("a city query redirects to the landing and keeps the other filters", () => 
     "/trasy/krakow?osoba=abelard-giza&od=2026-12-01&bilety=dostepne&page=2",
   );
   assert.equal(trasyLandingRedirect({ ...empty, miasto: "Łódź" }, 1), "/trasy/lodz");
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "Lublin" }, 1), "/trasy/lublin");
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "lublin" }, 1), "/trasy/lublin");
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "OLSZTYN" }, 1), "/trasy/olsztyn");
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "częstochowa" }, 1), "/trasy/czestochowa");
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "Zielona Góra" }, 1), "/trasy/zielona-gora");
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "katowice" }, 1), "/trasy/katowice");
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "Lubin" }, 1), null);
+  assert.equal(trasyLandingRedirect({ ...empty, miasto: "Gliwice" }, 1), null);
   assert.equal(trasyLandingRedirect({ ...empty, miasto: "Hel" }, 1), null);
   assert.equal(trasyLandingRedirect({ ...empty, miasto: "" }, 1), null);
   assert.equal(cityLandingByName("  Gdańsk ")?.slug, "gdansk");
@@ -174,6 +239,9 @@ test("a city query redirects to the landing and keeps the other filters", () => 
 
   assert.equal(cityLandingHref("gdansk", { osoba: "lotek", page: 1 }), "/trasy/gdansk?osoba=lotek");
   assert.equal(publicTrasyHref({ miasto: "Poznań", bilety: "wyprzedane" }), "/trasy/poznan?bilety=wyprzedane");
+  assert.equal(publicTrasyHref({ miasto: "Lublin" }), "/trasy/lublin");
+  assert.equal(publicTrasyHref({ miasto: "Lubin" }), "/trasy?miasto=Lubin");
+  assert.equal(publicTrasyHref({ miasto: "Gliwice" }), "/trasy?miasto=Gliwice");
   assert.equal(publicTrasyHref({ miasto: "Hel" }), "/trasy?miasto=Hel");
   assert.equal(publicTrasyHref({ miasto: "" }, { keepBlankCity: true }), "/trasy?miasto=");
 });
@@ -182,7 +250,7 @@ test("city chips and the footer use landing paths, and a city without a landing 
   const empty = { osoba: "", miasto: "", od: "", doDnia: "", bilety: "" as const };
   assert.equal(trasyCityChipHref(empty, "Gdynia"), "/trasy/gdynia");
   assert.equal(trasyCityChipHref(empty, "Wrocław"), "/trasy/wroclaw");
-  assert.equal(trasyCityChipHref(empty, "Lublin"), "/trasy?miasto=Lublin");
+  assert.equal(trasyCityChipHref(empty, "Lublin"), "/trasy/lublin");
   assert.equal(trasyCityChipHref(empty, "Koszalin"), "/trasy?miasto=Koszalin");
   assert.equal(
     trasyCityChipHref({ ...empty, osoba: "abelard-giza", od: "2026-12-01" }, "Warszawa"),
@@ -199,8 +267,8 @@ test("city chips and the footer use landing paths, and a city without a landing 
     CITY_LANDINGS.map(cityLandingFooterLink),
     CITY_LANDINGS.map((city) => ({ href: `/trasy/${city.slug}`, label: `Stand-up ${city.name}` })),
   );
-  assert.equal(CITY_LANDINGS.length, 10);
+  assert.equal(CITY_LANDINGS.length, 15);
   assert.equal(cityLandingFooterLink(CITY_LANDINGS[0]).label, "Stand-up Warszawa");
-  assert.equal(cityLandingFooterLink(CITY_LANDINGS[CITY_LANDINGS.length - 1]).label, "Stand-up Gdynia");
+  assert.equal(cityLandingFooterLink(CITY_LANDINGS[CITY_LANDINGS.length - 1]).label, "Stand-up Katowice");
   assert.equal(CITY_LANDINGS.map(cityLandingFooterLink).some((link) => link.href === "/trasy/gdynia"), true);
 });

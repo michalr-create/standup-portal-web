@@ -26,7 +26,7 @@ export function cityLeadParagraphs(description: string): string[] {
     .filter((paragraph) => paragraph.length > 0);
 }
 
-/** Ten cities with the most upcoming dates on 25 November 2026. */
+/** City landings in public list order. The first ten were the largest tour cities on 25 November 2026. */
 export const CITY_LANDINGS: readonly CityLanding[] = [
   landing("Warszawa", "w Warszawie", [
     "Szukasz stand-up Warszawa? Na parska.pl zbieramy aktualne występy w stolicy i linki do biletów. W kalendarzu są zarówno wieczory klubowe, jak i większe koncerty w halach — każdy z datą, miejscem i przejściem do sklepu.",
@@ -87,6 +87,34 @@ export const CITY_LANDINGS: readonly CityLanding[] = [
     "Wśród scen z zaplanowanymi terminami są Desdemona, Nowy Harem Club, Teatro Gdynia i Sala Koncertowa Portu Gdynia. To lokale z naszej bazy — jeśli ktoś gra gdzie indziej w Trójmieście, warto zajrzeć też na strony Gdańska i Sopotu, bo duży koncert bywa zapisany po sąsiedzku (np. ERGO ARENA przy granicy Gdańska i Sopotu).",
     "W serwisie jest również open mic w Gdyni: cykl Noc Open Mic – Waber i Natan w PIF PAF. Aktualną datę i zasady zapisów sprawdzisz na stronie open miców; nie podajemy tu wieczoru, którego nie ma jeszcze w kalendarzu.",
     "parska.pl nie sprzedaje biletów we własnej kasie. Od występu przechodzisz do sklepu. Strona stand-up Gdynia jest po to, żeby szybko zobaczyć, co gra w mieście, i wrócić, gdy w kalendarzu pojawi się kolejny termin. Open mic i występy w sąsiednim Gdańsku nie zastępują tej listy — tu zostają tylko gdyńskie daty plus wyraźna adnotacja, gdy duża hala leży na granicy miast.",
+  ]),
+  landing("Lublin", "w Lublinie", [
+    "Stand-up Lublin na parska.pl to lista nadchodzących występów: kluby, domy kultury i większe sale, plus link do biletów przy każdej dacie.",
+    "W kalendarzu najczęściej pojawiają się Fabryka Kultury Zgrzyt, Pub Just Crafted i Kultowa Klubokawiarnia. Są też terminy m.in. w Klubie Graffiti, w Centrum Spotkania Kultur, w Hali Globus, w Centrum Kongresowym Uniwersytetu Przyrodniczego i w Collegium Maius Uniwersytetu Medycznego.",
+    "Jeśli chcesz wejść na scenę albo zobaczyć nowe twarze, zajrzyj na open mic Lublin. W serwisie są cykle w Pubie Just Crafted: Stand-up Open Mic – Lubelscy Komicy oraz Lublin English Stand-Up Open Mic (niedziele, co 2–3 tygodnie). Daty, godziny i zasady zapisów są przy konkretnych open micach.",
+    "Bilety kupujesz u organizatora albo w sklepie podlinkowanym przy występie. Kalendarz stand-up Lublin uzupełniamy na bieżąco, więc warto tu wracać po nowe terminy.",
+  ]),
+  landing("Olsztyn", "w Olsztynie", [
+    "Stand-up Olsztyn na parska.pl to kalendarz nadchodzących występów w klubach, pubach i salach. Przy każdej dacie jest miejsce, godzina i link do biletów.",
+    "W kalendarzu najczęściej pojawiają się Baza, Irish Pub Carpenter Inn i Aula im. Anny Wasilewskiej. Są też terminy w Kuźni Społecznej i w Kot Art Barze. Przy większych koncertach pojawia się też Hala URANIA.",
+    "W serwisie jest również open mic w Olsztynie: cykl Stand-up Warmia – Open Mic w Irish Pub Carpenter Inn (ok. raz w miesiącu, sezon jesień–wiosna). Czy jest już najbliższa zatwierdzona data, widać na stronie open miców; nie podajemy tu wieczoru, którego nie ma jeszcze w kalendarzu.",
+    "Biletów nie sprzedajemy sami — przy występie jest odnośnik do sklepu. Kalendarz stand-up Olsztyn aktualizujemy, gdy pojawiają się kolejne terminy, więc warto tu wracać przed weekendem albo przed wyjściem na open mic.",
+  ]),
+  landing("Częstochowa", "w Częstochowie", [
+    "Stand-up Częstochowa na parska.pl to lista realnych terminów: kluby, domy kultury i większe sale, plus link do biletów przy każdym występie.",
+    "Najczęściej w kalendarzu pojawia się Jagair. Są też terminy w Akademickim Centrum Kultury – Klubie Politechnik, w Bristolu, w Miejskim Domu Kultury oraz — przy większych wydarzeniach — w Hali Sportowej Częstochowa.",
+    "Bilety kupujesz u organizatora albo w sklepie podlinkowanym przy dacie. Ta strona jest po to, żeby w jednym miejscu zobaczyć, co gra w Częstochowie w najbliższym czasie, i wrócić, gdy pojawi się kolejny termin.",
+  ]),
+  landing("Zielona Góra", "w Zielonej Górze", [
+    "Stand-up Zielona Góra na parska.pl to lista nadchodzących występów w klubach i salach. Przy każdej dacie jest miejsce, godzina i link do biletów.",
+    "Najczęściej w kalendarzu pojawiają się Piwnica Artystyczna KAWON i Cafe Noir. Jest też termin w Auli Uniwersytetu Zielonogórskiego, a przy większych wydarzeniach — w Hali CRS.",
+    "Jeśli chcesz wejść na scenę albo zobaczyć nowe twarze, zajrzyj na open mic Zielona Góra. W serwisie jest cykl „Raz Kozie Śmiech” w Piwnicy Teatru 4 Kąty. Aktualną datę i zasady zapisów sprawdzisz na stronie open miców.",
+    "Bilety kupujesz u organizatora albo w podlinkowanym sklepie. Kalendarz stand-up Zielona Góra uzupełniamy na bieżąco, więc warto tu wracać po nowe terminy.",
+  ]),
+  landing("Katowice", "w Katowicach", [
+    "Stand-up Katowice na parska.pl to kalendarz występów w klubach, domach kultury i halach. Przy każdej dacie jest miejsce, godzina i link do biletów.",
+    "Najczęściej w kalendarzu pojawia się Scena Gliwicka 120 (ul. Gliwicka w Katowicach). Są też terminy m.in. w Katowice Miasto Ogrodów, w klubie Królestwo, w klubie Pieron, w Miejskim Domu Kultury Szopienice-Giszowiec oraz — przy większych koncertach — w Spodku.",
+    "parska.pl nie sprzedaje biletów we własnej kasie. Od występu przechodzisz do sklepu. Strona stand-up Katowice jest po to, żeby szybko zobaczyć, co gra w mieście, i wrócić, gdy w kalendarzu pojawi się kolejny termin.",
   ]),
 ];
 

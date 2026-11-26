@@ -7,7 +7,7 @@ function source(path: string): string {
   return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
-test("footer adds specjale and the ten city landings without new desktop nav items", () => {
+test("footer adds specjale and the city landings without new desktop nav items", () => {
   const layout = source("../app/layout.tsx");
   const navStart = layout.indexOf("const navLinks = [");
   const navEnd = layout.indexOf("];", navStart);
@@ -32,7 +32,16 @@ test("footer adds specjale and the ten city landings without new desktop nav ite
   assert.match(layout, /cityLandingFooterLink\(city\)/);
   assert.match(layout, /className="text-xs hover:text-white transition-colors"/);
   const links = CITY_LANDINGS.map(cityLandingFooterLink);
-  assert.equal(links.length, 10);
+  assert.equal(links.length, 15);
+  for (const href of [
+    "/trasy/lublin",
+    "/trasy/olsztyn",
+    "/trasy/czestochowa",
+    "/trasy/zielona-gora",
+    "/trasy/katowice",
+  ]) {
+    assert.equal(links.some((link) => link.href === href), true, href);
+  }
   assert.deepEqual(
     links.map((link) => link.href),
     CITY_LANDINGS.map((city) => `/trasy/${city.slug}`),
