@@ -116,8 +116,13 @@ test("standuperki keep the approved order and are not a popularity sort", () => 
   assert.equal(STANDUPERKI_SLUGS.length, 18);
   assert.equal(isStanduperka("Katarzyna-Piasecka"), true);
   assert.equal(isStanduperka("rafal-paczes"), false);
-  assert.equal(STANDUPERKI_LEAD, STANDUPERKI_DESCRIPTION);
-  assert.match(STANDUPERKI_LEAD, /Piaseckiej, Szczęśniak i Kubickiej/);
+  assert.deepEqual(STANDUPERKI_LEAD, [
+    "Polski stand-up od lat grają też standuperki — od autorek pełnych programów po osoby, które regularnie pojawiają się w nagraniach i na scenie. Tu zbieramy ich profile i specjale, które można obejrzeć albo śledzić przy kolejnej trasie.",
+    "Na liście są m.in. Katarzyna Piasecka, Olka Szczęśniak, Magda Kubicka, Ewa Stasiewicz i Wiolka Walaszczyk, a obok nich nowsze nazwiska z polskimi nagraniami na parska.pl. To nie jest ranking „najlepszych”.",
+    "Pełna lista wszystkich komików jest osobno. Terminy występów znajdziesz przy profilu i na stronach miast.",
+  ]);
+  assert.notEqual(STANDUPERKI_LEAD.join(" "), STANDUPERKI_DESCRIPTION);
+  assert.equal(STANDUPERKI_LEAD.some((paragraph) => paragraph.includes("Piaseckiej, Szczęśniak i Kubickiej")), false);
   assert.equal(STANDUPERKI_OPEN_NOTE, "Lista jest otwarta.");
   assert.deepEqual(STANDUPERKI_FAQS.map((faq) => faq.question), [
     "Czy to wszyscy?",
@@ -283,7 +288,9 @@ test("collection pages render the headings, crumbs, ranking links, and paid mark
   assert.match(womenPage, /standuperkiInOrder/);
   assert.match(womenPage, /aria-label="Lista standuperki"/);
   assert.doesNotMatch(womenPage, /sortPeopleByName|gender|płeć/);
-  assert.match(womenPage, /STANDUPERKI_LEAD/);
+  assert.match(womenPage, /STANDUPERKI_LEAD\.map/);
+  assert.match(womenPage, /href="\/standuperzy"/);
+  assert.match(womenPage, /Pełna lista wszystkich komików/);
   assert.match(womenPage, /STANDUPERKI_OPEN_NOTE/);
   assert.match(womenPage, /label: "Start"/);
   assert.doesNotMatch(womenPage, /ranking najlepszych standuperki|obejrzech/);

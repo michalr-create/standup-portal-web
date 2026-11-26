@@ -52,15 +52,25 @@ export default async function StanduperkiPage() {
         ]}
         intro={
           <>
-            <p className="m-0">{STANDUPERKI_LEAD}</p>
-            <p className="m-0 mt-3">
-              {STANDUPERKI_OPEN_NOTE}
-              {" Pełny katalog osób jest na "}
-              <a href="/standuperzy" className={textLink}>
-                stronie wszystkich standuperów
-              </a>
-              .
-            </p>
+            {STANDUPERKI_LEAD.map((paragraph) => {
+              const catalog = "Pełna lista wszystkich komików";
+              if (paragraph.startsWith(catalog)) {
+                return (
+                  <p key={paragraph} className="m-0 mt-3">
+                    <a href="/standuperzy" className={textLink}>
+                      {catalog}
+                    </a>
+                    {paragraph.slice(catalog.length)}
+                  </p>
+                );
+              }
+              return (
+                <p key={paragraph} className="m-0 mt-3 first:mt-0">
+                  {paragraph}
+                </p>
+              );
+            })}
+            <p className="m-0 mt-3">{STANDUPERKI_OPEN_NOTE}</p>
           </>
         }
         faqs={STANDUPERKI_FAQS.map((faq) => ({

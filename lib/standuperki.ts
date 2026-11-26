@@ -36,8 +36,12 @@ export const STANDUPERKI_DOCUMENT_TITLE = "Standuperki — kobiety w polskim sta
 export const STANDUPERKI_DESCRIPTION =
   "Polskie standuperki: profile, pełne programy i nagrania. Od Piaseckiej, Szczęśniak i Kubickiej po nowsze nazwiska sceny.";
 
-/** Approved lead. Names match the meta: Piasecka, Szczęśniak, Kubicka. */
-export const STANDUPERKI_LEAD = STANDUPERKI_DESCRIPTION;
+/** Approved §5.4 lead. The editor's note about view-count or alphabet order is not part of the page. */
+export const STANDUPERKI_LEAD = [
+  "Polski stand-up od lat grają też standuperki — od autorek pełnych programów po osoby, które regularnie pojawiają się w nagraniach i na scenie. Tu zbieramy ich profile i specjale, które można obejrzeć albo śledzić przy kolejnej trasie.",
+  "Na liście są m.in. Katarzyna Piasecka, Olka Szczęśniak, Magda Kubicka, Ewa Stasiewicz i Wiolka Walaszczyk, a obok nich nowsze nazwiska z polskimi nagraniami na parska.pl. To nie jest ranking „najlepszych”.",
+  "Pełna lista wszystkich komików jest osobno. Terminy występów znajdziesz przy profilu i na stronach miast.",
+] as const;
 
 export const STANDUPERKI_OPEN_NOTE = "Lista jest otwarta.";
 
