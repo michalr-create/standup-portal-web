@@ -10,8 +10,7 @@ import { slugify } from "./slugify.ts";
  * Open-mic city pages. First wave only: cities that still had at least
  * two public cycles (active + to_verify) on 26 November 2026.
  * Szczecin, Kielce, Katowice and every one-cycle city stay off this list.
- * `inCity` is copied from the tour landings ("w Krakowie", "we Wrocławiu").
- * Lublin has no tour landing; the locative is "w Lublinie".
+ * `inCity` is copied from the tour landings ("w Krakowie", "we Wrocławiu", "w Lublinie").
  */
 export type OpenMicCity = {
   slug: string;

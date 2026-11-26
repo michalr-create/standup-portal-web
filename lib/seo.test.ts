@@ -268,6 +268,11 @@ test("sitemap lists city landings and event leaves, not filter queries", () => {
   assert.equal(urls.includes("https://parska.pl/trasy/lodz"), true);
   assert.equal(urls.includes("https://parska.pl/trasy/gdansk"), true);
   assert.equal(urls.includes("https://parska.pl/trasy/bialystok"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/lublin"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/olsztyn"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/czestochowa"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/zielona-gora"), true);
+  assert.equal(urls.includes("https://parska.pl/trasy/katowice"), true);
   assert.equal(urls.includes("https://parska.pl/wystep/1033"), true);
   assert.equal(urls.includes("https://parska.pl/wystep/1574"), true);
   assert.equal(urls.filter((url) => url === "https://parska.pl/wystep/1033").length, 1);
