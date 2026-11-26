@@ -348,11 +348,39 @@ export function homePageGraph(): JsonLdNode {
   };
 }
 
+export type PersonImageLd = {
+  url: string;
+  width?: number | null;
+  height?: number | null;
+  creditText?: string | null;
+  license?: string | null;
+  acquireLicensePage?: string | null;
+  caption?: string | null;
+};
+
+function personImageNode(image: PersonImageLd): JsonLdNode | null {
+  const url = httpUrl(image.url);
+  if (!url) return null;
+  const node: JsonLdNode = { "@type": "ImageObject", url };
+  if (typeof image.width === "number" && Number.isInteger(image.width) && image.width > 0) node.width = image.width;
+  if (typeof image.height === "number" && Number.isInteger(image.height) && image.height > 0) node.height = image.height;
+  const credit = image.creditText?.trim() ?? "";
+  const license = httpUrl(image.license);
+  const acquire = httpUrl(image.acquireLicensePage);
+  const caption = image.caption?.trim() ?? "";
+  if (credit) node.creditText = credit;
+  if (license) node.license = license;
+  if (acquire) node.acquireLicensePage = acquire;
+  if (caption) node.caption = caption;
+  return node;
+}
+
 export function personPageGraph(input: {
   name: string;
   slug: string;
   bio?: string | null;
   photoUrl?: string | null;
+  image?: PersonImageLd | null;
   sameAs?: readonly (string | null | undefined)[];
 }): JsonLdNode {
   const name = input.name.trim();
@@ -364,8 +392,13 @@ export function personPageGraph(input: {
   };
   const bio = input.bio?.trim() ?? "";
   if (bio) person.description = bio;
-  const image = httpUrl(input.photoUrl);
-  if (image) person.image = image;
+  if (input.image) {
+    const imageNode = personImageNode(input.image);
+    if (imageNode) person.image = imageNode;
+  } else if (input.image === undefined) {
+    const image = httpUrl(input.photoUrl);
+    if (image) person.image = image;
+  }
   const sameAs = uniqueHttpUrls(input.sameAs ?? []);
   if (sameAs.length > 0) person.sameAs = sameAs;
   return {
