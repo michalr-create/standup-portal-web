@@ -36,6 +36,15 @@ export default async function StanduperzyPage() {
               {directory.length} {directory.length === 1 ? "osoba" : "os\u00f3b"} w bazie
             </span>
           </div>
+          <p className="mt-2 text-sm" style={{ color: "var(--paper-dim)" }}>
+            <a
+              href="/standuperki"
+              className="underline decoration-[var(--line-2)] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+            >
+              Osobno zebraliśmy standuperki
+            </a>
+            .
+          </p>
         </header>
         <StanduperzyList people={directory} />
       </div>
