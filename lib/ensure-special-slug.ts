@@ -156,6 +156,8 @@ export async function syncSpecialSlug(
   if (item.slug) revalidatePath(`/specjale/${item.slug}`);
   if (next) revalidatePath(`/specjale/${next}`);
   revalidatePath("/specjale");
+  revalidatePath("/specjale/2026");
+  revalidatePath("/specjale/najlepsze");
   revalidatePath("/sitemap.xml");
   revalidatePath("/");
   return { ok: true };

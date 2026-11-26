@@ -91,7 +91,7 @@ declare
   rec record;
   base text;
   candidate text;
-  reserved text[] := array['admin', 'api', 'dodaj', 'feed', 'index', 'page', 'robots', 'rss', 'sitemap'];
+  reserved text[] := array['2026', 'admin', 'api', 'dodaj', 'feed', 'index', 'najlepsze', 'page', 'robots', 'rss', 'sitemap', 'za-darmo'];
 begin
   update public.content_items
   set slug = null

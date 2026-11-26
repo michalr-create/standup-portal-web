@@ -88,6 +88,28 @@ export default async function SpecjalePage({ searchParams }: Props) {
           <p className="mt-2" style={{ color: "var(--paper-dim)", fontSize: "17px" }}>
             {"Pe\u0142nometra\u017cowe programy stand-upowe."}
           </p>
+          <p className="mt-3 text-sm" style={{ color: "var(--paper-dim)" }}>
+            <a
+              href="/specjale/2026"
+              className="underline decoration-[var(--line-2)] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+            >
+              Osobno zebraliśmy programy z 2026 roku
+            </a>
+            {" · "}
+            <a
+              href="/specjale/najlepsze"
+              className="underline decoration-[var(--line-2)] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+            >
+              Najchętniej oglądane
+            </a>
+            {" · "}
+            <a
+              href="/standuperki"
+              className="underline decoration-[var(--line-2)] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+            >
+              Standuperki
+            </a>
+          </p>
         </header>
         <FilterableItemsBrowser
           items={browse.items}

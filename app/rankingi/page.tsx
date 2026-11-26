@@ -100,6 +100,16 @@ export default async function RankingiPage({ searchParams }: Props) {
             <p className="mt-2" style={{ color: "var(--paper-dim)" }}>
               {NOTES[query.ranking]}
             </p>
+            {(query.ranking === "specjale" || query.ranking === "klasyki") && (
+              <p className="mt-2 text-sm" style={{ color: "var(--paper-dim)" }}>
+                <a
+                  href="/specjale/najlepsze"
+                  className="underline decoration-[var(--line-2)] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
+                >
+                  Osobna, indeksowana lista najchętniej oglądanych programów
+                </a>
+              </p>
+            )}
           </div>
           {query.ranking === "hity" && (
             <div className="flex flex-wrap gap-2" role="group" aria-label="Zakres hit\u00f3w">

@@ -242,6 +242,8 @@ export function assembleContentPaths(refs: RevalidateRefs, resolved: ResolvedSlu
   }
   if (tagSlugs.has("special") || itemSlugs.size > 0) {
     paths.add("/specjale");
+    paths.add("/specjale/2026");
+    paths.add("/specjale/najlepsze");
     paths.add("/sitemap.xml");
   }
   paths.add("/ulubione");

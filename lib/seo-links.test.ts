@@ -26,6 +26,16 @@ test("footer adds specjale and the city landings without new desktop nav items",
   const specjaleAt = layout.indexOf('href="/specjale"');
   assert.ok(footerAt !== -1 && trasyAt > footerAt && specjaleAt > trasyAt);
   assert.equal(layout.indexOf('href="/specjale"', specjaleAt + 1), -1);
+  const footer = layout.slice(footerAt);
+  assert.match(footer, /href="\/specjale\/2026"/);
+  assert.match(footer, /Nowe speciale 2026/);
+  const everyone = footer.indexOf('href="/standuperzy"');
+  const standuperki = footer.indexOf('href="/standuperki"');
+  assert.ok(everyone !== -1 && standuperki > everyone);
+  assert.match(footer.slice(standuperki, standuperki + 180), /Standuperki/);
+  assert.match(footer, /href="\/specjale\/najlepsze"/);
+  assert.match(footer, /Najchętniej oglądane/);
+  assert.doesNotMatch(layout, /href="\/specjale\/za-darmo"/);
 
   assert.match(layout, /aria-label="Miasta"/);
   assert.match(layout, /CITY_LANDINGS\.map/);
