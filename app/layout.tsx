@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getShowsWithLatestEpisode, getAllPeople, getApprovedItemCountsByPersonId } from "@/lib/data";
 import { CITY_LANDINGS, cityLandingFooterLink } from "@/lib/city-landings";
-import { HOME_DESCRIPTION, HOME_TITLE, SITE_LOCALE, SITE_NAME, SITE_ORIGIN, TITLE_TEMPLATE } from "@/lib/seo";
+import { HOME_DESCRIPTION, HOME_TITLE, OG_DEFAULT_IMAGE, SITE_LOCALE, SITE_NAME, SITE_ORIGIN, TITLE_TEMPLATE } from "@/lib/seo";
 import { FOOTER_FORMAT_LIMIT, footerShows } from "@/lib/home-shows";
 import { peopleByActivity } from "@/lib/standuperzy-directory";
 import MobileDrawer from "./components/MobileDrawer";
@@ -31,8 +31,12 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
+    images: [OG_DEFAULT_IMAGE],
   },
-  twitter: { card: "summary_large_image" },
+  twitter: {
+    card: "summary_large_image",
+    images: [OG_DEFAULT_IMAGE],
+  },
   manifest: "/manifest.json",
   icons: {
     icon: [
