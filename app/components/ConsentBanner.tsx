@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { legalPagesAreReady } from "@/lib/legal/publish";
 import {
   CONSENT_CHANGED_EVENT,
   OPEN_CONSENT_EVENT,
@@ -32,6 +33,30 @@ type Toggles = {
   analytics: boolean;
   embeds: boolean;
 };
+
+function LegalDocLinks({ lead }: { lead: string }) {
+  if (!legalPagesAreReady()) return null;
+  const className = `font-bold underline-offset-4 hover:underline ${focusRing}`;
+  const style = { color: "var(--coral)" } as const;
+  return (
+    <>
+      {" "}
+      {lead}{" "}
+      <Link href="/polityka-prywatnosci" className={className} style={style}>
+        Polityka prywatności
+      </Link>
+      {", "}
+      <Link href="/cookies" className={className} style={style}>
+        Cookies
+      </Link>
+      {", "}
+      <Link href="/regulamin" className={className} style={style}>
+        Regulamin
+      </Link>
+      .
+    </>
+  );
+}
 
 function togglesFrom(choice: ConsentChoice | null): Toggles {
   return {
@@ -174,20 +199,8 @@ export default function ConsentBanner() {
         {layer === "notice" ? (
           <>
             <p id={bodyId} className="m-0 mt-2 text-sm leading-relaxed" style={{ color: "var(--paper-dim)" }}>
-              Używamy niezbędnych cookies, żeby strona działała (m.in. logowanie). Analityka (Vercel, bez ciasteczek) i zapamiętanie ulubionych w przeglądarce działają po Twojej zgodzie. Filmy odtwarzamy przez YouTube — player wczytamy dopiero po zgodzie albo po kliknięciu „Odtwórz”.{" "}
-              Szczegóły:{" "}
-              <Link href="/polityka-prywatnosci" className={`font-bold underline-offset-4 hover:underline ${focusRing}`} style={{ color: "var(--coral)" }}>
-                Polityka prywatności
-              </Link>
-              {", "}
-              <Link href="/cookies" className={`font-bold underline-offset-4 hover:underline ${focusRing}`} style={{ color: "var(--coral)" }}>
-                Cookies
-              </Link>
-              {", "}
-              <Link href="/regulamin" className={`font-bold underline-offset-4 hover:underline ${focusRing}`} style={{ color: "var(--coral)" }}>
-                Regulamin
-              </Link>
-              .
+              Używamy niezbędnych cookies, żeby strona działała (m.in. logowanie). Analityka (Vercel, bez ciasteczek) i zapamiętanie ulubionych w przeglądarce działają po Twojej zgodzie. Filmy odtwarzamy przez YouTube — player wczytamy dopiero po zgodzie albo po kliknięciu „Odtwórz”.
+              <LegalDocLinks lead="Szczegóły:" />
             </p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <button
@@ -221,6 +234,7 @@ export default function ConsentBanner() {
           <>
             <p id={bodyId} className="m-0 mt-2 text-sm leading-relaxed" style={{ color: "var(--paper-dim)" }}>
               Niezbędne cookies zostają włączone. Resztę włączasz osobno. Zapis pamiętamy przez 12 miesięcy na tym urządzeniu.
+              <LegalDocLinks lead="Dokumenty:" />
             </p>
             <div className="mt-2">
               <Switch

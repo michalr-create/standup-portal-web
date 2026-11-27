@@ -63,6 +63,9 @@ export const SITEMAP_STATIC_PATHS = [
   "/rankingi",
   "/nostalgia",
   "/open-mic",
+  "/polityka-prywatnosci",
+  "/regulamin",
+  "/cookies",
 ] as const;
 
 const SITEMAP_BLOCKED = new Set<string>([

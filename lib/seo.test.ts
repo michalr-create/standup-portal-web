@@ -154,6 +154,9 @@ test("utility pages are noindex and the sitemap drops them", () => {
       "/rankingi",
       "/nostalgia",
       "/open-mic",
+      "/polityka-prywatnosci",
+      "/regulamin",
+      "/cookies",
     ],
   );
 });
