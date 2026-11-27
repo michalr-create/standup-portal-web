@@ -192,6 +192,16 @@ export default async function RootLayout({
                     Specjale
                   </Link>
                 </li>
+                <li>
+                  <Link href="/specjale/2026" className="text-sm hover:text-white transition-colors" style={{ color: "var(--paper-dim)" }}>
+                    Nowe speciale 2026
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/specjale/najlepsze" className="text-sm hover:text-white transition-colors" style={{ color: "var(--paper-dim)" }}>
+                    Najchętniej oglądane
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -210,6 +220,11 @@ export default async function RootLayout({
                 <li className="pt-2">
                   <Link href="/standuperzy" className="text-sm font-bold hover:text-white transition-colors" style={{ color: "var(--coral)" }}>
                     {"Wszyscy standuperzy \u2192"}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/standuperki" className="text-sm hover:text-white transition-colors" style={{ color: "var(--paper-dim)" }}>
+                    Standuperki
                   </Link>
                 </li>
               </ul>

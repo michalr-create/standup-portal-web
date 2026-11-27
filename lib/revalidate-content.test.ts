@@ -59,6 +59,8 @@ test("show ids revalidate the format page and the formaty index", () => {
     "/rankingi",
     "/sitemap.xml",
     "/specjale",
+    "/specjale/2026",
+    "/specjale/najlepsze",
     "/standuper/abelard-giza",
     "/ulubione",
     "/ulubione/tresci",
@@ -105,6 +107,8 @@ test("content_tags payload keeps removed tag ids and the parent item", () => {
     "/rankingi",
     "/sitemap.xml",
     "/specjale",
+    "/specjale/2026",
+    "/specjale/najlepsze",
     "/standup",
     "/standuper/rafal-paczes",
     "/ulubione",
@@ -129,6 +133,8 @@ test("a special slug refreshes its page and the sitemap", () => {
   assert.equal(paths.includes("/specjale/stary-slug"), true);
   assert.equal(paths.includes("/sitemap.xml"), true);
   assert.equal(paths.includes("/specjale"), true);
+  assert.equal(paths.includes("/specjale/2026"), true);
+  assert.equal(paths.includes("/specjale/najlepsze"), true);
 });
 
 test("explicit paths ignore anything that is not a site path", () => {

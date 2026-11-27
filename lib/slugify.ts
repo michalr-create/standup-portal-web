@@ -9,15 +9,18 @@ export const PUBLIC_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
  * `dodaj` and `page` collide with actions and pagination; the rest are easy to confuse with site routes.
  */
 export const RESERVED_CONTENT_SLUGS = [
+  "2026",
   "admin",
   "api",
   "dodaj",
   "feed",
   "index",
+  "najlepsze",
   "page",
   "robots",
   "rss",
   "sitemap",
+  "za-darmo",
 ] as const;
 
 const RESERVED = new Set<string>(RESERVED_CONTENT_SLUGS);

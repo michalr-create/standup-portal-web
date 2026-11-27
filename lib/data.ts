@@ -2607,6 +2607,81 @@ async function loadSpecialBySlug(slug: string): Promise<SpecialPageRecord | null
 
 export const getSpecialBySlug = cache(loadSpecialBySlug);
 
+export type PublicSpecial = Item & {
+  slug: string;
+  viewCount: number | null;
+  externalId: string | null;
+};
+
+function asViewCount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return Math.floor(value);
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    const parsed = Number(value);
+    if (Number.isSafeInteger(parsed)) return parsed;
+  }
+  return null;
+}
+
+/** Approved, unmerged specials with a public slug. Paid rows stay. View count may be null. */
+export async function getPublicSpecials(): Promise<PublicSpecial[]> {
+  const tagId = await specialTopicTagId();
+  if (tagId == null) return [];
+  const pageSize = 500;
+  const raw: Array<ContentItemRow & { view_count?: unknown; external_id?: unknown }> = [];
+  for (let from = 0; from < 8000; from += pageSize) {
+    const { data, error } = await supabase
+      .from("content_items")
+      .select(`${ITEM_COLUMNS}, view_count, external_id, content_tags!inner(tag_id)`)
+      .eq("content_tags.tag_id", tagId)
+      .eq("status", "approved")
+      .is("merged_into_id", null)
+      .or("content_type.is.null,content_type.neq.short")
+      .not("slug", "is", null)
+      .neq("id", EXCLUDED_SPECIAL_ITEM_ID)
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error || !data) {
+      if (error) console.error("Blad specjali:", error.message);
+      break;
+    }
+    for (const row of data as Array<ContentItemRow & { view_count?: unknown; external_id?: unknown; content_tags?: unknown }>) {
+      const { content_tags: _tags, ...item } = row;
+      raw.push(item);
+    }
+    if (data.length < pageSize) break;
+  }
+  const items = await hydrateItems(raw);
+  const byId = new Map(raw.map((row) => [row.id, row]));
+  const out: PublicSpecial[] = [];
+  for (const item of items) {
+    const slug = publicContentSlug(item.slug);
+    if (!slug || item.categorySlug === "shorts") continue;
+    const source = byId.get(item.id);
+    out.push({
+      ...item,
+      slug,
+      viewCount: asViewCount(source?.view_count),
+      externalId: typeof source?.external_id === "string" ? source.external_id : null,
+    });
+  }
+  return out;
+}
+
+export async function getActivePeopleBySlugs(slugs: readonly string[]): Promise<Person[]> {
+  const unique = [...new Set(slugs.map((slug) => slug.trim()).filter(Boolean))];
+  if (unique.length === 0) return [];
+  const { data, error } = await supabase
+    .from("people")
+    .select("id, name, slug, bio, photo_url, role")
+    .eq("is_active", true)
+    .in("slug", unique);
+  if (error || !data) {
+    if (error) console.error("Blad standuperki:", error.message);
+    return [];
+  }
+  return data;
+}
+
 export async function getAllSpecialSlugs(): Promise<SpecialSlugRow[]> {
   const tagId = await specialTopicTagId();
   if (tagId == null) return [];

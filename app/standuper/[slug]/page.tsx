@@ -14,6 +14,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { portraitJsonLd, profileSameAs, resolvePersonPortrait } from "@/lib/person-portrait";
 import { personAliasTarget } from "@/lib/slug-alias-lookup";
 import { slugRedirectPath } from "@/lib/slug-redirect";
+import { isStanduperka } from "@/lib/standuperki";
 import ProfilePortrait, { ProfilePortraitCredit } from "./ProfilePortrait";
 import ProfileTour from "./ProfileTour";
 import ProfileVisit from "./ProfileVisit";
@@ -104,6 +105,13 @@ export default async function StanduperPage({ params }: Props) {
         </p>
       )}
       <ProfileTour slug={person.slug} count={tourCount} />
+      {isStanduperka(person.slug) ? (
+        <p className="mt-3 text-sm" style={{ color: "var(--paper-dim)" }}>
+          <a href="/standuperki" className={`underline decoration-[var(--line-2)] underline-offset-4 hover:text-white ${focusRing}`}>
+            Zobacz też inne standuperki
+          </a>
+        </p>
+      ) : null}
     </>
   );
 
