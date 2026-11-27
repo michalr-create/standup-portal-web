@@ -27,6 +27,7 @@ import {
   type LibraryLists,
 } from "@/lib/library-sync";
 import { favoritePersonSlugs } from "@/lib/events";
+import { hasConsent, CONSENT_CHANGED_EVENT } from "@/lib/consent";
 import {
   clearAccountLibrary,
   libraryOrEmpty,
@@ -92,7 +93,7 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
     snapshotRef.current = next;
     setSnapshot(next);
     const store = browserStore();
-    if (store) writeLibrary(store, next);
+    if (store && (signedInRef.current || hasConsent("functional"))) writeLibrary(store, next);
   }, []);
 
   const fail = useCallback((message: string, generation: number) => {
@@ -106,7 +107,7 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const store = browserStore();
-    if (store) setSnapshot(readLibrary(store));
+    if (store && hasConsent("functional")) setSnapshot(readLibrary(store));
 
     const supabaseModule = import("@/lib/supabase-browser");
     let unsubscribe = () => {};
@@ -231,6 +232,19 @@ export default function LibraryProvider({ children }: { children: ReactNode }) {
       unsubscribe();
     };
   }, [commit]);
+
+  useEffect(() => {
+    const onConsent = () => {
+      if (signedInRef.current) return;
+      const currentStore = browserStore();
+      if (!currentStore) return;
+      const next = hasConsent("functional") ? readLibrary(currentStore) : emptyLibrary();
+      snapshotRef.current = next;
+      setSnapshot(next);
+    };
+    document.addEventListener(CONSENT_CHANGED_EVENT, onConsent);
+    return () => document.removeEventListener(CONSENT_CHANGED_EVENT, onConsent);
+  }, []);
 
   const toggleFavorite = useCallback((type: "person" | "show", slug: string) => {
     const clean = favoritePersonSlugs([slug])[0];

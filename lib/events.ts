@@ -151,6 +151,8 @@ export type FavoriteUpcomingEvent = {
   ticket_url: string;
   /** Storefront for the buy label. Missing on older payloads; the URL host is used. */
   ticket_provider?: TicketProvider;
+  price_from?: number | null;
+  currency?: string | null;
   person: { name: string; slug: string };
   people?: { name: string; slug: string }[];
 };

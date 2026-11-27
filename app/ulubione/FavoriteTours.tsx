@@ -10,7 +10,9 @@ import {
   trasyHref,
   type FavoriteUpcomingEvent,
 } from "@/lib/events";
+import { analyticsTicketProvider, formatComedianSlugs } from "@/lib/ticket-utm";
 import { paidExternalUrl } from "@/lib/youtube";
+import TicketOutboundLink from "../components/TicketOutboundLink";
 
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
@@ -39,11 +41,19 @@ function TicketCta({ event }: { event: FavoriteUpcomingEvent }) {
   const href = paidExternalUrl(event.ticket_url);
   if (!href) return null;
   const soldOut = event.status === "sold_out";
+  const roster = event.people?.length ? event.people : [event.person];
   return (
-    <a
+    <TicketOutboundLink
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      eventId={event.id}
+      provider={analyticsTicketProvider(event.ticket_provider, href)}
+      city={event.city}
+      comedian={formatComedianSlugs(roster)}
+      priceFrom={event.price_from ?? null}
+      currency={event.currency || "PLN"}
+      placement="ulubione_bilety"
+      isPrimary
+      status={event.status}
       className="inline-flex max-w-full min-h-11 min-w-0 items-center gap-1.5 whitespace-normal break-words rounded-full px-3 py-2 text-left text-sm font-black leading-snug transition-colors hover:bg-[rgba(232,89,74,.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]"
       style={
         soldOut
@@ -56,7 +66,7 @@ function TicketCta({ event }: { event: FavoriteUpcomingEvent }) {
       </span>
       <ExternalIcon />
       <span className="sr-only">, otwiera się w nowej karcie</span>
-    </a>
+    </TicketOutboundLink>
   );
 }
 

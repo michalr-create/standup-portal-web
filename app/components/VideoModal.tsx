@@ -45,6 +45,9 @@ import WatchLaterButton from "./WatchLaterButton";
 import AdminMaterialActions from "./AdminMaterialActions";
 import SizedImage from "./SizedImage";
 import { PLAYER_SESSION_END_EVENT } from "@/lib/resume-refresh";
+import { trackParska } from "@/lib/analytics";
+import { youtubeEmbedOrigin, youtubeEmbedSrc, YOUTUBE_NOCOOKIE_API_TIMEOUT_MS, type YoutubeEmbedHost } from "@/lib/youtube-embed";
+import { useYoutubeGate } from "./useYoutubeGate";
 import {
   bindInputModality,
   containTab,
@@ -69,21 +72,16 @@ function closePlayerIfSamePage(event: ReactMouseEvent<HTMLAnchorElement>, href: 
 }
 
 const YT_FRAME_ID = "parska-yt";
-const YT_TARGET = "https://www.youtube.com";
 const YT_ALLOW = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen";
 
 const PHONE_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 560px) and (pointer: coarse)";
 
-function embedSrc(videoId: string, phoneEmbed: boolean): string {
-  const params = new URLSearchParams({
-    autoplay: "1",
-    playsinline: "1",
-    enablejsapi: "1",
+function embedSrc(videoId: string, phoneEmbed: boolean, host: YoutubeEmbedHost): string {
+  return youtubeEmbedSrc(videoId, {
+    host,
+    phoneEmbed,
+    origin: typeof window !== "undefined" ? window.location.origin : undefined,
   });
-  if (phoneEmbed) params.set("fs", "0");
-  // The widget API drops commands unless the embed was opened for this origin.
-  if (typeof window !== "undefined") params.set("origin", window.location.origin);
-  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }
 
 function isPhoneEmbed(): boolean {
@@ -401,6 +399,12 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
   const [playSettled, setPlaySettled] = useState(false);
   const [playDismissed, setPlayDismissed] = useState(false);
   const playRetryRef = useRef<number | null>(null);
+  const gate = useYoutubeGate(videoId);
+  const [embedHost, setEmbedHost] = useState<YoutubeEmbedHost>("nocookie");
+  const ytHeardRef = useRef(false);
+  const ytTargetRef = useRef(youtubeEmbedOrigin("nocookie"));
+  const playerMounted = gate.mounted;
+  ytTargetRef.current = youtubeEmbedOrigin(embedHost);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const frameReady = readyFor === videoId;
   const playPrompt = showPlayFallback({
@@ -411,11 +415,11 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     dismissed: playDismissed,
   });
 
-  const iframeSrc = embedSrc(videoId, phoneEmbed);
+  const iframeSrc = playerMounted ? embedSrc(videoId, phoneEmbed, embedHost) : "";
   const remaining = remainingSeconds(deadline, now);
 
   const postToPlayer = (message: unknown) => {
-    iframeRef.current?.contentWindow?.postMessage(JSON.stringify(message), YT_TARGET);
+    iframeRef.current?.contentWindow?.postMessage(JSON.stringify(message), ytTargetRef.current);
   };
 
   const sendPlayerCommand = (func: string) => {
@@ -426,7 +430,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     // Bare command covers players that ignore the widget envelope.
     iframe.contentWindow.postMessage(
       JSON.stringify({ event: "command", func, args: [] }),
-      YT_TARGET,
+      ytTargetRef.current,
     );
   };
 
@@ -613,6 +617,8 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     }
     setKeepAwake(false);
     setWakeError(null);
+    setEmbedHost("nocookie");
+    ytHeardRef.current = false;
     ytRef.current = EMPTY_YT_SNAPSHOT;
     clearHaltTimers();
   }, [videoId]);
@@ -681,9 +687,17 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== iframe.contentWindow) return;
       if (!isYouTubeOrigin(event.origin)) return;
+      ytHeardRef.current = true;
       const payload = readYtPayload(event.data);
       ytRef.current = parseYtMessage(payload, ytRef.current);
       if (ytRef.current.playerState === 1) {
+        if (!seenPlayingRef.current) {
+          trackParska("video_play", {
+            content_id: item.id,
+            video_id: videoId,
+            ...(item.categorySlug ? { category: item.categorySlug } : {}),
+          });
+        }
         seenPlayingRef.current = true;
         setSeenPlaying(true);
       }
@@ -713,7 +727,22 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
       iframe.removeEventListener("load", listen);
       window.removeEventListener("message", onMessage);
     };
-  }, [iframeSrc]);
+  }, [iframeSrc, item.categorySlug, item.id, playerMounted, videoId]);
+
+  useEffect(() => {
+    if (playerMounted) return;
+    setEmbedHost("nocookie");
+    ytHeardRef.current = false;
+  }, [playerMounted]);
+
+  useEffect(() => {
+    if (!playerMounted || !gate.explicitPlay || embedHost !== "nocookie") return;
+    ytHeardRef.current = false;
+    const timer = window.setTimeout(() => {
+      if (!ytHeardRef.current) setEmbedHost("youtube");
+    }, YOUTUBE_NOCOOKIE_API_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [embedHost, gate.explicitPlay, playerMounted, videoId]);
 
   useEffect(() => {
     if (deadline === null) return;
@@ -957,7 +986,7 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
     >
       <div className="video-modal-backdrop" onClick={onClose} />
       <div className="video-modal-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="video-modal-player" ref={playerRef} aria-busy={!frameReady}>
+        <div className="video-modal-player" ref={playerRef} aria-busy={playerMounted && !frameReady}>
           <div className={frameReady ? "video-modal-poster is-gone" : "video-modal-poster"} aria-hidden="true">
             <SizedImage
               src={youtubePosterUrl(videoId)}
@@ -970,23 +999,45 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
                 event.currentTarget.hidden = true;
               }}
             />
-            <span className="video-modal-spinner" />
+            {playerMounted && <span className="video-modal-spinner" />}
           </div>
-          <iframe
-            ref={iframeRef}
-            id={YT_FRAME_ID}
-            tabIndex={-1}
-            className="video-modal-iframe"
-            src={iframeSrc}
-            title={itemDisplayTitle(item)}
-            allow={YT_ALLOW}
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            onLoad={(event) => {
-              if (!event.currentTarget.src.includes(`/embed/${videoId}`)) return;
-              setReadyFor(videoId);
-            }}
-          />
+          {playerMounted ? (
+            <iframe
+              ref={iframeRef}
+              id={YT_FRAME_ID}
+              tabIndex={-1}
+              className="video-modal-iframe"
+              src={iframeSrc}
+              title={itemDisplayTitle(item)}
+              allow={YT_ALLOW}
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={(event) => {
+                if (!event.currentTarget.src.includes(`/embed/${encodeURIComponent(videoId)}`) && !event.currentTarget.src.includes(`/embed/${videoId}`)) return;
+                setReadyFor(videoId);
+              }}
+            />
+          ) : (
+            <div className="video-modal-gate">
+              <button type="button" className="video-modal-gate-play" onClick={gate.start}>
+                Odtwórz
+              </button>
+              <p className="video-modal-gate-copy">
+                {"Wczytamy odtwarzacz YouTube (Google). YouTube może zapisać pliki cookie. "}
+                <Link href="/cookies" className="rounded-sm font-bold underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]" style={{ color: "var(--coral)" }}>
+                  Więcej
+                </Link>
+              </p>
+              <label className="video-modal-gate-remember">
+                <input
+                  type="checkbox"
+                  checked={gate.remember}
+                  onChange={(event) => gate.setRemember(event.target.checked)}
+                />
+                Zapamiętaj wybór (zgoda na osadzenia YouTube)
+              </label>
+            </div>
+          )}
           {playPrompt && (
             <button type="button" className="video-modal-play" onClick={askPlay} aria-label="Odtwórz">
               <span className="video-modal-play-icon" />
@@ -1095,6 +1146,11 @@ export default function VideoModal({ item, videoId, onClose }: Props) {
             <AdminMaterialActions itemId={item.id} inline />
           </div>
           <PlayerTools key={`meta-${videoId}`} {...toolProps} showHint />
+          {embedHost === "youtube" && gate.explicitPlay && (
+            <p className="m-0 text-sm leading-relaxed" style={{ color: "var(--paper-dim)" }}>
+              Odtwarzacz w trybie ograniczonym nie odpowiedział. Wczytano standardowy odtwarzacz YouTube.
+            </p>
+          )}
         </div>
       </div>
     </div>,

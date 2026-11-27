@@ -59,7 +59,12 @@ export function isTimedOption(option: SleepOption): option is SleepOption & { se
 export function isYouTubeOrigin(origin: string): boolean {
   try {
     const host = new URL(origin).hostname;
-    return host === "youtube.com" || host.endsWith(".youtube.com");
+    return (
+      host === "youtube.com" ||
+      host.endsWith(".youtube.com") ||
+      host === "youtube-nocookie.com" ||
+      host.endsWith(".youtube-nocookie.com")
+    );
   } catch {
     return false;
   }

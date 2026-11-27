@@ -10,7 +10,7 @@ Kolejność:
 1. Ustaw zmienne na Vercel (produkcja i preview, jeśli testujesz preview):
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
    - `VAPID_PRIVATE_KEY`
-   - `VAPID_SUBJECT` (`mailto:kontakt@parska.pl`)
+   - `VAPID_SUBJECT` (`mailto:parska.pl@gmail.com`)
    - `PUSH_DISPATCH_SECRET` (długa losowa wartość)
    - już używane: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`
 2. Zastosuj ręcznie `supabase/migrations/20261121170000_user_accounts_stage3_push.sql`,

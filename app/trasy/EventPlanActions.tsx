@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { calendarLinks } from "@/lib/calendar-links";
+import { trackParska } from "@/lib/analytics";
 import { useEventPlans } from "./EventPlansProvider";
 
 const focusRing =
@@ -22,7 +23,13 @@ function useLoginHref(): string {
   return href;
 }
 
-type CalendarOption = { href: string; label: string; external: boolean };
+type CalendarOption = {
+  href: string;
+  label: string;
+  external: boolean;
+  calendar: "google" | "outlook" | "ics";
+  icsVariant?: "apple" | "other";
+};
 
 function calendarOptions(event: {
   eventId: number;
@@ -41,10 +48,10 @@ function calendarOptions(event: {
     ticketUrl: event.ticketUrl,
   });
   const options: Array<CalendarOption | null> = [
-    links.google ? { href: links.google, label: "Google Kalendarz", external: true } : null,
-    links.outlook ? { href: links.outlook, label: "Outlook", external: true } : null,
-    links.ics ? { href: links.ics, label: "Apple / iPhone", external: false } : null,
-    links.ics ? { href: links.ics, label: "Inny kalendarz (.ics)", external: false } : null,
+    links.google ? { href: links.google, label: "Google Kalendarz", external: true, calendar: "google" } : null,
+    links.outlook ? { href: links.outlook, label: "Outlook", external: true, calendar: "outlook" } : null,
+    links.ics ? { href: links.ics, label: "Apple / iPhone", external: false, calendar: "ics", icsVariant: "apple" } : null,
+    links.ics ? { href: links.ics, label: "Inny kalendarz (.ics)", external: false, calendar: "ics", icsVariant: "other" } : null,
   ];
   return options.filter((option): option is CalendarOption => option != null);
 }
@@ -188,7 +195,14 @@ function CalendarAddMenu({
               className={`flex min-h-11 items-center rounded-xl px-3 text-sm font-bold hover:bg-[var(--ink-4)] ${focusRing}`}
               style={{ color: "var(--paper)" }}
               {...(option.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                trackParska("dodaj_do_kalendarza", {
+                  event_id: eventId,
+                  calendar: option.calendar,
+                  ...(option.icsVariant ? { ics_variant: option.icsVariant } : {}),
+                });
+                setOpen(false);
+              }}
             >
               {option.label}
               {option.external && <span className="sr-only">, otwiera się w nowej karcie</span>}
@@ -243,8 +257,13 @@ export default function EventPlanActions({
             onClick={() => {
               if (!plans) return;
               setError(null);
+              const action = reminded ? "remove" : "add";
               void plans.toggleReminder(eventId).then((result) => {
-                if (!result.ok) setError(result.error);
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
+                }
+                trackParska("przypomnij_mi", { event_id: eventId, action });
               });
             }}
           >

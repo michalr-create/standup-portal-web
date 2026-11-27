@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { TourEvent } from "./events.ts";
+import { withTicketUtm, type TicketPlacement } from "./ticket-utm.ts";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript") as typeof import("typescript");
@@ -32,6 +33,9 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
   const plansPath = join(dir, "plans.cjs");
   const sizedPath = join(dir, "sized.cjs");
   const posterPath = join(dir, "poster.cjs");
+  const ticketUtmPath = join(dir, "ticket-utm.cjs");
+  const ticketLinkPath = join(dir, "ticket-link.cjs");
+  const analyticsStubPath = join(dir, "analytics-stub.cjs");
   const altPath = join(dir, "image-alt.cjs");
   const slugifyPath = join(dir, "slugify.cjs");
   const landingsPath = join(dir, "landings.cjs");
@@ -68,6 +72,16 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
       .replaceAll('require("react")', `require(${JSON.stringify(reactPath)})`),
   );
   writeFileSync(youtubePath, compile(readFileSync(new URL("./youtube.ts", import.meta.url), "utf8"), false));
+  writeFileSync(ticketUtmPath, compile(readFileSync(new URL("./ticket-utm.ts", import.meta.url), "utf8"), false));
+  writeFileSync(analyticsStubPath, "function trackParska() {}\nexports.trackParska = trackParska;\n");
+  writeFileSync(
+    ticketLinkPath,
+    compile(readFileSync(new URL("../app/components/TicketOutboundLink.tsx", import.meta.url), "utf8"), true)
+      .replaceAll('require("@/lib/ticket-utm")', `require(${JSON.stringify(ticketUtmPath)})`)
+      .replaceAll('require("@/lib/analytics")', `require(${JSON.stringify(analyticsStubPath)})`)
+      .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
+      .replaceAll('require("react")', `require(${JSON.stringify(reactPath)})`),
+  );
   writeFileSync(
     linkPath,
     [
@@ -94,6 +108,8 @@ function loadEventCard(): (props: { event: TourEvent; now: Date }) => React.Reac
     .replaceAll('require("@/lib/city-landings")', `require(${JSON.stringify(landingsPath)})`)
     .replaceAll('require("@/lib/youtube")', `require(${JSON.stringify(youtubePath)})`)
     .replaceAll('require("../components/EventPoster")', `require(${JSON.stringify(posterPath)})`)
+    .replaceAll('require("../components/TicketOutboundLink")', `require(${JSON.stringify(ticketLinkPath)})`)
+    .replaceAll('require("@/lib/ticket-utm")', `require(${JSON.stringify(ticketUtmPath)})`)
     .replaceAll('require("./EventPlanActions")', `require(${JSON.stringify(plansPath)})`)
     .replaceAll('require("next/link")', `require(${JSON.stringify(linkPath)})`)
     .replaceAll('require("react/jsx-runtime")', `require(${JSON.stringify(jsxPath)})`)
@@ -161,6 +177,11 @@ function anchors(html: string): { attrs: string; text: string }[] {
 function attr(attrs: string, name: string): string | null {
   const match = attrs.match(new RegExp(`\\b${name}="([^"]*)"`));
   return match?.[1] ?? null;
+}
+
+function assertTicketHref(actual: string | null, raw: string, placement: TicketPlacement, eventId: number) {
+  const href = (actual ?? "").replaceAll("&amp;", "&");
+  assert.equal(href, withTicketUtm(raw, { placement, eventId }));
 }
 
 function assertContainedPoster(html: string, src: string, alt: string) {
@@ -264,10 +285,10 @@ test("event card sends the name to the profile and tickets to a new tab", () => 
   const kupbilecik = external.find((link) => link.text.startsWith("Kup bilet na kupbilecik.pl"));
   const going = external.find((link) => link.text.startsWith("Going"));
   assert.ok(kupbilecik);
-  assert.equal(attr(kupbilecik.attrs, "href"), "https://kupbilecik.pl/adam");
+  assertTicketHref(attr(kupbilecik.attrs, "href"), "https://kupbilecik.pl/adam", "karta_trasy_primary", 1);
   assert.match(attr(kupbilecik.attrs, "style") ?? "", /background:var\(--coral\)/);
   assert.ok(going);
-  assert.equal(attr(going.attrs, "href"), "https://goingapp.pl/adam");
+  assertTicketHref(attr(going.attrs, "href"), "https://goingapp.pl/adam", "karta_trasy_secondary", 1);
   assert.match(attr(going.attrs, "style") ?? "", /border:1px solid var\(--coral\)/);
   assert.equal(external.some((link) => link.text.startsWith("Bilety")), false);
   assert.doesNotMatch(html, /Bilety24/);
@@ -387,7 +408,7 @@ test("event card shows one Kupbilecik button when that is the only seller", () =
   assert.match(attr(external[0]?.attrs ?? "", "class") ?? "", /max-w-full/);
   assert.match(attr(external[0]?.attrs ?? "", "class") ?? "", /whitespace-normal/);
   assert.match(attr(external[0]?.attrs ?? "", "class") ?? "", /break-words/);
-  assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+  assertTicketHref(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam", "karta_trasy_primary", 1);
   assert.doesNotMatch(html, /Link do biletów niedostępny/);
   assert.doesNotMatch(html, /Bilety24/);
 });
@@ -431,8 +452,8 @@ test("event card hides Bilety24 and does not repeat the primary provider", () =>
     external.map((link) => link.text.replace(/, otwiera się w nowej karcie/, "").trim()),
     ["Kup bilet na kupbilecik.pl", "Going"],
   );
-  assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
-  assert.equal(attr(external[1]?.attrs ?? "", "href"), "https://goingapp.pl/adam");
+  assertTicketHref(attr(external[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam", "karta_trasy_primary", 1);
+  assertTicketHref(attr(external[1]?.attrs ?? "", "href"), "https://goingapp.pl/adam", "karta_trasy_secondary", 1);
   assert.doesNotMatch(html, /Bilety24/);
 });
 
@@ -598,11 +619,11 @@ test("the tour title or the date links to the event page and the ticket stays on
   assert.ok(poster);
   assert.equal(attr(poster.attrs, "href"), "/wystep/1");
   const tickets = titledLinks.filter((link) => attr(link.attrs, "target") === "_blank");
-  assert.equal(attr(tickets[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+  assertTicketHref(attr(tickets[0]?.attrs ?? "", "href"), "https://kupbilecik.pl/adam", "karta_trasy_primary", 1);
   assert.equal(tickets.some((link) => (attr(link.attrs, "href") ?? "").includes("/wystep/")), false);
   const shopLabel = titledLinks.find((link) => link.text.startsWith("Kup bilet na kupbilecik.pl"));
   assert.ok(shopLabel);
-  assert.equal(attr(shopLabel.attrs, "href"), "https://kupbilecik.pl/adam");
+  assertTicketHref(attr(shopLabel.attrs, "href"), "https://kupbilecik.pl/adam", "karta_trasy_primary", 1);
   assert.equal(attr(shopLabel.attrs, "target"), "_blank");
   assert.match(attr(shopLabel.attrs, "class") ?? "", /max-w-full/);
   assert.match(attr(shopLabel.attrs, "class") ?? "", /whitespace-normal/);
@@ -621,7 +642,7 @@ test("the tour title or the date links to the event page and the ticket stays on
   assert.ok(dateLink);
   assert.equal(anchors(repeated).some((link) => link.text === "Adam Van Bendler" && attr(link.attrs, "href") === "/wystep/1"), false);
   const shop = anchors(repeated).find((link) => attr(link.attrs, "target") === "_blank");
-  assert.equal(attr(shop?.attrs ?? "", "href"), "https://kupbilecik.pl/adam");
+  assertTicketHref(attr(shop?.attrs ?? "", "href"), "https://kupbilecik.pl/adam", "karta_trasy_primary", 1);
 });
 
 test("the city name links to its landing and a city without one stays text", () => {
@@ -680,7 +701,7 @@ test("event card names an unknown portal from the ticket host", () => {
   assert.equal(external.length, 1);
   assert.equal(external[0]?.text.startsWith("Kup bilet na sklep.example"), true);
   assert.match(external[0]?.text ?? "", /otwiera się w nowej karcie/);
-  assert.equal(attr(external[0]?.attrs ?? "", "href"), "https://www.Sklep.Example/bilet");
+  assertTicketHref(attr(external[0]?.attrs ?? "", "href"), "https://www.Sklep.Example/bilet", "karta_trasy_primary", 1);
 });
 
 test("the event page shows the same uncropped poster", () => {

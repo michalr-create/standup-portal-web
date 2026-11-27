@@ -1,5 +1,6 @@
 "use client";
 
+import { hasConsent, openConsentSettings } from "@/lib/consent";
 import { useLibrary } from "./LibraryProvider";
 
 const focusRing =
@@ -32,6 +33,11 @@ export default function WatchLaterButton({
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (!library.ready) return;
+        if (!library.signedIn && !hasConsent("functional")) {
+          openConsentSettings();
+          return;
+        }
         library.toggleWatchLater(itemId);
       }}
       onPointerDown={(event) => event.stopPropagation()}

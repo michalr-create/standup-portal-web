@@ -210,7 +210,9 @@ test("public content pages declare their own metadata", () => {
   assert.match(specialPage, /revalidate = 120/);
   assert.match(specialPage, /notFound\(\)/);
   assert.doesNotMatch(specialPage, /autoplay/);
-  assert.match(specialPage, /youtube\.com\/embed\//);
+  assert.match(specialPage, /YoutubeClickToLoad/);
+  assert.doesNotMatch(specialPage, /<iframe/);
+  assert.doesNotMatch(specialPage, /youtube\.com\/embed\//);
   const data = readFileSync(new URL("./data.ts", import.meta.url), "utf8");
   assert.match(data, /EXCLUDED_SPECIAL_ITEM_ID/);
   assert.match(data, /\.neq\("id", EXCLUDED_SPECIAL_ITEM_ID\)/);

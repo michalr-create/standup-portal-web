@@ -72,8 +72,12 @@ test("ulubione city shows are the saved city, with favorites only when no city i
   assert.match(section, /standuperProfileHref\(person\.slug\)/);
   assert.match(section, /trasyHref\(\{ osoba: event\.person\.slug \}\)/);
   assert.match(section, /więcej tras/);
-  assert.match(section, /target="_blank"/);
-  assert.match(section, /rel="noopener noreferrer"/);
+  assert.match(section, /TicketOutboundLink/);
+  assert.match(section, /placement="ulubione_bilety"/);
+  const outbound = readFileSync(new URL("../app/components/TicketOutboundLink.tsx", import.meta.url), "utf8");
+  assert.match(outbound, /target="_blank"/);
+  assert.match(outbound, /rel="noopener noreferrer"/);
+  assert.match(outbound, /onPointerDown=\{track\}/);
   assert.match(section, /paidExternalUrl\(event\.ticket_url\)/);
   assert.match(section, /ticketCtaLabel\(event\.ticket_provider \?\? "other", href\)/);
   assert.match(section, /Wyprzedane/);

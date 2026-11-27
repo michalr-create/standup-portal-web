@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { trackParska } from "@/lib/analytics";
+import { hasConsent, openConsentSettings } from "@/lib/consent";
 import { useLibraryOptional } from "./LibraryProvider";
 
 type Props = {
@@ -64,10 +66,18 @@ export default function HeartButton({
   const toggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const anonymous = !library || !library.signedIn;
+    if (anonymous && library && !library.ready) return;
+    if (anonymous && !hasConsent("functional")) {
+      openConsentSettings();
+      return;
+    }
+    const action = active ? "remove" : "add";
     setPop(true);
     setTimeout(() => setPop(false), 300);
     if (library) {
       library.toggleFavorite(type, slug);
+      trackParska("ulubione", { target: type, slug, action });
       onToggle?.();
       return;
     }
@@ -76,6 +86,7 @@ export default function HeartButton({
       const next = arr.includes(slug) ? arr.filter((s) => s !== slug) : [...arr, slug];
       localStorage.setItem(KEYS[type], JSON.stringify(next));
       setStoredActive((prev) => !prev);
+      trackParska("ulubione", { target: type, slug, action });
       onToggle?.();
     } catch {}
   };

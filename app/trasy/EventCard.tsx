@@ -20,8 +20,10 @@ import {
   type TourPerson,
 } from "@/lib/events";
 import { cityLandingPath } from "@/lib/city-landings";
+import { analyticsTicketProvider, formatComedianSlugs, type TicketPlacement } from "@/lib/ticket-utm";
 import { paidExternalUrl } from "@/lib/youtube";
 import EventPoster from "../components/EventPoster";
+import TicketOutboundLink from "../components/TicketOutboundLink";
 import EventPlanActions from "./EventPlanActions";
 
 function ExternalIcon() {
@@ -47,35 +49,52 @@ function ExternalIcon() {
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--coral)]";
 
-function PortalBadge({ link, href }: { link: TicketLink; href: string }) {
+function ticketLinkProps(
+  event: TourEvent,
+  href: string,
+  provider: TicketLink["ticket_provider"],
+  placement: TicketPlacement,
+  isPrimary: boolean,
+) {
+  return {
+    href,
+    eventId: event.id,
+    provider: analyticsTicketProvider(provider, href),
+    city: event.city,
+    comedian: formatComedianSlugs(eventPeople(event)),
+    priceFrom: event.price_from,
+    currency: event.currency || "PLN",
+    placement,
+    isPrimary,
+    status: event.status,
+  };
+}
+
+function PortalBadge({ event, link, href }: { event: TourEvent; link: TicketLink; href: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <TicketOutboundLink
+      {...ticketLinkProps(event, href, link.ticket_provider, "karta_trasy_secondary", false)}
       className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-black transition-colors hover:bg-[rgba(232,89,74,.16)] ${focusRing}`}
       style={{ color: "var(--coral)", border: "1px solid var(--coral)" }}
     >
       {providerLabel(link.ticket_provider)}
       <ExternalIcon />
       <span className="sr-only">, otwiera się w nowej karcie</span>
-    </a>
+    </TicketOutboundLink>
   );
 }
 
-function TicketCta({ href, label }: { href: string; label: string }) {
+function TicketCta({ event, href, provider, label }: { event: TourEvent; href: string; provider: TicketLink["ticket_provider"]; label: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <TicketOutboundLink
+      {...ticketLinkProps(event, href, provider, "karta_trasy_primary", true)}
       className={`inline-flex max-w-full min-h-10 min-w-0 items-center gap-1.5 whitespace-normal break-words text-balance rounded-full px-3.5 py-2 text-left text-sm font-black leading-snug transition-colors hover:bg-[var(--coral-hi)] ${focusRing}`}
       style={{ background: "var(--coral)", color: "var(--ink)" }}
     >
       <span className="min-w-0">{label}</span>
       <ExternalIcon />
       <span className="sr-only">, otwiera się w nowej karcie</span>
-    </a>
+    </TicketOutboundLink>
   );
 }
 
@@ -283,9 +302,16 @@ export default function EventCard({
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-4 sm:px-5 sm:pb-5">
-        {primary && <TicketCta href={primary.href} label={ticketCtaLabel(primary.link.ticket_provider, primary.href)} />}
+        {primary && (
+          <TicketCta
+            event={event}
+            href={primary.href}
+            provider={primary.link.ticket_provider}
+            label={ticketCtaLabel(primary.link.ticket_provider, primary.href)}
+          />
+        )}
         {secondary.map((item) => (
-          <PortalBadge key={`${item.link.ticket_provider}:${item.link.external_id}`} link={item.link} href={item.href} />
+          <PortalBadge key={`${item.link.ticket_provider}:${item.link.external_id}`} event={event} link={item.link} href={item.href} />
         ))}
         {!primary && (
           <span className="text-sm" style={{ color: "var(--paper-mute)" }}>

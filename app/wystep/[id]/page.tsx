@@ -29,7 +29,9 @@ import {
 import { eventPageGraph } from "@/lib/jsonld";
 import { absoluteUrl, contentMetadata } from "@/lib/seo";
 import { paidExternalUrl } from "@/lib/youtube";
+import { analyticsTicketProvider, formatComedianSlugs } from "@/lib/ticket-utm";
 import EventPoster from "@/app/components/EventPoster";
+import TicketOutboundLink from "@/app/components/TicketOutboundLink";
 
 export const revalidate = 120;
 
@@ -274,17 +276,24 @@ export default async function WystepPage({ params }: Props) {
                 {past ? (
                   <p className="m-0 text-lg font-black">Występ już się odbył</p>
                 ) : primary ? (
-                  <a
+                  <TicketOutboundLink
                     href={primary.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    eventId={event.id}
+                    provider={analyticsTicketProvider(primary.link.ticket_provider, primary.href)}
+                    city={event.city}
+                    comedian={formatComedianSlugs(eventPeople(event))}
+                    priceFrom={event.price_from}
+                    currency={event.currency || "PLN"}
+                    placement="wystep_primary"
+                    isPrimary
+                    status={event.status}
                     className={`inline-flex max-w-full min-h-12 min-w-0 items-center gap-2 whitespace-normal break-words rounded-full px-5 py-2.5 text-left text-base font-black leading-snug hover:bg-[var(--coral-hi)] ${focusRing}`}
                     style={{ background: "var(--coral)", color: "var(--ink)" }}
                   >
                     <span className="min-w-0">{ticketCtaLabel(primary.link.ticket_provider, primary.href)}</span>
                     <ExternalIcon />
                     <span className="sr-only">, otwiera się w nowej karcie</span>
-                  </a>
+                  </TicketOutboundLink>
                 ) : (
                   <p className="m-0 text-sm" style={{ color: "var(--paper-mute)" }}>
                     Link do biletów niedostępny
@@ -293,18 +302,25 @@ export default async function WystepPage({ params }: Props) {
                 {!past && secondary.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {secondary.map((item) => (
-                      <a
+                      <TicketOutboundLink
                         key={`${item.link.ticket_provider}:${item.link.external_id}`}
                         href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        eventId={event.id}
+                        provider={analyticsTicketProvider(item.link.ticket_provider, item.href)}
+                        city={event.city}
+                        comedian={formatComedianSlugs(eventPeople(event))}
+                        priceFrom={event.price_from}
+                        currency={event.currency || "PLN"}
+                        placement="wystep_secondary"
+                        isPrimary={false}
+                        status={event.status}
                         className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-black hover:bg-[rgba(232,89,74,.16)] ${focusRing}`}
                         style={{ color: "var(--coral)", border: "1px solid var(--coral)" }}
                       >
                         {providerLabel(item.link.ticket_provider)}
                         <ExternalIcon />
                         <span className="sr-only">, otwiera się w nowej karcie</span>
-                      </a>
+                      </TicketOutboundLink>
                     ))}
                   </div>
                 )}

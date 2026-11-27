@@ -17,6 +17,7 @@ import { slugRedirectPath } from "@/lib/slug-redirect";
 import { isStanduperka } from "@/lib/standuperki";
 import ProfilePortrait, { ProfilePortraitCredit } from "./ProfilePortrait";
 import ProfileTour from "./ProfileTour";
+import ProfileVisit from "./ProfileVisit";
 
 export const revalidate = 120;
 
@@ -116,6 +117,7 @@ export default async function StanduperPage({ params }: Props) {
 
   return (
     <>
+      <ProfileVisit slug={person.slug} />
       <JsonLd
         data={personPageGraph({
           name: personName,
