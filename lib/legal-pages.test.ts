@@ -47,18 +47,28 @@ function loadLegalDocument() {
 
 const LegalDocument = loadLegalDocument();
 
-test("legal pages stay unpublished while the drafts still have placeholders", () => {
-  assert.equal(PUBLISH_LEGAL_PAGES, false);
-  assert.equal(legalPagesAreReady(), false);
+function publishedDocument(title: string, body: string) {
+  const ready = legalPagesAreReady() && !draftHasPlaceholder(body);
+  const html = renderToStaticMarkup(
+    ready
+      ? React.createElement(LegalDocument, { title, source: body })
+      : React.createElement("article", null, "Dokument w przygotowaniu. Opublikujemy go po uzupełnieniu danych administratora i przeglądzie prawnym."),
+  );
+  return { status: ready ? 200 : 404, html };
+}
+
+test("published legal pages return the documents without placeholders or noindex", () => {
+  assert.equal(PUBLISH_LEGAL_PAGES, true);
+  assert.equal(legalPagesAreReady(), true);
   for (const body of [POLITYKA_BODY, REGULAMIN_BODY, COOKIES_BODY]) {
-    assert.equal(draftHasPlaceholder(body), true);
-    assert.equal(body.split("[DO UZUPEŁNIENIA").length - 1, 1);
-    assert.match(body, /Data ostatniej aktualizacji: `\[DO UZUPEŁNIENIA: data publikacji\]`/);
+    assert.equal(draftHasPlaceholder(body), false);
+    assert.equal(body.includes("[DO UZUPEŁNIENIA"), false);
+    assert.match(body, /Data ostatniej aktualizacji: 27 listopada 2026/);
     assert.match(body, /Michał Religa/);
     assert.match(body, new RegExp(ADDRESS.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.match(body, /parska\.pl@gmail\.com/);
     assert.doesNotMatch(body, /Checklist|Część B|uklad-i-ryzyka|Dla zespołu|Przed publikacją/);
-    assert.doesNotMatch(body, /listopada 2026|2026-11-27/);
+    assert.doesNotMatch(body, /Dokument w przygotowaniu/);
   }
   assert.match(POLITYKA_BODY, /## 11\. Zmiany polityki/);
   assert.match(POLITYKA_BODY, /Nie wyznaczył inspektora ochrony danych \(IOD\)/);
@@ -73,17 +83,43 @@ test("legal pages stay unpublished while the drafts still have placeholders", ()
   const pendingSource = readFileSync(new URL("../app/components/LegalPending.tsx", import.meta.url), "utf8");
   assert.match(pendingSource, /Dokument w przygotowaniu/);
   assert.doesNotMatch(pendingSource, /\[DO UZUPEŁNIENIA/);
-  for (const route of ["polityka-prywatnosci", "regulamin", "cookies"]) {
+  const documents = [
+    ["polityka-prywatnosci", "Polityka prywatności", POLITYKA_BODY],
+    ["regulamin", "Regulamin", REGULAMIN_BODY],
+    ["cookies", "Cookies", COOKIES_BODY],
+  ] as const;
+  for (const [route, title, body] of documents) {
     const page = readFileSync(new URL(`../app/${route}/page.tsx`, import.meta.url), "utf8");
     assert.match(page, /draftHasPlaceholder/);
     assert.match(page, /legalPagesAreReady/);
     assert.match(page, /LegalPending/);
+    assert.match(page, /const ready = legalPagesAreReady\(\) && !draftHasPlaceholder/);
+    assert.match(page, /if \(!ready\) return <LegalPending/);
+    assert.match(page, /return <LegalDocument/);
+    const published = page.split("export const metadata: Metadata = ready")[1]?.split(": noindexMetadata")[0] ?? "";
+    assert.match(published, /alternates:\s*\{\s*canonical:\s*PATH\s*\}/);
+    assert.doesNotMatch(published, /noindex|index:\s*false/);
+    const rendered = publishedDocument(title, body);
+    assert.equal(rendered.status, 200);
+    assert.match(rendered.html, /27 listopada 2026/);
+    assert.doesNotMatch(rendered.html, /Dokument w przygotowaniu/);
+    assert.doesNotMatch(rendered.html, /DO UZUPEŁNIENIA/);
   }
-  const html = renderToStaticMarkup(
-    React.createElement("article", null, "Dokument w przygotowaniu. Opublikujemy go po uzupełnieniu danych administratora i przeglądzie prawnym."),
-  );
-  assert.match(html, /Dokument w przygotowaniu/);
-  assert.doesNotMatch(html, /DO UZUPEŁNIENIA/);
+
+  const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const drawer = readFileSync(new URL("../app/components/MobileDrawer.tsx", import.meta.url), "utf8");
+  const links = readFileSync(new URL("../app/components/SiteLegalLinks.tsx", import.meta.url), "utf8");
+  const banner = readFileSync(new URL("../app/components/ConsentBanner.tsx", import.meta.url), "utf8");
+  assert.match(layout, /<SiteLegalLinks \/>/);
+  assert.match(drawer, /<SiteLegalLinks tone="drawer"/);
+  assert.match(links, /legalPagesAreReady\(\)/);
+  for (const href of ["/polityka-prywatnosci", "/regulamin", "/cookies"]) {
+    assert.match(links, new RegExp(`href="${href}"`));
+    assert.match(banner, new RegExp(`href="${href}"`));
+  }
+  assert.match(banner, /legalPagesAreReady\(\)/);
+  assert.match(banner, /Szczegóły:/);
+  assert.match(banner, /Dokumenty:/);
 });
 
 test("updated legal drafts render the administrator data and tables", () => {
@@ -94,13 +130,23 @@ test("updated legal drafts render the administrator data and tables", () => {
   assert.match(polityka, /<table/);
   assert.match(polityka, /Vercel Inc\./);
   assert.match(polityka, /href="https:\/\/vercel\.com\/legal\/dpa"/);
-  assert.match(polityka, /DO UZUPEŁNIENIA: data publikacji/);
+  assert.match(polityka, /27 listopada 2026/);
+  assert.match(polityka, /Konto można usunąć samodzielnie w ustawieniach konta/);
+  assert.match(polityka, /Kopie zapasowe dostawców/);
+  assert.match(polityka, /Zgłoszenia open mic/);
+  assert.doesNotMatch(polityka, /nie ma obecnie przycisku/);
+  assert.doesNotMatch(polityka, /DO UZUPEŁNIENIA/);
+  assert.doesNotMatch(polityka, /Dokument w przygotowaniu/);
   assert.doesNotMatch(polityka, /Checklist/);
 
   const regulamin = renderToStaticMarkup(React.createElement(LegalDocument, { title: "Regulamin", source: REGULAMIN_BODY }));
   assert.match(regulamin, /punktem kontaktowym/);
   assert.match(regulamin, /<ol/);
   assert.match(regulamin, /Łukasińskiego 45D/);
+  assert.match(regulamin, /usunąć Konto w ustawieniach, po potwierdzeniu żądania/);
+  assert.doesNotMatch(regulamin, /nie ma obecnie przycisku/);
+  assert.doesNotMatch(regulamin, /DO UZUPEŁNIENIA/);
+  assert.doesNotMatch(regulamin, /Dokument w przygotowaniu/);
   assert.doesNotMatch(regulamin, /Checklist/);
 
   const cookies = renderToStaticMarkup(React.createElement(LegalDocument, { title: "Cookies", source: COOKIES_BODY }));
@@ -110,4 +156,7 @@ test("updated legal drafts render the administrator data and tables", () => {
   assert.match(cookies, /parska_consent/);
   assert.match(cookies, /href="\/polityka-prywatnosci"/);
   assert.match(cookies, /Łukasińskiego 45D/);
+  assert.match(cookies, /27 listopada 2026/);
+  assert.doesNotMatch(cookies, /DO UZUPEŁNIENIA/);
+  assert.doesNotMatch(cookies, /Dokument w przygotowaniu/);
 });

@@ -22,6 +22,7 @@ import PaidBadge from "@/app/components/PaidBadge";
 import ThumbDuration from "@/app/components/ThumbDuration";
 import ReportForm from "@/app/zglos/ReportForm";
 import AccountPlaces from "./AccountPlaces";
+import DeleteAccount from "./DeleteAccount";
 import FavoriteTours from "./FavoriteTours";
 import PushNotifications from "./PushNotifications";
 import { eventsForFavoritePeople, selectAccountUpcoming, type FavoriteUpcomingEvent } from "@/lib/events";
@@ -396,6 +397,8 @@ export default function UlubionePage() {
             returnPath="/ulubione"
           />
         </section>
+
+        <DeleteAccount />
       </div>
     </div>
     {modal && (
